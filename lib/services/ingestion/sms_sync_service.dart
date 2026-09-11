@@ -71,7 +71,7 @@ class SmsSyncService {
   }
 
   /// Scans recent bank and UPI SMS messages from inbox and imports valid financial transactions
-  Future<SmsSyncResult> syncInbox({int limit = 150}) async {
+  Future<SmsSyncResult> syncInbox({int limit = 2000}) async {
     if (_isSyncing) {
       return const SmsSyncResult(
         status: SmsSyncStatus.error,
@@ -136,6 +136,13 @@ class SmsSyncService {
 
         // 3.1 PROMOTIONAL & EMI SHIELD: Drop non-transactional marketing and EMI pitches
         if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(body)) {
+          continue;
+        }
+
+        // 3.2 TRANSACTION PRE-FILTER: Drop non-financial chat, delivery, and notice messages
+        final lower = body.toLowerCase();
+        if (!IndianBankingConstants.incomeTriggerRegex.hasMatch(lower) &&
+            !IndianBankingConstants.expenseTriggerRegex.hasMatch(lower)) {
           continue;
         }
 

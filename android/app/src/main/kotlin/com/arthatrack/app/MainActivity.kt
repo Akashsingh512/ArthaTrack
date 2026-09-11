@@ -107,7 +107,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "readInboxSms" -> {
-                    val limit = (call.argument<Int>("limit") ?: 150).coerceIn(1, 1000)
+                    val rawLimit = call.argument<Int>("limit") ?: 2000
+                    val limit = if (rawLimit <= 0) 0 else rawLimit.coerceIn(1, 10000)
                     try {
                         val messages = readSmsMessages(limit)
                         result.success(messages)
@@ -182,13 +183,14 @@ class MainActivity : FlutterActivity() {
         val list = mutableListOf<Map<String, Any>>()
         val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("_id", "address", "body", "date")
+        val sortOrder = if (limit > 0) "date DESC LIMIT $limit" else "date DESC"
 
         val cursor = contentResolver.query(
             uri,
             projection,
             null,
             null,
-            "date DESC LIMIT $limit"
+            sortOrder
         ) ?: return list
 
         cursor.use {

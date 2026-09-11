@@ -43,7 +43,7 @@ class DashboardScreen extends StatelessWidget {
             try {
               final smsService = SmsSyncService();
               if (await smsService.isPermissionGranted()) {
-                await smsService.syncInbox(limit: 30);
+                await smsService.syncInbox(limit: 200);
               }
             } catch (_) {}
             await controller.loadDashboardData();

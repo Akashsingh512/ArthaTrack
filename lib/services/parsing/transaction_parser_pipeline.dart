@@ -24,6 +24,13 @@ class TransactionParserPipeline {
       return null;
     }
 
+    // 0.2 FINANCIAL CUE GUARD: If neither income nor expense keywords exist, skip LLM/regex
+    final lower = rawText.toLowerCase();
+    if (!IndianBankingConstants.incomeTriggerRegex.hasMatch(lower) &&
+        !IndianBankingConstants.expenseTriggerRegex.hasMatch(lower)) {
+      return null;
+    }
+
     final hasApiKey = await _secureStorage.hasActiveApiKey();
 
     // 1. Attempt Primary: Engine A (User AI Key)

@@ -178,7 +178,7 @@ class SettingsController extends ChangeNotifier {
     await refreshSmsPermission();
   }
 
-  Future<SmsSyncResult> syncSmsInbox({int limit = 150}) async {
+  Future<SmsSyncResult> syncSmsInbox({int limit = 2000}) async {
     _isSmsSyncing = true;
     notifyListeners();
 
