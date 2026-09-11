@@ -56,9 +56,11 @@ Field rules:
 
   /// Parses using Google Gemini API
   static Future<ParsedTransaction?> _parseWithGemini(String rawText, String apiKey) async {
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
-    );
+    const modelsToTry = [
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-2.5-flash',
+    ];
 
     final payload = {
       "contents": [
@@ -76,24 +78,35 @@ Field rules:
       }
     };
 
-    final response = await http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(payload),
-        )
-        .timeout(_requestTimeout);
+    for (final model in modelsToTry) {
+      try {
+        final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
+        );
 
-    if (response.statusCode != 200) {
-      throw Exception('Gemini API returned status ${response.statusCode}: ${response.body}');
+        final response = await http
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(_requestTimeout);
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final candidates = data['candidates'] as List?;
+          if (candidates == null || candidates.isEmpty) continue;
+
+          final content = candidates[0]['content']['parts'][0]['text'] as String;
+          final parsed = _parseJsonOutput(content, rawText, 'AI_GEMINI');
+          if (parsed != null) return parsed;
+        }
+      } catch (e) {
+        print('Gemini attempt with model $model failed: $e');
+      }
     }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final candidates = data['candidates'] as List?;
-    if (candidates == null || candidates.isEmpty) return null;
-
-    final content = candidates[0]['content']['parts'][0]['text'] as String;
-    return _parseJsonOutput(content, rawText, 'AI_GEMINI');
+    return null;
   }
 
   /// Parses using Groq API (OpenAI-compatible)

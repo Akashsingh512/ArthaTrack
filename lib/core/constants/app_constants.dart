@@ -12,7 +12,7 @@ class AppConstants {
   // AI Providers
   static const String providerGemini = 'Gemini';
   static const String providerGroq = 'Groq';
-  static const String defaultGeminiModel = 'gemini-1.5-flash';
+  static const String defaultGeminiModel = 'gemini-flash-latest';
   static const String defaultGroqModel = 'llama-3.3-70b-versatile';
 
   // Platform Channels

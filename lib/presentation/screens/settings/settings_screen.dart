@@ -176,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               items: const [
                 DropdownMenuItem(
                   value: AppConstants.providerGemini,
-                  child: Text('Google Gemini (gemini-1.5-flash)'),
+                  child: Text('Google Gemini (gemini-flash-latest)'),
                 ),
                 DropdownMenuItem(
                   value: AppConstants.providerGroq,
