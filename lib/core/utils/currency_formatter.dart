@@ -78,3 +78,12 @@ class IndianCurrencyFormatter {
     return double.tryParse(cleaned) ?? 0.0;
   }
 }
+
+class CurrencyFormatter {
+  static String formatINR(double amount) => IndianCurrencyFormatter.format(amount, showDecimals: false);
+  static String format(double amount, {bool showSymbol = true, bool showDecimals = true}) =>
+      IndianCurrencyFormatter.format(amount, showSymbol: showSymbol, showDecimals: showDecimals);
+  static String formatCompact(double amount, {bool showSymbol = true}) =>
+      IndianCurrencyFormatter.formatCompact(amount, showSymbol: showSymbol);
+}
+

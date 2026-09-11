@@ -9,6 +9,7 @@ class AppColors {
 
   // Brand Accents
   static const Color emerald = Color(0xFF10B981);
+  static const Color primary = Color(0xFF10B981);
   static const Color saffron = Color(0xFFF59E0B);
   static const Color ruby = Color(0xFFEF4444);
   static const Color royalBlue = Color(0xFF3B82F6);
@@ -25,7 +26,9 @@ class AppColors {
 
   // Financial Semantics
   static const Color income = Color(0xFF10B981);
+  static const Color incomeGreen = Color(0xFF10B981);
   static const Color expense = Color(0xFFF43F5E);
+  static const Color expenseRed = Color(0xFFF43F5E);
   static const Color asset = Color(0xFFF59E0B);
   static const Color debt = Color(0xFFE11D48);
   static const Color liquid = Color(0xFF38BDF8);

@@ -430,7 +430,13 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       targetAccountId = _selectedAccountId!;
       final matchedAcc = txController.accounts.firstWhere(
         (a) => a.id == targetAccountId,
-        orElse: () => AccountModel(id: targetAccountId, name: 'Primary Bank', type: 'SAVINGS', balance: 0),
+        orElse: () => AccountModel(
+          id: targetAccountId,
+          name: 'Primary Bank',
+          type: 'SAVINGS',
+          balance: 0,
+          updatedAt: DateTime.now().toIso8601String(),
+        ),
       );
       targetPaymentSource = matchedAcc.name;
     }
