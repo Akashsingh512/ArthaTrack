@@ -25,14 +25,17 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Doctor
+        run: flutter doctor -v
+
       - name: Get Dependencies
         run: flutter pub get
 
       - name: Build Android Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: arthatrack-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
