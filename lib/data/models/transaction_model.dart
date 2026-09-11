@@ -224,4 +224,15 @@ class TransactionModel {
       paymentSource: parsed.paymentSource,
     );
   }
+
+  String get formattedDate {
+    try {
+      final parsed = DateTime.parse(date);
+      final day = parsed.day.toString().padLeft(2, '0');
+      final month = parsed.month.toString().padLeft(2, '0');
+      return '$day/$month/${parsed.year}';
+    } catch (_) {
+      return date.length >= 10 ? date.substring(0, 10) : date;
+    }
+  }
 }

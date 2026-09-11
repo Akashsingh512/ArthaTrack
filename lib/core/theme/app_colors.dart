@@ -11,6 +11,7 @@ class AppColors {
   static const Color emerald = Color(0xFF10B981);
   static const Color primary = Color(0xFF10B981);
   static const Color saffron = Color(0xFFF59E0B);
+  static const Color amber = Color(0xFFF59E0B);
   static const Color ruby = Color(0xFFEF4444);
   static const Color royalBlue = Color(0xFF3B82F6);
   static const Color indigo = Color(0xFF6366F1);
