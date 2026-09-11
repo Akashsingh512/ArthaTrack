@@ -75,7 +75,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       final hasPermission = await _smsSyncService.isPermissionGranted();
       if (!hasPermission) return;
 
-      final result = await _smsSyncService.syncInbox(limit: 150);
+      final result = await _smsSyncService.syncInbox(limit: 5000);
       if (result.importedCount > 0 && mounted) {
         Provider.of<DashboardController>(context, listen: false).loadDashboardData();
         Provider.of<TransactionController>(context, listen: false).loadTransactions();

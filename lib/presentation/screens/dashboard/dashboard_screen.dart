@@ -43,10 +43,13 @@ class DashboardScreen extends StatelessWidget {
             try {
               final smsService = SmsSyncService();
               if (await smsService.isPermissionGranted()) {
-                await smsService.syncInbox(limit: 200);
+                await smsService.syncInbox(limit: 5000);
               }
             } catch (_) {}
             await controller.loadDashboardData();
+            if (context.mounted) {
+              await Provider.of<TransactionController>(context, listen: false).loadTransactions();
+            }
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
