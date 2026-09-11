@@ -654,97 +654,174 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isSignedIn ? AppColors.surfaceElevated : AppColors.royalBlue,
-                      foregroundColor: isSignedIn ? AppColors.textPrimary : Colors.white,
+            if (isSignedIn) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.royalBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: settings.isGmailSyncing
+                          ? null
+                          : () => _triggerGmailSync(context, settings, maxEmails: 100),
+                      icon: settings.isGmailSyncing
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.sync, size: 18),
+                      label: const Text(
+                        'Sync (100)',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                     ),
-                    onPressed: () async {
-                      if (isSignedIn) {
-                        await gmail.signOut();
-                        setState(() {});
-                      } else {
-                        try {
-                          final account = await gmail.signIn();
-                          if (account != null && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Connected to Google as ${account.email}'),
-                                backgroundColor: AppColors.emerald,
-                              ),
-                            );
-                          }
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.royalBlue,
+                        side: const BorderSide(color: AppColors.royalBlue),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: settings.isGmailSyncing
+                          ? null
+                          : () => _triggerGmailSync(context, settings, maxEmails: 500),
+                      icon: const Icon(Icons.all_inclusive, size: 18),
+                      label: const Text(
+                        'Deep Scan (500)',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: settings.isGmailSyncing
+                      ? null
+                      : () async {
+                          await gmail.signOut();
                           setState(() {});
-                        } catch (e) {
-                          if (context.mounted) {
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: AppColors.surfaceElevated,
-                                title: const Row(
-                                  children: [
-                                    Icon(Icons.info_outline, color: AppColors.saffron),
-                                    SizedBox(width: 8),
-                                    Text('Google Sign-In Info', style: TextStyle(fontSize: 16)),
-                                  ],
-                                ),
-                                content: Text(
-                                  'Google Sign-In error:\n$e\n\n'
-                                  'Why: On Android, Google Play Services requires registering an Android OAuth Client ID in Google Cloud Console with your app SHA-1 fingerprint.\n\n'
-                                  'Recommendation: Use the "Bank SMS Inbox Sync" above! It works 100% offline, requires zero configuration, and directly imports bank SMS messages on your phone.',
-                                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx),
-                                    child: const Text('Got it', style: TextStyle(color: AppColors.emerald)),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    child: Text(isSignedIn ? 'Disconnect' : 'Connect Google Account'),
+                        },
+                  icon: const Icon(Icons.logout, size: 16, color: AppColors.textMuted),
+                  label: const Text(
+                    'Disconnect Google Account',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 ),
-                if (isSignedIn) ...[
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final dashboard = Provider.of<DashboardController>(context, listen: false);
-                      final txController = Provider.of<TransactionController>(context, listen: false);
-
-                      try {
-                        final count = await gmail.scanRecentEmails();
-                        messenger.showSnackBar(
+              ),
+            ] else ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.royalBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () async {
+                    try {
+                      final account = await gmail.signIn();
+                      if (account != null && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Imported $count transactions from Gmail!'),
+                            content: Text('Connected to Google as ${account.email}'),
                             backgroundColor: AppColors.emerald,
                           ),
                         );
-                        await dashboard.loadDashboardData();
-                        await txController.loadTransactions();
-                      } catch (e) {
-                        messenger.showSnackBar(
-                          SnackBar(content: Text('Gmail Scan error: $e')),
+                      }
+                      setState(() {});
+                    } catch (e) {
+                      if (context.mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: AppColors.surfaceElevated,
+                            title: const Row(
+                              children: [
+                                Icon(Icons.info_outline, color: AppColors.saffron),
+                                SizedBox(width: 8),
+                                Text('Google Sign-In Info', style: TextStyle(fontSize: 16)),
+                              ],
+                            ),
+                            content: Text(
+                              'Google Sign-In error:\n$e\n\n'
+                              'Why: On Android, Google Play Services requires registering an Android OAuth Client ID in Google Cloud Console with your app SHA-1 fingerprint.\n\n'
+                              'Recommendation: Use the "Bank SMS Inbox Sync" above! It works 100% offline, requires zero configuration, and directly imports bank SMS messages on your phone.',
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Got it', style: TextStyle(color: AppColors.emerald)),
+                              ),
+                            ],
+                          ),
                         );
                       }
-                    },
-                    child: const Text('Scan Now'),
-                  ),
-                ],
-              ],
-            ),
+                    }
+                  },
+                  icon: const Icon(Icons.login, size: 18),
+                  label: const Text('Connect Google Account', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _triggerGmailSync(
+    BuildContext context,
+    SettingsController settings, {
+    required int maxEmails,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final dashboard = Provider.of<DashboardController>(context, listen: false);
+    final txController = Provider.of<TransactionController>(context, listen: false);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(maxEmails >= 500
+            ? 'Deep scanning up to $maxEmails banking emails from Gmail...'
+            : 'Scanning up to $maxEmails recent banking emails from Gmail...'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    final result = await settings.syncGmail(maxEmails: maxEmails);
+
+    if (!context.mounted) return;
+
+    if (result.errorMessage != null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Gmail scan notice: ${result.errorMessage}'),
+          backgroundColor: AppColors.ruby,
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.importedCount > 0
+                ? 'Imported ${result.importedCount} new transactions (${result.scannedCount} emails scanned)!'
+                : 'All email transactions are already up to date (${result.scannedCount} scanned, 0 new).',
+          ),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+      await dashboard.loadDashboardData();
+      await txController.loadTransactions();
+    }
   }
 
   Widget _buildSandboxCard(BuildContext context) {

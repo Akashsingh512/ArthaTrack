@@ -22,6 +22,7 @@ class SettingsController extends ChangeNotifier {
   bool _isNotificationPermissionGranted = false;
   bool _isSmsPermissionGranted = false;
   bool _isSmsSyncing = false;
+  bool _isGmailSyncing = false;
   bool _isExporting = false;
   bool _isTestingKey = false;
   String? _keyTestStatus; // 'SUCCESS', 'FAILED', or null
@@ -43,6 +44,7 @@ class SettingsController extends ChangeNotifier {
   bool get isNotificationPermissionGranted => _isNotificationPermissionGranted;
   bool get isSmsPermissionGranted => _isSmsPermissionGranted;
   bool get isSmsSyncing => _isSmsSyncing;
+  bool get isGmailSyncing => _isGmailSyncing;
   bool get isExporting => _isExporting;
   bool get isTestingKey => _isTestingKey;
   String? get keyTestStatus => _keyTestStatus;
@@ -200,6 +202,26 @@ class SettingsController extends ChangeNotifier {
         status: SmsSyncStatus.error,
         importedCount: 0,
         scannedCount: 0,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  Future<GmailScanResult> syncGmail({int maxEmails = 100}) async {
+    _isGmailSyncing = true;
+    notifyListeners();
+
+    try {
+      final result = await _gmailService.scanEmails(maxEmails: maxEmails);
+      _isGmailSyncing = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _isGmailSyncing = false;
+      notifyListeners();
+      return GmailScanResult(
+        scannedCount: _gmailService.lastScannedCount,
+        importedCount: 0,
         errorMessage: e.toString(),
       );
     }
