@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/constants/app_constants.dart';
 import 'tables/accounts_table.dart';
 import 'tables/balance_sheet_table.dart';
+import 'tables/budgets_table.dart';
 import 'tables/transactions_table.dart';
 
 class AppDatabase {
@@ -44,12 +45,18 @@ class AppDatabase {
         );
       } catch (_) {}
     }
+    if (oldVersion < 4) {
+      try {
+        await db.execute(BudgetsTable.createTableQuery);
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
     await db.execute(AccountsTable.createTableQuery);
     await db.execute(BalanceSheetTable.createTableQuery);
     await db.execute(TransactionsTable.createTableQuery);
+    await db.execute(BudgetsTable.createTableQuery);
 
     await _seedInitialData(db);
   }

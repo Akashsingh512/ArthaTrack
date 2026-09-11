@@ -140,7 +140,47 @@ class NotificationListenerChannel {
     _onNewTransactionController.add(savedTx);
     onTransactionParsed?.call(savedTx);
 
+    // Smart Real-time Categorization Notification:
+    // Triggers ONLY for live intercepted events (e.g. user paid Mohit via UPI),
+    // strictly omitting batch historical SMS sync.
+    if (_shouldPromptCategorization(savedTx)) {
+      await showCategorizationAlert(savedTx);
+    }
+
     return savedTx;
+  }
+
+  /// Checks if a transaction needs user categorization or merchant details
+  bool _shouldPromptCategorization(TransactionModel tx) {
+    if (!tx.isExpense) return false;
+    final cat = tx.category.trim().toLowerCase();
+    if (cat == 'other' || cat == 'transfer' || cat.isEmpty) {
+      return true;
+    }
+    if (tx.merchant.toLowerCase().contains('unknown') || tx.merchant.toLowerCase() == 'merchant') {
+      return true;
+    }
+    return false;
+  }
+
+  /// Displays a local notification prompting user to categorize or add notes to a live transaction
+  Future<void> showCategorizationAlert(TransactionModel tx) async {
+    try {
+      final merchantName = tx.merchant.trim().isNotEmpty && tx.merchant.trim() != 'Unknown'
+          ? tx.merchant.trim()
+          : 'Payment';
+
+      final title = 'Categorize payment to $merchantName';
+      final body = '₹${tx.amount.toStringAsFixed(0)} paid. Tap to choose category or add details.';
+
+      await _controlChannel.invokeMethod('showCategorizationNotification', {
+        'title': title,
+        'body': body,
+        'transactionId': tx.id ?? 0,
+      });
+    } catch (e) {
+      print('Failed to show categorization notification: $e');
+    }
   }
 
   /// Simulates processing a notification (useful for testing or manual simulation sandbox)

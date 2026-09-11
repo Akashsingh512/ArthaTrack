@@ -31,6 +31,14 @@ class TransactionController extends ChangeNotifier {
   String? get selectedCategory => _selectedCategory;
   DateTime? get selectedMonth => _selectedMonth;
 
+  double get filteredIncome => _filteredTransactions
+      .where((t) => t.isIncome)
+      .fold(0.0, (sum, t) => sum + t.amount);
+
+  double get filteredExpense => _filteredTransactions
+      .where((t) => t.isExpense)
+      .fold(0.0, (sum, t) => sum + t.amount);
+
   /// Returns distinct months present in all loaded transactions, newest first
   List<DateTime> get availableMonths {
     final months = <DateTime>{};

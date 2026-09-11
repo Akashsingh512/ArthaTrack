@@ -1,0 +1,181 @@
+import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_formatter.dart';
+
+class MonthlyCashFlowCard extends StatelessWidget {
+  final double totalMonthlyIncome;
+  final double totalMonthlyExpense;
+
+  const MonthlyCashFlowCard({
+    super.key,
+    required this.totalMonthlyIncome,
+    required this.totalMonthlyExpense,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final netCashFlow = totalMonthlyIncome - totalMonthlyExpense;
+    final isPositive = netCashFlow >= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF26334D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.swap_vert, color: AppColors.emerald, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'MONTHLY CASH FLOW',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isPositive
+                      ? AppColors.emerald.withOpacity(0.15)
+                      : AppColors.ruby.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isPositive ? 'NET SAVING' : 'NET DEFICIT',
+                  style: TextStyle(
+                    color: isPositive ? AppColors.emerald : AppColors.ruby,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Two Pillars: Received (Income) vs Spent (Expense)
+          Row(
+            children: [
+              // Received (Income)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.emerald.withOpacity(0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.arrow_downward, color: AppColors.income, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'Received (Income)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '+${IndianCurrencyFormatter.format(totalMonthlyIncome)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.income,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Spent (Expenses)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.expense.withOpacity(0.25)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.arrow_upward, color: AppColors.expense, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'Spent (Expense)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '-${IndianCurrencyFormatter.format(totalMonthlyExpense)}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.expense,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Bottom Net Balance Banner
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Net Cash Flow This Month:',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              Text(
+                '${isPositive ? '+' : ''}${IndianCurrencyFormatter.format(netCashFlow)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isPositive ? AppColors.income : AppColors.expense,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -195,7 +195,7 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
-      WHERE ${TransactionsTable.colType} = 'EXPENSE'
+      WHERE UPPER(${TransactionsTable.colType}) = 'EXPENSE'
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
     ''', [start, end]);
@@ -214,7 +214,7 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
-      WHERE ${TransactionsTable.colType} = 'INCOME'
+      WHERE UPPER(${TransactionsTable.colType}) = 'INCOME'
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
     ''', [start, end]);
@@ -234,7 +234,7 @@ class TransactionRepository {
       SELECT ${TransactionsTable.colCategory} as category,
              SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
-      WHERE ${TransactionsTable.colType} = 'EXPENSE'
+      WHERE UPPER(${TransactionsTable.colType}) = 'EXPENSE'
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
       GROUP BY ${TransactionsTable.colCategory}

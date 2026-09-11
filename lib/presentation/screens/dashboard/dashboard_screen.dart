@@ -8,6 +8,8 @@ import '../../controllers/transaction_controller.dart';
 import '../settings/widgets/raw_sms_test_sandbox.dart';
 import '../transactions/widgets/add_cash_transaction_sheet.dart';
 import 'widgets/category_breakdown_chart.dart';
+import 'widgets/monthly_budgets_card.dart';
+import 'widgets/monthly_cash_flow_card.dart';
 import 'widgets/net_worth_card.dart';
 import 'widgets/recent_transactions_list.dart';
 
@@ -93,6 +95,19 @@ class DashboardScreen extends StatelessWidget {
                     onSyncGmail: () => _syncGmail(context),
                     onTestSandbox: () => _openTestSandbox(context),
                   ),
+                const SizedBox(height: 20),
+
+                // Monthly Cash Flow: Received Income vs Total Expenses
+                MonthlyCashFlowCard(
+                  totalMonthlyIncome: controller.totalMonthlyIncome,
+                  totalMonthlyExpense: controller.totalMonthlyExpense,
+                ),
+                const SizedBox(height: 20),
+
+                // Category Budgets Card
+                MonthlyBudgetsCard(
+                  budgets: controller.budgetProgressList,
+                ),
                 const SizedBox(height: 20),
 
                 // Category Expense Breakdown Chart

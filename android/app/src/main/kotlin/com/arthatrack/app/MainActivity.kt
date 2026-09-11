@@ -1,13 +1,18 @@
 package com.arthatrack.app
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -48,6 +53,13 @@ class MainActivity : FlutterActivity() {
                 }
                 "openNotificationListenerSettings" -> {
                     openNotificationAccessSettings()
+                    result.success(true)
+                }
+                "showCategorizationNotification" -> {
+                    val title = call.argument<String>("title") ?: "Categorize Transaction"
+                    val body = call.argument<String>("body") ?: "Tap to add details"
+                    val txId = call.argument<Int>("transactionId") ?: 0
+                    showLocalNotification(title, body, txId)
                     result.success(true)
                 }
                 else -> {
@@ -201,5 +213,64 @@ class MainActivity : FlutterActivity() {
             }
         }
         return list
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "arthatrack_alerts"
+            val name = "Transaction Alerts"
+            val descriptionText = "Alerts to review and categorize new transactions"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(channelId, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showLocalNotification(title: String, body: String, txId: Int) {
+        try {
+            createNotificationChannel()
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("open_transaction_id", txId)
+            }
+
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                if (txId > 0) txId else 1001,
+                intent,
+                pendingIntentFlags
+            )
+
+            val builder = NotificationCompat.Builder(this, "arthatrack_alerts")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            val notificationManager = NotificationManagerCompat.from(this)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                val notifId = if (txId > 0) txId else (System.currentTimeMillis() % 10000).toInt()
+                notificationManager.notify(notifId, builder.build())
+            }
+        } catch (e: Exception) {
+            // Gracefully ignore
+        }
     }
 }

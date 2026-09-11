@@ -101,6 +101,45 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
               ),
 
+              // Filtered Totals Quick Bar (Received vs Spent)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.arrow_downward, size: 13, color: AppColors.income),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Received: +${IndianCurrencyFormatter.format(controller.filteredIncome)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.income,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.arrow_upward, size: 13, color: AppColors.expense),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Spent: -${IndianCurrencyFormatter.format(controller.filteredExpense)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.expense,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+
               // Month Filter Horizontal List
               SizedBox(
                 height: 38,

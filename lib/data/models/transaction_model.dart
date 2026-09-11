@@ -93,8 +93,8 @@ class TransactionModel {
     );
   }
 
-  bool get isExpense => type == 'EXPENSE';
-  bool get isIncome => type == 'INCOME';
+  bool get isExpense => type.toUpperCase() == 'EXPENSE';
+  bool get isIncome => type.toUpperCase() == 'INCOME';
 
   factory TransactionModel.fromParsed({
     required ParsedTransaction parsed,
