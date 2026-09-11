@@ -140,25 +140,15 @@ class SmsSyncService {
         // 5. Parse via Dual-Engine (AI or Local Regex Heuristics)
         final parsed = await _pipeline.processText(body);
         if (parsed != null && parsed.amount > 0.0) {
-          DateTime txDate;
+          DateTime? txDate;
           if (dateMs is int && dateMs > 0) {
             txDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
-          } else if (parsed.date != null) {
-            txDate = parsed.date!;
-          } else {
-            txDate = DateTime.now();
           }
 
-          final tx = TransactionModel(
+          final tx = TransactionModel.fromParsed(
+            parsed: parsed,
             accountId: accountId,
-            amount: parsed.amount,
-            type: parsed.type,
-            category: parsed.category,
-            merchant: parsed.merchant,
-            notes: sender.isNotEmpty ? 'SMS from $sender' : 'Bank SMS',
-            rawText: body,
             source: 'SMS',
-            referenceNumber: parsed.referenceNumber,
             date: txDate,
           );
 
