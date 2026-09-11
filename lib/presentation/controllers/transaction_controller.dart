@@ -117,6 +117,8 @@ class TransactionController extends ChangeNotifier {
       // Filter by search query
       if (_searchQuery.isNotEmpty) {
         final matchesMerchant = tx.merchant.toLowerCase().contains(_searchQuery);
+        final matchesCategory = tx.category.toLowerCase().contains(_searchQuery);
+        final matchesRaw = tx.rawText.toLowerCase().contains(_searchQuery);
         final matchesSource = (tx.paymentSource ?? '').toLowerCase().contains(_searchQuery);
         if (!matchesMerchant && !matchesCategory && !matchesRaw && !matchesSource) {
           return false;
