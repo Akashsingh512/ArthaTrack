@@ -224,18 +224,53 @@ class AppDatabase {
     }
     if (oldVersion < 9) {
       try {
-        // Heal transactions where merchant was mistakenly recorded as a phone number or dispute footer number
         final rows = await db.query(TransactionsTable.tableName);
         for (final row in rows) {
           final rawText = row[TransactionsTable.colRawText] as String? ?? '';
           final id = row[TransactionsTable.colId] as int?;
           final currentMerchant = row[TransactionsTable.colMerchant] as String? ?? '';
           final typeStr = row[TransactionsTable.colType] as String? ?? 'EXPENSE';
+          final amount = (row[TransactionsTable.colAmount] as num?)?.toDouble() ?? 0.0;
+          final accId = row[TransactionsTable.colAccountId] as int?;
 
           if (id == null || rawText.isEmpty) continue;
 
+          final lower = rawText.toLowerCase();
+
+          // 1. Purge bogus credit card / bill payment receipts mistakenly recorded as INCOME
+          final isReceipt = IndianBankingConstants.promotionalBlocklistRegex.hasMatch(rawText);
+          final isCardOrBillerReceiptIncome = typeStr.toUpperCase() == 'INCOME' &&
+              (lower.contains('received payment') ||
+               lower.contains('credit card') ||
+               lower.contains('payment receipt') ||
+               lower.contains('bbps') ||
+               (lower.contains('credited to your') && lower.contains('card')) ||
+               (lower.contains('towards') && (lower.contains('card') || lower.contains('bill'))));
+
+          if (isReceipt || isCardOrBillerReceiptIncome) {
+            await db.delete(
+              TransactionsTable.tableName,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+
+            // Deduct false income from account balance so Net Worth and Balances stay 100% accurate
+            if (typeStr.toUpperCase() == 'INCOME' && accId != null && amount > 0) {
+              await db.rawUpdate('''
+                UPDATE ${AccountsTable.tableName}
+                SET ${AccountsTable.colBalance} = MAX(0.0, ${AccountsTable.colBalance} - ?),
+                    ${AccountsTable.colUpdatedAt} = ?
+                WHERE ${AccountsTable.colId} = ?
+              ''', [amount, DateTime.now().toIso8601String(), accId]);
+            }
+            continue;
+          }
+
+          // 2. Heal transactions where merchant was mistakenly recorded as a phone number or dispute footer number
           if (RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(currentMerchant.trim()) ||
-              RegExp(r'^\d+$').hasMatch(currentMerchant.trim())) {
+              RegExp(r'^\d+$').hasMatch(currentMerchant.trim()) ||
+              currentMerchant.toLowerCase().contains('download') ||
+              currentMerchant.toLowerCase().contains('receipt')) {
             final tType = typeStr.toUpperCase() == 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE;
             final healed = EngineBRegexParser.extractMerchantOnly(rawText, tType);
             if (healed != null && healed.isNotEmpty && healed != 'Unknown Merchant') {

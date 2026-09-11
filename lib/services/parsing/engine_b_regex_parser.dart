@@ -48,10 +48,14 @@ class EngineBRegexParser {
       type = TransactionType.EXPENSE;
     }
 
-    // Safety guard: "received towards ... card/bill/loan" is an acknowledgment of debt/bill payment, NOT income!
+    // Safety guard: Acknowledgments of debt / card bill payments or biller receipt confirmations are NOT income!
     if (type == TransactionType.INCOME) {
-      if (lower.contains('towards') &&
-          (lower.contains('card') || lower.contains('bill') || lower.contains('loan') || lower.contains('emi'))) {
+      if (lower.contains('credit card') ||
+          lower.contains('received payment') ||
+          lower.contains('payment receipt') ||
+          (lower.contains('payment of') && (lower.contains('card') || lower.contains('bill') || lower.contains('bbps'))) ||
+          (lower.contains('towards') && (lower.contains('card') || lower.contains('bill') || lower.contains('loan') || lower.contains('emi'))) ||
+          (lower.contains('credited to your') && lower.contains('card'))) {
         return null;
       }
     }
@@ -255,7 +259,13 @@ class EngineBRegexParser {
         lowerCand.contains('a/c') ||
         lowerCand.contains('account') ||
         lowerCand.contains('bank') ||
-        lowerCand.contains('card')) {
+        lowerCand.contains('card') ||
+        lowerCand.contains('receipt') ||
+        lowerCand.contains('download') ||
+        lowerCand.contains('click') ||
+        lowerCand.contains('http') ||
+        lowerCand.contains('www') ||
+        lowerCand.contains('billdesk')) {
       return null;
     }
     // Reject purely numeric strings, shortcodes, or phone numbers (e.g. 919951860002, 18002584455, 7876)
