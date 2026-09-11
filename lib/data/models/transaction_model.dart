@@ -95,6 +95,28 @@ class TransactionModel {
       }
     }
 
+    // Auto-heal generic bank name to specific Card account if card number is present in raw_text
+    final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(raw);
+    if (isCard && raw.isNotEmpty) {
+      final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(raw);
+      if (cardNumMatch != null && cardNumMatch.groupCount >= 1) {
+        var cardSnippet = cardNumMatch.group(1)?.trim().toUpperCase();
+        if (cardSnippet != null && !cardSnippet.startsWith('XX') && !cardSnippet.startsWith('*')) {
+          cardSnippet = 'XX$cardSnippet';
+        }
+        if (cardSnippet != null) {
+          final baseSource = source ?? 'Bank';
+          if (!baseSource.contains(cardSnippet)) {
+            if (baseSource.toLowerCase().contains('card')) {
+              source = '$baseSource ($cardSnippet)';
+            } else {
+              source = '$baseSource Card ($cardSnippet)';
+            }
+          }
+        }
+      }
+    }
+
     // Auto-heal false 'Vi' merchant caused by 'via UPI' in earlier builds
     if (merch.toLowerCase() == 'vi' && raw.isNotEmpty) {
       final textWithoutVia = raw.replaceAll(RegExp(r'\bvia\b', caseSensitive: false), '');
@@ -167,7 +189,15 @@ class TransactionModel {
       if (bankMatch != null && bankMatch.groupCount >= 1) {
         final rawBank = bankMatch.group(1);
         if (rawBank != null) {
-          return IndianBankingConstants.normalizeBankName(rawBank);
+          final norm = IndianBankingConstants.normalizeBankName(rawBank);
+          final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(rawText);
+          final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(rawText);
+          if (isCard && cardNumMatch != null && cardNumMatch.groupCount >= 1) {
+            var cnum = cardNumMatch.group(1)?.trim().toUpperCase() ?? '';
+            if (cnum.isNotEmpty && !cnum.startsWith('XX') && !cnum.startsWith('*')) cnum = 'XX$cnum';
+            return norm.toLowerCase().contains('card') ? '$norm ($cnum)' : '$norm Card ($cnum)';
+          }
+          return norm;
         }
       }
     }

@@ -32,7 +32,7 @@ class SmsSyncService {
   final TransactionRepository _transactionRepo;
   final AccountRepository _accountRepo;
 
-  bool _isSyncing = false;
+  static bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
   SmsSyncService({

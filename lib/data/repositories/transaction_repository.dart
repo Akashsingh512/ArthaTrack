@@ -70,11 +70,32 @@ class TransactionRepository {
       if (refMatch.isNotEmpty) return true;
     }
 
-    // 3. Time Window Fuzzy Match (Same Amount, Same Type, within +/- 15 minutes)
+    // 3. Same-Day Merchant & Amount Deduplication:
+    // If a transaction with the same amount, type, and merchant already exists on the same calendar day
+    // (prevents duplicate entries from SMS vs Notification or parallel sync runs)
     final txDateTime = DateTime.tryParse(tx.date);
     if (txDateTime != null && tx.amount > 0.0) {
-      final startWindow = txDateTime.subtract(const Duration(minutes: 15)).toIso8601String();
-      final endWindow = txDateTime.add(const Duration(minutes: 15)).toIso8601String();
+      final datePrefix = tx.date.length >= 10 ? tx.date.substring(0, 10) : '';
+      if (datePrefix.isNotEmpty &&
+          tx.merchant != 'Unknown' &&
+          tx.merchant != 'Unknown Merchant') {
+        final sameDayMatch = await db.query(
+          TransactionsTable.tableName,
+          where: '''
+            ${TransactionsTable.colAmount} = ? 
+            AND ${TransactionsTable.colType} = ? 
+            AND LOWER(${TransactionsTable.colMerchant}) = ?
+            AND ${TransactionsTable.colDate} LIKE ?
+          ''',
+          whereArgs: [tx.amount, tx.type, tx.merchant.trim().toLowerCase(), '$datePrefix%'],
+          limit: 1,
+        );
+        if (sameDayMatch.isNotEmpty) return true;
+      }
+
+      // 4. Time Window Fuzzy Match (Same Amount, Same Type, within +/- 30 minutes)
+      final startWindow = txDateTime.subtract(const Duration(minutes: 30)).toIso8601String();
+      final endWindow = txDateTime.add(const Duration(minutes: 30)).toIso8601String();
 
       final fuzzyMatch = await db.query(
         TransactionsTable.tableName,

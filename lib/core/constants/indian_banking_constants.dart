@@ -43,12 +43,13 @@ class IndianBankingConstants {
     r'avoid\s+(?:late\s+fee|disconnection)|'
     r'kindly\s+pay|please\s+pay|'
     r'payment\s+(?:of\s+.*?\s+)?(?:has\s+been\s+)?received\s+towards\s+(?:your\s+)?.*?(?:card|loan|emi|bill|mobile)|'
-    r'thank\s+you\s+for\s+(?:your\s+|the\s+)?payment|'
-    r'thank\s+you\s+for\s+paying|'
-    r'(?:we\s+have\s+)?received\s+payment\s+(?:of\s+.*?\s+)?(?:via\s+.*?\s+)?(?:for|towards|on|against|to|&|\.)|'
+    r'thank\s+you\s+(?:for\s+(?:your\s+|the\s+)?payment|for\s+paying|!\s*(?:we\s+have\s+)?received)|'
+    r'(?:we\s+have\s+)?received\s+(?:the\s+)?payment\s+(?:of\s+.*?\s+)?(?:via\s+.*?\s+)?(?:for|towards|on|against|to|&|\.)|'
+    r'e[\s\-]receipt|'
     r'payment\s+(?:of\s+.*?\s+)?(?:has\s+been\s+)?received\s+(?:for|towards|on|against|to)|'
     r'payment\s+of\s+.*?\s+towards\s+.*?(?:card|loan|emi|bill).*?(?:has\s+been\s+)?received|'
-    r'(?:has\s+been\s+)?credited\s+to\s+your\s+(?:[A-Za-z0-9]+\s+)?(?:credit\s+card|card)|'
+    r'(?:has\s+been\s+)?credited\s+to\s+your\s+(?:[A-Za-z0-9]+\s+)?(?:credit\s+card|card|airtel|jio|vi|account\s+within)|'
+    r'for\s+your\s+(?:airtel|jio|vi)\s+number|'
     r'download\s+(?:the\s+|your\s+)?(?:payment\s+)?receipt|'
     r'convert(?:\s+\w+)?\s+(?:to|in|into)\s+(?:flexi|easy|smart|no\s*cost)?\s*emi|'
     r'flexipay|flexi\s*emi|smartemi|easyemi|dial[\s\-]an[\s\-]emi|'
@@ -152,9 +153,9 @@ class IndianBankingConstants {
     r'\b('
     r'sbi\s*(?:card|credit\s*card)?|sbicard|'
     r'sbi\s*bank|state\s*bank\s*of\s*india|\bsbi\b|'
-    r'hdfc\s*(?:bank|card|credit\s*card)?|\bhdfc\b|'
-    r'icici\s*(?:bank|card|credit\s*card)?|\bicici\b|'
-    r'axis\s*(?:bank|card|credit\s*card)?|\baxis\b|'
+    r'hdfc\s*(?:bank\s*card|bank|card|credit\s*card)?|\bhdfc\b|'
+    r'icici\s*(?:bank\s*card|bank|card|credit\s*card)?|\bicici\b|'
+    r'axis\s*(?:bank\s*card|bank|card|credit\s*card)?|\baxis\b|'
     r'kotak\s*(?:bank|mahindra\s*bank|card)?|\bkotak\b|'
     r'indusind\s*(?:bank)?|'
     r'idfc\s*(?:first\s*bank|bank|first)?|'
@@ -162,7 +163,7 @@ class IndianBankingConstants {
     r'canara\s*bank|bank\s*of\s*baroda|\bbob\b|'
     r'federal\s*bank|yes\s*bank|union\s*bank|'
     r'paytm\s*(?:payments\s*bank|wallet|bank)?|'
-    r'airtel\s*(?:payments\s*bank|money)?|'
+    r'airtel\s*(?:payments\s*bank|money|bank)|'
     r'cash'
     r')\b',
     caseSensitive: false,
@@ -173,11 +174,11 @@ class IndianBankingConstants {
     final lower = raw.trim().toLowerCase();
     if (lower.contains('sbi card') || lower.contains('sbi credit') || lower.contains('sbicard')) return 'SBI Card';
     if (lower.contains('sbi') || lower.contains('state bank')) return 'SBI';
-    if (lower.contains('hdfc card') || lower.contains('hdfc credit')) return 'HDFC Card';
+    if (lower.contains('hdfc card') || lower.contains('hdfc bank card') || lower.contains('hdfc credit')) return 'HDFC Card';
     if (lower.contains('hdfc')) return 'HDFC Bank';
-    if (lower.contains('icici card') || lower.contains('icici credit')) return 'ICICI Card';
+    if (lower.contains('icici card') || lower.contains('icici bank card') || lower.contains('icici credit')) return 'ICICI Card';
     if (lower.contains('icici')) return 'ICICI Bank';
-    if (lower.contains('axis card') || lower.contains('axis credit')) return 'Axis Card';
+    if (lower.contains('axis card') || lower.contains('axis bank card') || lower.contains('axis credit')) return 'Axis Card';
     if (lower.contains('axis')) return 'Axis Bank';
     if (lower.contains('kotak')) return 'Kotak Bank';
     if (lower.contains('indusind')) return 'IndusInd Bank';
@@ -189,7 +190,7 @@ class IndianBankingConstants {
     if (lower.contains('yes bank')) return 'Yes Bank';
     if (lower.contains('union bank')) return 'Union Bank';
     if (lower.contains('paytm')) return 'Paytm Payments Bank';
-    if (lower.contains('airtel')) return 'Airtel Payments Bank';
+    if (lower.contains('airtel payments') || lower.contains('airtel money') || lower.contains('airtel bank')) return 'Airtel Payments Bank';
     if (lower.contains('cash')) return 'Cash in Hand';
     return raw.trim();
   }

@@ -48,14 +48,20 @@ class EngineBRegexParser {
       type = TransactionType.EXPENSE;
     }
 
-    // Safety guard: Acknowledgments of debt / card bill payments or biller receipt confirmations are NOT income!
+    // Safety guard: Acknowledgments of debt, card bill payments, or telecom/utility biller receipt confirmations are NOT income!
     if (type == TransactionType.INCOME) {
       if (lower.contains('credit card') ||
           lower.contains('received payment') ||
+          lower.contains('received the payment') ||
           lower.contains('payment receipt') ||
-          (lower.contains('payment of') && (lower.contains('card') || lower.contains('bill') || lower.contains('bbps'))) ||
+          lower.contains('e-receipt') ||
+          lower.contains('airtel number') ||
+          lower.contains('jio number') ||
+          lower.contains('vi number') ||
+          lower.contains('airtel thanks') ||
+          (lower.contains('payment of') && (lower.contains('card') || lower.contains('bill') || lower.contains('bbps') || lower.contains('airtel') || lower.contains('jio'))) ||
           (lower.contains('towards') && (lower.contains('card') || lower.contains('bill') || lower.contains('loan') || lower.contains('emi'))) ||
-          (lower.contains('credited to your') && lower.contains('card'))) {
+          (lower.contains('credited to your') && (lower.contains('card') || lower.contains('airtel') || lower.contains('jio') || lower.contains('account within')))) {
         return null;
       }
     }
@@ -125,6 +131,29 @@ class EngineBRegexParser {
         if (rawBank != null) {
           paymentSource = IndianBankingConstants.normalizeBankName(rawBank);
         }
+      }
+    }
+
+    // Check if this transaction was made via a Bank Credit / Debit Card
+    final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(text);
+    final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(text);
+    String? cardSnippet;
+    if (cardNumMatch != null && cardNumMatch.groupCount >= 1) {
+      cardSnippet = cardNumMatch.group(1)?.trim().toUpperCase();
+      if (cardSnippet != null && !cardSnippet.startsWith('XX') && !cardSnippet.startsWith('*')) {
+        cardSnippet = 'XX$cardSnippet';
+      }
+    }
+
+    if (isCard && paymentSource != null) {
+      if (paymentSource.toLowerCase().contains('card')) {
+        if (cardSnippet != null && !paymentSource.contains(cardSnippet)) {
+          paymentSource = '$paymentSource ($cardSnippet)';
+        }
+      } else {
+        paymentSource = cardSnippet != null
+            ? '$paymentSource Card ($cardSnippet)'
+            : '$paymentSource Card';
       }
     }
 

@@ -287,6 +287,145 @@ class AppDatabase {
         }
       } catch (_) {}
     }
+    if (oldVersion < 10) {
+      try {
+        // A. Purge false income transactions from Airtel / telecom / bill receipts
+        final rows = await db.query(TransactionsTable.tableName);
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final id = row[TransactionsTable.colId] as int?;
+          final typeStr = row[TransactionsTable.colType] as String? ?? 'EXPENSE';
+          final amount = (row[TransactionsTable.colAmount] as num?)?.toDouble() ?? 0.0;
+          final accId = row[TransactionsTable.colAccountId] as int?;
+
+          if (id == null || rawText.isEmpty) continue;
+
+          final lower = rawText.toLowerCase();
+          final isBogusReceiptIncome = typeStr.toUpperCase() == 'INCOME' &&
+              (lower.contains('e-receipt') ||
+               lower.contains('airtel number') ||
+               lower.contains('jio number') ||
+               lower.contains('vi number') ||
+               lower.contains('airtel thanks') ||
+               lower.contains('received the payment') ||
+               (lower.contains('credited to your') && (lower.contains('airtel') || lower.contains('account within'))));
+
+          if (isBogusReceiptIncome) {
+            await db.delete(
+              TransactionsTable.tableName,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+
+            // Heal account balance by deducting this false income
+            if (accId != null && amount > 0) {
+              await db.rawUpdate('''
+                UPDATE ${AccountsTable.tableName}
+                SET ${AccountsTable.colBalance} = MAX(0.0, ${AccountsTable.colBalance} - ?),
+                    ${AccountsTable.colUpdatedAt} = ?
+                WHERE ${AccountsTable.colId} = ?
+              ''', [amount, DateTime.now().toIso8601String(), accId]);
+            }
+          }
+        }
+
+        // B. Clean up empty unused Airtel Payments Bank account if it has no remaining transactions
+        await db.rawDelete('''
+          DELETE FROM ${AccountsTable.tableName}
+          WHERE ${AccountsTable.colId} NOT IN (SELECT DISTINCT ${TransactionsTable.colAccountId} FROM ${TransactionsTable.tableName})
+            AND ${AccountsTable.colBalance} = 0.0
+            AND ${AccountsTable.colName} = 'Airtel Payments Bank'
+        ''');
+
+        // C. Deduplicate existing duplicate transactions (e.g. duplicate ADUSUMALLI NIKHIL entries)
+        final allRows = await db.query(
+          TransactionsTable.tableName,
+          orderBy: '${TransactionsTable.colId} ASC',
+        );
+        final seen = <String>{};
+        for (final row in allRows) {
+          final id = row[TransactionsTable.colId] as int?;
+          final amount = (row[TransactionsTable.colAmount] as num?)?.toDouble() ?? 0.0;
+          final type = row[TransactionsTable.colType] as String? ?? '';
+          final merchant = (row[TransactionsTable.colMerchant] as String? ?? '').trim().toLowerCase();
+          final date = row[TransactionsTable.colDate] as String? ?? '';
+          final day = date.length >= 10 ? date.substring(0, 10) : date;
+          final accId = row[TransactionsTable.colAccountId] as int?;
+
+          if (id == null) continue;
+
+          final key = '$amount|$type|$merchant|$day';
+          if (seen.contains(key)) {
+            // Duplicate found! Delete it and revert the balance adjustment
+            await db.delete(
+              TransactionsTable.tableName,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+            if (accId != null && amount > 0) {
+              final revertDelta = type.toUpperCase() == 'EXPENSE' ? amount : -amount;
+              await db.rawUpdate('''
+                UPDATE ${AccountsTable.tableName}
+                SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+                    ${AccountsTable.colUpdatedAt} = ?
+                WHERE ${AccountsTable.colId} = ?
+              ''', [revertDelta, DateTime.now().toIso8601String(), accId]);
+            }
+          } else {
+            seen.add(key);
+          }
+        }
+
+        // D. Re-link Axis Bank Card transactions to distinct Card accounts
+        final cardRows = await db.query(
+          TransactionsTable.tableName,
+          where: "${TransactionsTable.colRawText} LIKE '%Axis Bank Card%'",
+        );
+        for (final row in cardRows) {
+          final id = row[TransactionsTable.colId] as int?;
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          if (id == null || rawText.isEmpty) continue;
+
+          final cardMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(rawText);
+          if (cardMatch != null && cardMatch.groupCount >= 1) {
+            var cardNum = cardMatch.group(1)?.trim().toUpperCase() ?? '';
+            if (cardNum.isNotEmpty && !cardNum.startsWith('XX') && !cardNum.startsWith('*')) {
+              cardNum = 'XX$cardNum';
+            }
+            final cardAccName = 'Axis Bank Card ($cardNum)';
+
+            // Find or create the card account
+            final accRows = await db.query(
+              AccountsTable.tableName,
+              where: 'LOWER(${AccountsTable.colName}) = ?',
+              whereArgs: [cardAccName.toLowerCase()],
+              limit: 1,
+            );
+            int targetAccId;
+            if (accRows.isNotEmpty) {
+              targetAccId = accRows.first[AccountsTable.colId] as int;
+            } else {
+              targetAccId = await db.insert(AccountsTable.tableName, {
+                AccountsTable.colName: cardAccName,
+                AccountsTable.colType: 'CREDIT_CARD',
+                AccountsTable.colBalance: 0.0,
+                AccountsTable.colUpdatedAt: DateTime.now().toIso8601String(),
+              });
+            }
+
+            await db.update(
+              TransactionsTable.tableName,
+              {
+                TransactionsTable.colPaymentSource: cardAccName,
+                TransactionsTable.colAccountId: targetAccId,
+              },
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
