@@ -89,7 +89,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: const Color(0xFF334155)),
-            ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -275,8 +275,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                             }
                           },
                           itemBuilder: (context) => [
-                            const DropdownMenuItem(value: 'edit', child: Text('Edit')),
-                            const DropdownMenuItem(value: 'delete', child: Text('Delete')),
+                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
                           ],
                         ),
                       ],
@@ -357,8 +357,8 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                             }
                           },
                           itemBuilder: (context) => [
-                            const DropdownMenuItem(value: 'edit', child: Text('Edit')),
-                            const DropdownMenuItem(value: 'delete', child: Text('Delete')),
+                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
                           ],
                         ),
                       ],
