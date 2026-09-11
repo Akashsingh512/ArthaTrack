@@ -1,0 +1,66 @@
+import 'package:flutter/foundation.dart';
+import '../../data/models/transaction_model.dart';
+import '../../data/repositories/account_repository.dart';
+import '../../data/repositories/balance_sheet_repository.dart';
+import '../../data/repositories/transaction_repository.dart';
+import '../../services/net_worth/net_worth_calculator.dart';
+
+class DashboardController extends ChangeNotifier {
+  final AccountRepository _accountRepo;
+  final BalanceSheetRepository _balanceSheetRepo;
+  final TransactionRepository _transactionRepo;
+
+  bool _isLoading = false;
+  NetWorthSnapshot? _netWorth;
+  Map<String, double> _categoryExpenses = {};
+  double _totalMonthlyExpense = 0.0;
+  double _totalMonthlyIncome = 0.0;
+  List<TransactionModel> _recentTransactions = [];
+
+  DashboardController({
+    AccountRepository? accountRepo,
+    BalanceSheetRepository? balanceSheetRepo,
+    TransactionRepository? transactionRepo,
+  })  : _accountRepo = accountRepo ?? AccountRepository(),
+        _balanceSheetRepo = balanceSheetRepo ?? BalanceSheetRepository(),
+        _transactionRepo = transactionRepo ?? TransactionRepository();
+
+  bool get isLoading => _isLoading;
+  NetWorthSnapshot? get netWorth => _netWorth;
+  Map<String, double> get categoryExpenses => _categoryExpenses;
+  double get totalMonthlyExpense => _totalMonthlyExpense;
+  double get totalMonthlyIncome => _totalMonthlyIncome;
+  List<TransactionModel> get recentTransactions => _recentTransactions;
+
+  Future<void> loadDashboardData() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // 1. Calculate Net Worth: (Liquid Balances + Assets) - Debts
+      final liquid = await _accountRepo.getTotalLiquidBalance();
+      final assets = await _balanceSheetRepo.getTotalAssets();
+      final debts = await _balanceSheetRepo.getTotalDebts();
+
+      _netWorth = NetWorthCalculator.calculate(
+        liquidBalances: liquid,
+        totalAssets: assets,
+        totalDebts: debts,
+      );
+
+      // 2. Fetch Monthly Expense Aggregation
+      final now = DateTime.now();
+      _totalMonthlyExpense = await _transactionRepo.getTotalMonthlyExpenses(forMonth: now);
+      _totalMonthlyIncome = await _transactionRepo.getTotalMonthlyIncome(forMonth: now);
+      _categoryExpenses = await _transactionRepo.getCategoryExpenses(forMonth: now);
+
+      // 3. Fetch Recent Transactions
+      _recentTransactions = await _transactionRepo.getRecentTransactions(limit: 10);
+    } catch (e) {
+      print('Error loading dashboard: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+}

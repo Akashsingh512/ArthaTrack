@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArthaTrack - Interactive Local Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+    }
+    ::-webkit-scrollbar { display: none; }
+    * { -ms-overflow-style: none; scrollbar-width: none; }
+    .phone-container {
+      width: 390px;
+      height: 800px;
+      max-height: 94vh;
+      border-radius: 42px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 12px #1e293b, 0 0 0 14px #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+  <div class="mb-4 text-center">
+    <div class="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full text-xs text-emerald-400 font-semibold mb-1">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Interactive Local Android Simulator
+    </div>
+    <h1 class="text-xl font-bold tracking-tight text-white">ArthaTrack (अर्थTrack)</h1>
+    <p class="text-xs text-slate-400">Experience the complete app, local SQLite state, Net Worth engine & SMS parser live</p>
+  </div>
+
+  <div class="phone-container bg-[#0B0F19] relative flex flex-col overflow-hidden border border-slate-800">
+    <!-- Android Status Bar -->
+    <div class="h-8 w-full bg-[#0B0F19] flex items-center justify-between px-6 text-[11px] font-semibold text-slate-400 select-none z-50">
+      <span id="current-time">09:41</span>
+      <div class="w-20 h-4 bg-black rounded-full flex items-center justify-center">
+        <div class="w-2 h-2 rounded-full bg-slate-900"></div>
+      </div>
+      <div class="flex items-center space-x-1.5 text-xs">
+        <i class="fa-solid fa-signal text-[10px]"></i>
+        <i class="fa-solid fa-wifi text-[10px]"></i>
+        <i class="fa-solid fa-battery-full text-emerald-400"></i>
+      </div>
+    </div>
+
+    <!-- Scrollable Screen Content Container -->
+    <div id="screen-content" class="flex-1 overflow-y-auto pb-20">
+
+      <!-- TAB 1: DASHBOARD -->
+      <div id="tab-dashboard" class="p-4 space-y-4">
+        <div class="flex items-center justify-between pt-1">
+          <div>
+            <h2 class="text-xl font-black tracking-tight text-white">ArthaTrack</h2>
+            <div id="engine-status-pill" class="text-[10px] font-bold text-cyan-400 flex items-center gap-1">
+              <i class="fa-solid fa-bolt"></i> Local Regex Engine Active (Offline)
+            </div>
+          </div>
+          <button onclick="switchTab('settings')" class="w-9 h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 flex items-center justify-center text-slate-300">
+            <i class="fa-solid fa-gear text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Net Worth Hero Card -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-3xl p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-wallet"></i>
+              </div>
+              <span class="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Total Net Worth</span>
+            </div>
+            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              HEALTHY
+            </span>
+          </div>
+
+          <div id="display-net-worth" class="text-3xl font-black tracking-tight text-white">
+            ₹5,89,250.00
+          </div>
+          <div class="text-[10px] text-slate-400 mt-0.5">
+            (Liquid Bank Balances + Total Assets) − Total Debts
+          </div>
+
+          <!-- Metric Pillars -->
+          <div class="mt-4 grid grid-cols-3 gap-2 bg-[#0B0F19]/70 rounded-2xl p-2.5 border border-slate-800/80">
+            <div>
+              <div class="text-[10px] text-sky-400 flex items-center gap-1 font-medium">
+                <i class="fa-solid fa-building-columns text-[9px]"></i> Liquid
+              </div>
+              <div id="display-liquid" class="text-xs font-bold text-slate-200 mt-0.5">₹54.2 K</div>
+            </div>
+            <div class="border-l border-slate-800 pl-2">
+              <div class="text-[10px] text-amber-400 flex items-center gap-1 font-medium">
+                <i class="fa-solid fa-arrow-trend-up text-[9px]"></i> Assets
+              </div>
+              <div id="display-assets" class="text-xs font-bold text-slate-200 mt-0.5">₹7.20 L</div>
+            </div>
+            <div class="border-l border-slate-800 pl-2">
+              <div class="text-[10px] text-rose-400 flex items-center gap-1 font-medium">
+                <i class="fa-solid fa-credit-card text-[9px]"></i> Debts
+              </div>
+              <div id="display-debts" class="text-xs font-bold text-slate-200 mt-0.5">₹1.85 L</div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <button onclick="openCashModal()" class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700">
+              <i class="fa-solid fa-plus text-emerald-400 text-[10px]"></i> Add Cash
+            </button>
+            <button onclick="simulateGmailSync()" class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700">
+              <i class="fa-regular fa-envelope text-sky-400 text-[10px]"></i> Sync Gmail
+            </button>
+            <button onclick="openSandboxModal()" class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700">
+              <i class="fa-solid fa-vial text-purple-400 text-[10px]"></i> Test SMS
+            </button>
+          </div>
+        </div>
+
+        <!-- Monthly Expense Breakdown Card -->
+        <div class="bg-[#151D2F] border border-slate-800 rounded-3xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Monthly Spending Breakdown</h3>
+            <span id="display-total-expense" class="text-xs font-bold text-rose-400">₹6,099.00</span>
+          </div>
+
+          <div id="category-progress-bar" class="h-2.5 w-full rounded-full overflow-hidden flex bg-slate-800 mb-3.5"></div>
+          <div id="category-breakdown-list" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Recent Transactions Card -->
+        <div class="bg-[#151D2F] border border-slate-800 rounded-3xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Recent Transactions</h3>
+            <button onclick="switchTab('transactions')" class="text-xs text-sky-400 font-semibold hover:underline">View All</button>
+          </div>
+          <div id="recent-transactions-list" class="space-y-2.5"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: TRANSACTIONS -->
+      <div id="tab-transactions" class="p-4 space-y-4 hidden">
+        <div class="flex items-center justify-between pt-1">
+          <h2 class="text-xl font-black text-white">All Transactions</h2>
+          <button onclick="openCashModal()" class="w-8 h-8 rounded-full bg-emerald-500 text-black flex items-center justify-center font-bold">
+            <i class="fa-solid fa-plus text-xs"></i>
+          </button>
+        </div>
+
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+          <input id="search-input" oninput="filterTransactions()" type="text" placeholder="Search merchant, notes, raw SMS..." class="w-full bg-[#151D2F] border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="flex gap-2 text-xs">
+          <button onclick="setTypeFilter('ALL')" id="chip-all" class="px-3 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">ALL</button>
+          <button onclick="setTypeFilter('EXPENSE')" id="chip-expense" class="px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-400 border border-slate-700">EXPENSES</button>
+          <button onclick="setTypeFilter('INCOME')" id="chip-income" class="px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-400 border border-slate-700">INCOME</button>
+        </div>
+
+        <div id="full-transactions-list" class="space-y-2.5"></div>
+      </div>
+
+      <!-- TAB 3: BALANCE SHEET -->
+      <div id="tab-balancesheet" class="p-4 space-y-4 hidden">
+        <div class="flex items-center justify-between pt-1">
+          <h2 class="text-xl font-black text-white">Balance Sheet & Assets</h2>
+          <button onclick="openAssetModal()" class="text-xs bg-amber-500 text-black font-bold px-2.5 py-1 rounded-lg">
+            + Asset
+          </button>
+        </div>
+
+        <div class="flex bg-slate-800/80 p-1 rounded-xl text-xs font-semibold">
+          <button onclick="switchBsSubTab('accounts')" id="bs-tab-accounts" class="flex-1 py-1.5 rounded-lg bg-emerald-500 text-black font-bold">Bank Accounts</button>
+          <button onclick="switchBsSubTab('assets')" id="bs-tab-assets" class="flex-1 py-1.5 rounded-lg text-slate-400">Assets (₹)</button>
+          <button onclick="switchBsSubTab('debts')" id="bs-tab-debts" class="flex-1 py-1.5 rounded-lg text-slate-400">Debts (₹)</button>
+        </div>
+
+        <div id="bs-view-accounts" class="space-y-3"></div>
+        <div id="bs-view-assets" class="space-y-3 hidden"></div>
+        <div id="bs-view-debts" class="space-y-3 hidden"></div>
+      </div>
+
+      <!-- TAB 4: SETTINGS -->
+      <div id="tab-settings" class="p-4 space-y-4 hidden">
+        <h2 class="text-xl font-black text-white pt-1">Settings & BYOK Keys</h2>
+
+        <div class="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <i class="fa-solid fa-bolt text-lg"></i>
+          </div>
+          <div>
+            <div id="settings-engine-title" class="text-xs font-bold text-cyan-400">Offline Regex Engine Active</div>
+            <div class="text-[11px] text-slate-400">Zero network pings; parses on-device with Indian banking regex.</div>
+          </div>
+        </div>
+
+        <!-- BYOK AI Configuration -->
+        <div class="bg-[#151D2F] border border-slate-800 rounded-3xl p-4 space-y-3">
+          <div class="flex items-center gap-2 text-purple-400 font-bold text-xs uppercase tracking-wider">
+            <i class="fa-solid fa-key"></i> Engine A: Bring Your Own Key (BYOK)
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Enter your free-tier Google Gemini or Groq API key. Keys are kept encrypted on-device in Android Keystore.
+          </p>
+
+          <div>
+            <label class="text-[11px] font-semibold text-slate-300 block mb-1">Provider Selection</label>
+            <select id="settings-provider" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
+              <option value="Gemini">Google Gemini (gemini-1.5-flash - Free Tier)</option>
+              <option value="Groq">Groq (llama-3.3-70b-versatile)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-semibold text-slate-300 block mb-1">API Key</label>
+            <input id="settings-key-input" type="password" placeholder="AIzaSy... or gsk_..." class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono">
+          </div>
+
+          <div class="flex gap-2 pt-1">
+            <button onclick="saveApiKey()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2 rounded-xl text-xs">
+              Save Key
+            </button>
+            <button onclick="testApiKey()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2 rounded-xl text-xs border border-slate-700">
+              Test Connection
+            </button>
+          </div>
+        </div>
+
+        <!-- Android Native Notification Listener Section -->
+        <div class="bg-[#151D2F] border border-slate-800 rounded-3xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+              <i class="fa-solid fa-bell"></i> Android Notification Access
+            </div>
+            <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full">ACTIVE</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Kotlin NotificationListenerService captures bank & UPI alerts (GPay, PhonePe, Paytm, HDFC, SBI, ICICI, Axis).
+          </p>
+          <button onclick="alert('In Android native build, this opens Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS.')" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-2 rounded-xl text-xs">
+            Open Android Notification Settings
+          </button>
+        </div>
+
+        <!-- Gmail Integration Section -->
+        <div class="bg-[#151D2F] border border-slate-800 rounded-3xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sky-400 font-bold text-xs uppercase tracking-wider">
+              <i class="fa-regular fa-envelope"></i> Gmail Reader (OAuth 2.0)
+            </div>
+            <span id="gmail-status-badge" class="text-[10px] bg-slate-800 text-slate-400 font-bold px-2 py-0.5 rounded-full">STANDBY</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Scans transaction confirmation emails matching "debited", "credited", "spent", and "₹" using gmail.readonly.
+          </p>
+          <button onclick="simulateGmailSync()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded-xl text-xs">
+            Scan Recent Confirmation Emails
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
+          <i class="fa-solid fa-shield-halved text-emerald-400 text-base mt-0.5"></i>
+          <div>
+            <strong class="text-slate-200 block">100% Local-First Privacy Guarantee</strong>
+            All financial transactions and balances remain strictly on-device in SQLite. Zero external tracking.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="absolute bottom-0 left-0 right-0 h-16 bg-[#151D2F] border-t border-slate-800 flex items-center justify-around px-2 z-40">
+      <button onclick="switchTab('dashboard')" id="nav-dashboard" class="flex flex-col items-center text-emerald-400 space-y-1">
+        <i class="fa-solid fa-house text-base"></i>
+        <span class="text-[10px] font-bold">Dashboard</span>
+      </button>
+      <button onclick="switchTab('transactions')" id="nav-transactions" class="flex flex-col items-center text-slate-400 space-y-1 hover:text-slate-200">
+        <i class="fa-solid fa-receipt text-base"></i>
+        <span class="text-[10px] font-bold">Transactions</span>
+      </button>
+      <button onclick="switchTab('balancesheet')" id="nav-balancesheet" class="flex flex-col items-center text-slate-400 space-y-1 hover:text-slate-200">
+        <i class="fa-solid fa-scale-balanced text-base"></i>
+        <span class="text-[10px] font-bold">Balance Sheet</span>
+      </button>
+      <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center text-slate-400 space-y-1 hover:text-slate-200">
+        <i class="fa-solid fa-sliders text-base"></i>
+        <span class="text-[10px] font-bold">Settings</span>
+      </button>
+    </div>
+
+    <!-- MODAL 1: ADD CASH TRANSACTION -->
+    <div id="modal-cash" class="fixed inset-0 bg-black/80 z-50 flex items-end justify-center hidden">
+      <div class="bg-[#151D2F] w-full max-w-[390px] rounded-t-3xl p-5 border-t border-slate-700 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">Log Cash Transaction</h3>
+          <button onclick="closeCashModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="flex bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <button type="button" onclick="setCashType('EXPENSE')" id="cash-type-exp" class="flex-1 py-1.5 rounded-lg bg-rose-500/30 text-rose-300 font-bold border border-rose-500">EXPENSE</button>
+          <button type="button" onclick="setCashType('INCOME')" id="cash-type-inc" class="flex-1 py-1.5 rounded-lg text-slate-400">INCOME</button>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Amount (₹)</label>
+          <input id="cash-amount" type="number" placeholder="250.00" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-white">
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Merchant / Note</label>
+          <input id="cash-merchant" type="text" placeholder="Local Vendor, Street Food, Rickshaw" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Category</label>
+          <select id="cash-category" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+            <option>Food</option>
+            <option>Groceries</option>
+            <option>Travel</option>
+            <option>Shopping</option>
+            <option>Bills</option>
+            <option>Entertainment</option>
+            <option>Health</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <button onclick="saveCashTransaction()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-2.5 rounded-xl text-xs mt-2">
+          Save to SQLite Database
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL 2: SMS PARSING TEST SANDBOX -->
+    <div id="modal-sandbox" class="fixed inset-0 bg-black/80 z-50 flex items-end justify-center hidden">
+      <div class="bg-[#151D2F] w-full max-w-[390px] rounded-t-3xl p-5 border-t border-slate-700 space-y-3 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-vial text-purple-400"></i>
+            <h3 class="text-sm font-bold text-white">Dual-Engine SMS Sandbox</h3>
+          </div>
+          <button onclick="closeSandboxModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="text-[11px] text-slate-400">Pick any sample Indian bank message to test extraction:</div>
+
+        <div class="grid grid-cols-2 gap-1.5 text-[10px]">
+          <button onclick="loadTemplate(0)" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-left border border-slate-700">
+            <span class="font-bold text-slate-200 block">HDFC Bank</span>
+            <span class="text-slate-400">₹460 Swiggy debit</span>
+          </button>
+          <button onclick="loadTemplate(1)" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-left border border-slate-700">
+            <span class="font-bold text-slate-200 block">SBI Salary</span>
+            <span class="text-slate-400">₹75,000 credit</span>
+          </button>
+          <button onclick="loadTemplate(2)" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-left border border-slate-700">
+            <span class="font-bold text-slate-200 block">PhonePe UPI</span>
+            <span class="text-slate-400">₹350 Starbucks</span>
+          </button>
+          <button onclick="loadTemplate(3)" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-xl text-left border border-slate-700">
+            <span class="font-bold text-slate-200 block">GPay / Zepto</span>
+            <span class="text-slate-400">₹820 Groceries</span>
+          </button>
+        </div>
+
+        <textarea id="sandbox-textarea" rows="3" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 font-mono"></textarea>
+
+        <button onclick="runSandboxParse()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-play text-[10px]"></i> Run Dual-Engine Parser
+        </button>
+
+        <div id="sandbox-result" class="p-3 bg-[#0B0F19] rounded-2xl border border-slate-800 space-y-2 hidden">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">PARSED RECORD</span>
+            <span id="sandbox-badge" class="text-[10px] bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold">OFFLINE REGEX</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span id="res-merchant" class="text-xs font-bold text-white">Swiggy</span>
+            <span id="res-amount" class="text-sm font-black text-rose-400">-₹460.00</span>
+          </div>
+          <div class="text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Category: <strong id="res-category" class="text-slate-200">Food</strong></span>
+            <span>Bal: <strong id="res-bal" class="text-slate-200">₹15,240.50</strong></span>
+          </div>
+          <button onclick="ingestSandboxResult()" class="w-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 font-bold py-1.5 rounded-xl text-xs">
+            Ingest into Local Database & Update Net Worth
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL 3: ADD ASSET -->
+    <div id="modal-asset" class="fixed inset-0 bg-black/80 z-50 flex items-end justify-center hidden">
+      <div class="bg-[#151D2F] w-full max-w-[390px] rounded-t-3xl p-5 border-t border-slate-700 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">Add Physical / Liquid Asset</h3>
+          <button onclick="closeAssetModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Asset Name</label>
+          <input id="asset-name" type="text" placeholder="e.g. Sovereign Gold Bonds, Bengaluru Flat" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Category</label>
+          <select id="asset-category" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+            <option>Gold</option>
+            <option>Stocks & Equity</option>
+            <option>Mutual Funds</option>
+            <option>Real Estate</option>
+            <option>Fixed Deposit (FD)</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400">Current Valuation (₹)</label>
+          <input id="asset-amount" type="number" placeholder="150000" class="w-full bg-[#1E293B] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+        </div>
+
+        <button onclick="saveAssetItem()" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-2.5 rounded-xl text-xs mt-2">
+          Save Asset
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const initialData = {
+      accounts: [
+        { id: 1, name: 'Primary Savings Bank (HDFC)', type: 'SAVINGS', balance: 54250.00 },
+        { id: 2, name: 'Cash in Hand', type: 'CASH', balance: 4200.00 },
+        { id: 3, name: 'HDFC Regalia Credit Card', type: 'CREDIT_CARD', balance: -12800.00 }
+      ],
+      assets: [
+        { id: 1, name: 'Physical 24K Gold & SGB', category: 'Gold', amount: 240000.00, rate: 2.5 },
+        { id: 2, name: 'Nifty 50 Index Mutual Funds', category: 'Stocks & Equity', amount: 480000.00, rate: 13.5 }
+      ],
+      debts: [
+        { id: 1, name: 'HDFC Car Loan', category: 'Auto Loan', amount: 185000.00, rate: 8.4 }
+      ],
+      transactions: [
+        { id: 1, accountId: 1, amount: 85000.00, type: 'INCOME', category: 'Salary', merchant: 'Infosys Payroll', rawText: 'A/C 1234 credited with INR 85,000.00 on 01-Sep by Salary. Bal: INR 94,250.00', date: '01 Sep', engine: 'OFFLINE_REGEX' },
+        { id: 2, accountId: 1, amount: 460.00, type: 'EXPENSE', category: 'Food', merchant: 'Swiggy', rawText: 'Rs 460.00 debited from a/c **1234 on 08-Sep-26 to SWIGGY UPI. Avl bal Rs 93,790.00', date: '08 Sep', engine: 'AI_GEMINI' },
+        { id: 3, accountId: 1, amount: 1890.00, type: 'EXPENSE', category: 'Groceries', merchant: 'Blinkit', rawText: 'Paid INR 1,890.00 to Blinkit via UPI. Updated balance INR 91,900.00', date: '09 Sep', engine: 'OFFLINE_REGEX' },
+        { id: 4, accountId: 3, amount: 3499.00, type: 'EXPENSE', category: 'Shopping', merchant: 'Amazon India', rawText: 'Alert: Your HDFC Bank Card ending 8812 was spent for INR 3,499.00 at Amazon.in', date: '10 Sep', engine: 'AI_GEMINI' },
+        { id: 5, accountId: 2, amount: 250.00, type: 'EXPENSE', category: 'Travel', merchant: 'Auto Rickshaw Fare', rawText: 'Manual cash payment for metro auto transit', date: '10 Sep', engine: 'OFFLINE_REGEX' }
+      ],
+      aiKey: '',
+      aiProvider: 'Gemini'
+    };
+
+    let state = JSON.parse(localStorage.getItem('arthatrack_state')) || initialData;
+
+    function saveState() {
+      localStorage.setItem('arthatrack_state', JSON.stringify(state));
+      render();
+    }
+
+    function formatINR(val) {
+      const isNeg = val < 0;
+      const absVal = Math.abs(val);
+      const parts = absVal.toFixed(2).split('.');
+      let intPart = parts[0];
+      const decPart = parts[1];
+
+      if (intPart.length > 3) {
+        const last3 = intPart.substring(intPart.length - 3);
+        const rem = intPart.substring(0, intPart.length - 3);
+        intPart = rem.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
+      }
+      return `${isNeg ? '-' : ''}₹${intPart}.${decPart}`;
+    }
+
+    function formatCompactINR(val) {
+      const absVal = Math.abs(val);
+      const isNeg = val < 0;
+      const p = isNeg ? '-' : '';
+      if (absVal >= 10000000) return `${p}₹${(absVal/10000000).toFixed(2)} Cr`;
+      if (absVal >= 100000) return `${p}₹${(absVal/100000).toFixed(2)} L`;
+      if (absVal >= 1000) return `${p}₹${(absVal/1000).toFixed(1)} K`;
+      return formatINR(val);
+    }
+
+    function parseIndianText(raw) {
+      const text = raw.trim();
+      const lower = text.toLowerCase();
+
+      let amount = 0;
+      const amtMatch = text.match(/(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (amtMatch) {
+        amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+      } else {
+        const fallbackMatch = text.match(/(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|transferred)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)/i);
+        if (fallbackMatch) amount = parseFloat(fallbackMatch[1].replace(/,/g, ''));
+      }
+
+      if (!amount || amount <= 0) return null;
+
+      let type = 'EXPENSE';
+      const isInc = /(credited|received|added|deposited|salary|refund)/i.test(lower);
+      const isExp = /(debited|spent|paid|transferred\s+to|withdrawn)/i.test(lower);
+      if (isInc && !isExp) type = 'INCOME';
+
+      let bal = null;
+      const balMatch = text.match(/(?:Bal|Avl Bal|Balance)[:\s]+(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)/i);
+      if (balMatch) bal = parseFloat(balMatch[1].replace(/,/g, ''));
+
+      let merchant = 'Unknown Merchant';
+      let category = 'Other';
+
+      if (lower.includes('swiggy')) { merchant = 'Swiggy'; category = 'Food'; }
+      else if (lower.includes('zomato')) { merchant = 'Zomato'; category = 'Food'; }
+      else if (lower.includes('starbucks')) { merchant = 'Starbucks'; category = 'Food'; }
+      else if (lower.includes('zepto')) { merchant = 'Zepto'; category = 'Groceries'; }
+      else if (lower.includes('blinkit')) { merchant = 'Blinkit'; category = 'Groceries'; }
+      else if (lower.includes('amazon')) { merchant = 'Amazon India'; category = 'Shopping'; }
+      else if (lower.includes('flipkart')) { merchant = 'Flipkart'; category = 'Shopping'; }
+      else if (lower.includes('uber')) { merchant = 'Uber'; category = 'Travel'; }
+      else if (lower.includes('ola')) { merchant = 'Ola Cabs'; category = 'Travel'; }
+      else if (lower.includes('salary')) { merchant = 'Company Payroll'; category = 'Salary'; }
+      else {
+        const vpaMatch = text.match(/(?:to|at|vpa)\s+([A-Za-z0-9\s\.\*\-]+?)(?:\s+on|\s+ref|\s+upi|\.|$)/i);
+        if (vpaMatch) merchant = vpaMatch[1].trim();
+      }
+
+      const hasAiKey = state.aiKey && state.aiKey.length > 5;
+
+      return {
+        amount,
+        type,
+        category,
+        merchant,
+        updatedBalance: bal,
+        rawText: text,
+        engine: hasAiKey ? `AI_${state.aiProvider.toUpperCase()}` : 'OFFLINE_REGEX'
+      };
+    }
+
+    function render() {
+      const liquidTotal = state.accounts.reduce((acc, a) => acc + a.balance, 0);
+      const assetsTotal = state.assets.reduce((acc, a) => acc + a.amount, 0);
+      const debtsTotal = state.debts.reduce((acc, d) => acc + d.amount, 0);
+      const netWorth = (liquidTotal + assetsTotal) - debtsTotal;
+
+      document.getElementById('display-net-worth').textContent = formatINR(netWorth);
+      document.getElementById('display-liquid').textContent = formatCompactINR(liquidTotal);
+      document.getElementById('display-assets').textContent = formatCompactINR(assetsTotal);
+      document.getElementById('display-debts').textContent = formatCompactINR(debtsTotal);
+
+      const hasAi = state.aiKey && state.aiKey.length > 5;
+      const statusPill = document.getElementById('engine-status-pill');
+      const settingsEngineTitle = document.getElementById('settings-engine-title');
+
+      if (hasAi) {
+        statusPill.className = 'text-[10px] font-bold text-purple-400 flex items-center gap-1';
+        statusPill.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> AI Engine Active (${state.aiProvider})`;
+        settingsEngineTitle.textContent = `AI Engine Active (${state.aiProvider})`;
+        settingsEngineTitle.className = 'text-xs font-bold text-purple-400';
+      } else {
+        statusPill.className = 'text-[10px] font-bold text-cyan-400 flex items-center gap-1';
+        statusPill.innerHTML = `<i class="fa-solid fa-bolt"></i> Local Regex Engine Active (Offline)`;
+        settingsEngineTitle.textContent = 'Offline Regex Engine Active';
+        settingsEngineTitle.className = 'text-xs font-bold text-cyan-400';
+      }
+
+      const expenses = state.transactions.filter(t => t.type === 'EXPENSE');
+      const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
+      document.getElementById('display-total-expense').textContent = formatINR(totalExpense);
+
+      const catMap = {};
+      expenses.forEach(t => {
+        catMap[t.category] = (catMap[t.category] || 0) + t.amount;
+      });
+
+      const catColors = {
+        Food: 'bg-orange-500',
+        Groceries: 'bg-emerald-500',
+        Travel: 'bg-cyan-500',
+        Shopping: 'bg-pink-500',
+        Bills: 'bg-yellow-500',
+        Entertainment: 'bg-purple-500',
+        Health: 'bg-teal-500',
+        Salary: 'bg-green-500',
+        Other: 'bg-slate-400'
+      };
+
+      const barContainer = document.getElementById('category-progress-bar');
+      barContainer.innerHTML = '';
+      Object.entries(catMap).forEach(([cat, amt]) => {
+        const pct = (amt / totalExpense) * 100;
+        const segment = document.createElement('div');
+        segment.className = `h-full ${catColors[cat] || 'bg-slate-500'}`;
+        segment.style.width = `${pct}%`;
+        barContainer.appendChild(segment);
+      });
+
+      const catList = document.getElementById('category-breakdown-list');
+      catList.innerHTML = '';
+      Object.entries(catMap).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+        const pct = ((amt / totalExpense) * 100).toFixed(1);
+        catList.innerHTML += `
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-300 font-semibold flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full ${catColors[cat] || 'bg-slate-500'}"></span>
+                ${cat}
+              </span>
+              <span class="text-slate-400 text-[11px]">${pct}%</span>
+              <span class="text-slate-200 font-bold">${formatINR(amt)}</span>
+            </div>
+            <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+              <div class="${catColors[cat] || 'bg-slate-500'} h-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      const recentList = document.getElementById('recent-transactions-list');
+      recentList.innerHTML = '';
+      state.transactions.slice(0, 4).forEach(tx => {
+        const isInc = tx.type === 'INCOME';
+        const isAi = tx.engine.startsWith('AI');
+        recentList.innerHTML += `
+          <div class="flex items-center justify-between py-1 border-b border-slate-800/60 last:border-0">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl ${isInc ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center text-xs">
+                <i class="fa-solid ${isInc ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-100">${tx.merchant}</div>
+                <div class="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <span>${tx.date}</span>
+                  <span>•</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${isAi ? 'bg-purple-500/20 text-purple-400' : 'bg-cyan-500/20 text-cyan-400'}">
+                    ${isAi ? 'AI' : 'Regex'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="text-xs font-bold ${isInc ? 'text-emerald-400' : 'text-rose-400'}">
+              ${isInc ? '+' : '-'}${formatINR(tx.amount)}
+            </div>
+          </div>
+        `;
+      });
+
+      filterTransactions();
+      renderBalanceSheet();
+    }
+
+    let currentTab = 'dashboard';
+    function switchTab(tabId) {
+      currentTab = tabId;
+      ['dashboard', 'transactions', 'balancesheet', 'settings'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`nav-${t}`).className = 'flex flex-col items-center text-slate-400 space-y-1 hover:text-slate-200';
+      });
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      document.getElementById(`nav-${tabId}`).className = 'flex flex-col items-center text-emerald-400 space-y-1';
+    }
+
+    let typeFilter = 'ALL';
+    function setTypeFilter(t) {
+      typeFilter = t;
+      ['all', 'expense', 'income'].forEach(chip => {
+        const btn = document.getElementById(`chip-${chip}`);
+        if (chip.toUpperCase() === t) {
+          btn.className = 'px-3 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        } else {
+          btn.className = 'px-3 py-1 rounded-lg font-bold bg-slate-800 text-slate-400 border border-slate-700';
+        }
+      });
+      filterTransactions();
+    }
+
+    function filterTransactions() {
+      const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+      const list = document.getElementById('full-transactions-list');
+      if (!list) return;
+
+      const filtered = state.transactions.filter(t => {
+        if (typeFilter !== 'ALL' && t.type !== typeFilter) return false;
+        if (q && !t.merchant.toLowerCase().includes(q) && !t.category.toLowerCase().includes(q) && !t.rawText.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      list.innerHTML = '';
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-xs text-slate-500">No matching transactions</div>';
+        return;
+      }
+
+      filtered.forEach(tx => {
+        const isInc = tx.type === 'INCOME';
+        const isAi = tx.engine.startsWith('AI');
+        list.innerHTML += `
+          <div class="bg-[#151D2F] border border-slate-800 p-3 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl ${isInc ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center text-sm">
+                <i class="fa-solid ${isInc ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">${tx.merchant}</div>
+                <div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                  <span>${tx.date}</span>
+                  <span>•</span>
+                  <span>${tx.category}</span>
+                  <span>•</span>
+                  <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${isAi ? 'bg-purple-500/20 text-purple-400' : 'bg-cyan-500/20 text-cyan-400'}">
+                    ${tx.engine}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="text-xs font-bold ${isInc ? 'text-emerald-400' : 'text-rose-400'}">
+              ${isInc ? '+' : '-'}${formatINR(tx.amount)}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function switchBsSubTab(sub) {
+      ['accounts', 'assets', 'debts'].forEach(s => {
+        document.getElementById(`bs-view-${s}`).classList.add('hidden');
+        document.getElementById(`bs-tab-${s}`).className = 'flex-1 py-1.5 rounded-lg text-slate-400';
+      });
+      document.getElementById(`bs-view-${sub}`).classList.remove('hidden');
+      document.getElementById(`bs-tab-${sub}`).className = 'flex-1 py-1.5 rounded-lg bg-emerald-500 text-black font-bold';
+    }
+
+    function renderBalanceSheet() {
+      const accView = document.getElementById('bs-view-accounts');
+      accView.innerHTML = '';
+      state.accounts.forEach(a => {
+        accView.innerHTML += `
+          <div class="bg-[#151D2F] border border-slate-800 p-3 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-building-columns"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">${a.name}</div>
+                <div class="text-[10px] text-slate-400">${a.type}</div>
+              </div>
+            </div>
+            <div class="text-xs font-bold ${a.balance < 0 ? 'text-rose-400' : 'text-slate-100'}">
+              ${formatINR(a.balance)}
+            </div>
+          </div>
+        `;
+      });
+
+      const assetView = document.getElementById('bs-view-assets');
+      assetView.innerHTML = '';
+      state.assets.forEach(a => {
+        assetView.innerHTML += `
+          <div class="bg-[#151D2F] border border-slate-800 p-3 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-coins"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">${a.name}</div>
+                <div class="text-[10px] text-slate-400">${a.category} • ${a.rate}% return</div>
+              </div>
+            </div>
+            <div class="text-xs font-bold text-amber-400">
+              ${formatINR(a.amount)}
+            </div>
+          </div>
+        `;
+      });
+
+      const debtView = document.getElementById('bs-view-debts');
+      debtView.innerHTML = '';
+      state.debts.forEach(d => {
+        debtView.innerHTML += `
+          <div class="bg-[#151D2F] border border-slate-800 p-3 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-white">${d.name}</div>
+                <div class="text-[10px] text-slate-400">${d.category} • ${d.rate}% p.a.</div>
+              </div>
+            </div>
+            <div class="text-xs font-bold text-rose-400">
+              ${formatINR(d.amount)}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    let cashType = 'EXPENSE';
+    function openCashModal() { document.getElementById('modal-cash').classList.remove('hidden'); }
+    function closeCashModal() { document.getElementById('modal-cash').classList.add('hidden'); }
+    function setCashType(t) {
+      cashType = t;
+      if (t === 'EXPENSE') {
+        document.getElementById('cash-type-exp').className = 'flex-1 py-1.5 rounded-lg bg-rose-500/30 text-rose-300 font-bold border border-rose-500';
+        document.getElementById('cash-type-inc').className = 'flex-1 py-1.5 rounded-lg text-slate-400';
+      } else {
+        document.getElementById('cash-type-inc').className = 'flex-1 py-1.5 rounded-lg bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500';
+        document.getElementById('cash-type-exp').className = 'flex-1 py-1.5 rounded-lg text-slate-400';
+      }
+    }
+    function saveCashTransaction() {
+      const amt = parseFloat(document.getElementById('cash-amount').value);
+      const merchant = document.getElementById('cash-merchant').value || 'Cash Payment';
+      const category = document.getElementById('cash-category').value;
+      if (!amt || amt <= 0) return alert('Enter a valid amount');
+
+      state.transactions.unshift({
+        id: Date.now(),
+        accountId: 2,
+        amount: amt,
+        type: cashType,
+        category: category,
+        merchant: merchant,
+        rawText: `Manual cash entry: ${merchant} (₹${amt})`,
+        date: 'Today',
+        engine: 'OFFLINE_REGEX'
+      });
+
+      const cashAcc = state.accounts.find(a => a.id === 2);
+      if (cashAcc) {
+        cashAcc.balance += (cashType === 'INCOME' ? amt : -amt);
+      }
+
+      saveState();
+      closeCashModal();
+    }
+
+    function openAssetModal() { document.getElementById('modal-asset').classList.remove('hidden'); }
+    function closeAssetModal() { document.getElementById('modal-asset').classList.add('hidden'); }
+    function saveAssetItem() {
+      const name = document.getElementById('asset-name').value;
+      const cat = document.getElementById('asset-category').value;
+      const amt = parseFloat(document.getElementById('asset-amount').value);
+      if (!name || !amt) return alert('Enter asset name and value');
+
+      state.assets.push({
+        id: Date.now(),
+        name: name,
+        category: cat,
+        amount: amt,
+        rate: 8.0
+      });
+
+      saveState();
+      closeAssetModal();
+    }
+
+    const templates = [
+      "HDFC Bank: Rs 460.00 debited from a/c **1234 on 10-09-26 to SWIGGY. Avl bal Rs 15,240.50",
+      "Dear SBI User, your A/C 9876 credited by INR 75,000.00 on 01-09-26 by SALARY. Bal: INR 88,500.00",
+      "Paid ₹350 to Starbucks on PhonePe",
+      "You paid ₹820 to Zepto using Google Pay"
+    ];
+
+    let lastParsedSandbox = null;
+
+    function openSandboxModal() {
+      document.getElementById('modal-sandbox').classList.remove('hidden');
+      loadTemplate(0);
+    }
+    function closeSandboxModal() { document.getElementById('modal-sandbox').classList.add('hidden'); }
+    function loadTemplate(idx) {
+      document.getElementById('sandbox-textarea').value = templates[idx];
+      document.getElementById('sandbox-result').classList.add('hidden');
+    }
+    function runSandboxParse() {
+      const raw = document.getElementById('sandbox-textarea').value;
+      const res = parseIndianText(raw);
+      if (!res) return alert('Could not extract transaction. Is it a valid financial message?');
+
+      lastParsedSandbox = res;
+      document.getElementById('sandbox-result').classList.remove('hidden');
+      document.getElementById('sandbox-badge').textContent = res.engine;
+      document.getElementById('res-merchant').textContent = res.merchant;
+      document.getElementById('res-amount').textContent = `${res.type === 'INCOME' ? '+' : '-'}${formatINR(res.amount)}`;
+      document.getElementById('res-amount').className = `text-sm font-black ${res.type === 'INCOME' ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('res-category').textContent = res.category;
+      document.getElementById('res-bal').textContent = res.updatedBalance ? formatINR(res.updatedBalance) : 'N/A';
+    }
+    function ingestSandboxResult() {
+      if (!lastParsedSandbox) return;
+      state.transactions.unshift({
+        id: Date.now(),
+        accountId: 1,
+        amount: lastParsedSandbox.amount,
+        type: lastParsedSandbox.type,
+        category: lastParsedSandbox.category,
+        merchant: lastParsedSandbox.merchant,
+        rawText: lastParsedSandbox.rawText,
+        date: 'Just now',
+        engine: lastParsedSandbox.engine
+      });
+
+      state.accounts[0].balance += (lastParsedSandbox.type === 'INCOME' ? lastParsedSandbox.amount : -lastParsedSandbox.amount);
+
+      saveState();
+      closeSandboxModal();
+      alert(`Success! Ingested ${lastParsedSandbox.type} of ${formatINR(lastParsedSandbox.amount)} for ${lastParsedSandbox.merchant} into local SQLite database.`);
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('settings-key-input').value.trim();
+      const prov = document.getElementById('settings-provider').value;
+      state.aiKey = key;
+      state.aiProvider = prov;
+      saveState();
+      alert('API Key saved securely! Active engine switched to BYOK AI.');
+    }
+
+    function testApiKey() {
+      const key = document.getElementById('settings-key-input').value.trim();
+      if (!key) return alert('Please enter an API key first');
+      alert(`Testing connection to ${document.getElementById('settings-provider').value} API... \n\nStatus: Endpoint ping verified!`);
+    }
+
+    function simulateGmailSync() {
+      const badge = document.getElementById('gmail-status-badge');
+      if (badge) {
+        badge.textContent = 'SCANNING...';
+        badge.className = 'text-[10px] bg-sky-500/20 text-sky-400 font-bold px-2 py-0.5 rounded-full animate-pulse';
+      }
+
+      setTimeout(() => {
+        if (badge) {
+          badge.textContent = 'CONNECTED';
+          badge.className = 'text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full';
+        }
+        alert('Gmail Ingestion: Connected via OAuth 2.0 with gmail.readonly scope.\n\nScanned messages matching "debited", "credited", "spent", and "₹". Ingested 2 recent confirmation emails!');
+      }, 1000);
+    }
+
+    render();
+  </script>
+</body>
+</html>
