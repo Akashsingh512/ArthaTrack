@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/ingestion/notification_listener_channel.dart';
+import '../../services/ingestion/sms_sync_service.dart';
 import '../controllers/balance_sheet_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/settings_controller.dart';
@@ -18,15 +19,17 @@ class MainShellScreen extends StatefulWidget {
   State<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _MainShellScreenState extends State<MainShellScreen> {
+class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final _notificationChannel = NotificationListenerChannel();
+  final _smsSyncService = SmsSyncService();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    // Start background listening to the Android native NotificationListenerService EventChannel
+    // Start background listening to the Android native NotificationListenerService & SmsReceiver EventChannel
     _notificationChannel.startListening(
       onTransactionParsed: (tx) {
         if (mounted) {
@@ -46,17 +49,54 @@ class _MainShellScreenState extends State<MainShellScreen> {
       },
     );
 
-    // Initial load
+    // Initial load & automatic silent detection of any new SMS messages
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<DashboardController>(context, listen: false).loadDashboardData();
       Provider.of<TransactionController>(context, listen: false).loadTransactions();
       Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
       Provider.of<SettingsController>(context, listen: false).loadSettings();
+
+      // Automatically detect and sync recent SMS without user needing to click sync
+      _autoDetectAndSyncRecentSms();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Whenever user returns to the app, automatically scan for new messages
+      _autoDetectAndSyncRecentSms();
+    }
+  }
+
+  /// Automatically syncs recent SMS in the background if permission is granted
+  Future<void> _autoDetectAndSyncRecentSms() async {
+    try {
+      final hasPermission = await _smsSyncService.isPermissionGranted();
+      if (!hasPermission) return;
+
+      final result = await _smsSyncService.syncInbox(limit: 30);
+      if (result.importedCount > 0 && mounted) {
+        Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+        Provider.of<TransactionController>(context, listen: false).loadTransactions();
+        Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Auto-detected ${result.importedCount} new transaction${result.importedCount > 1 ? 's' : ''}',
+            ),
+            backgroundColor: AppColors.surfaceElevated,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notificationChannel.dispose();
     super.dispose();
   }

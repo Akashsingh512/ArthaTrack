@@ -38,7 +38,15 @@ class DashboardScreen extends StatelessWidget {
         return RefreshIndicator(
           color: AppColors.emerald,
           backgroundColor: AppColors.surfaceElevated,
-          onRefresh: () => controller.loadDashboardData(),
+          onRefresh: () async {
+            try {
+              final smsService = SmsSyncService();
+              if (await smsService.isPermissionGranted()) {
+                await smsService.syncInbox(limit: 30);
+              }
+            } catch (_) {}
+            await controller.loadDashboardData();
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

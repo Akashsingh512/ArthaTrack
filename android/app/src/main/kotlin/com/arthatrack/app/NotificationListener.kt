@@ -27,6 +27,19 @@ class NotificationListener : NotificationListenerService() {
             }
         }
 
+        fun postPayload(payload: Map<String, Any?>) {
+            mainHandler.post {
+                val sink = eventSink
+                if (sink != null) {
+                    sink.success(payload)
+                } else {
+                    if (eventBuffer.size < 50) {
+                        eventBuffer.add(payload)
+                    }
+                }
+            }
+        }
+
         // Targeted banking and UPI packages in India
         val TARGET_PACKAGES = setOf(
             "com.google.android.apps.nbu.paisa.user", // Google Pay (Tez)
@@ -105,17 +118,7 @@ class NotificationListener : NotificationListenerService() {
             "postTime" to sbn.postTime
         )
 
-        mainHandler.post {
-            val sink = eventSink
-            if (sink != null) {
-                sink.success(payload)
-            } else {
-                // Buffer notifications until Flutter EventChannel listener binds
-                if (eventBuffer.size < 50) {
-                    eventBuffer.add(payload)
-                }
-            }
-        }
+        postPayload(payload)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
