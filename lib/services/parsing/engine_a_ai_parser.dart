@@ -24,7 +24,7 @@ You must output ONLY valid JSON matching this exact schema:
 }
 
 Field rules:
-- is_financial_transaction: boolean. False if it is spam, an OTP, or non-transactional alert.
+- is_financial_transaction: boolean. Must be FALSE if it is an upcoming bill reminder, request to pay, due notice, or marketing offer where money has NOT yet actually been debited or credited. Only true if an actual completed debit/credit/payment transaction occurred.
 - amount: double strictly > 0.
 - type: strictly "EXPENSE" or "INCOME".
 - category: one of ["Food", "Groceries", "Travel", "Shopping", "Bills", "Entertainment", "Health", "Investment", "Salary", "Transfer", "Other"].

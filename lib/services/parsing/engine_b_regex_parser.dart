@@ -21,10 +21,16 @@ class EngineBRegexParser {
     }
 
     // 1. Determine Type: Expense vs Income
-    TransactionType type = TransactionType.EXPENSE;
     final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
     final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(lower);
 
+    // If NEITHER income nor expense trigger is present, NO completed transaction occurred!
+    // (e.g. bill payment reminders, due notices, marketing) -> Drop immediately!
+    if (!hasIncome && !hasExpense) {
+      return null;
+    }
+
+    TransactionType type;
     if (hasIncome && !hasExpense) {
       type = TransactionType.INCOME;
     } else if (hasIncome && hasExpense) {
@@ -35,6 +41,8 @@ class EngineBRegexParser {
         type = (incomeMatch.start < expenseMatch.start)
             ? TransactionType.INCOME
             : TransactionType.EXPENSE;
+      } else {
+        type = TransactionType.EXPENSE;
       }
     } else {
       type = TransactionType.EXPENSE;

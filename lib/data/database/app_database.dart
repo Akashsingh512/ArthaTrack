@@ -155,6 +155,30 @@ class AppDatabase {
         ''', [DateTime.now().toIso8601String()]);
       } catch (_) {}
     }
+    if (oldVersion < 7) {
+      try {
+        // Automatically purge any non-transactional bill payment reminders or due notices
+        final rows = await db.query(TransactionsTable.tableName);
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final id = row[TransactionsTable.colId] as int?;
+          if (id == null || rawText.isEmpty) continue;
+
+          final lower = rawText.toLowerCase();
+          final isBlocked = IndianBankingConstants.promotionalBlocklistRegex.hasMatch(rawText);
+          final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
+          final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(lower);
+
+          if (isBlocked || (!hasIncome && !hasExpense)) {
+            await db.delete(
+              TransactionsTable.tableName,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

@@ -33,9 +33,15 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // STRICT PROMOTIONAL & NON-TRANSACTIONAL SHIELD: Filter out EMI offers, pre-approved loans, and bill alerts
+  // STRICT PROMOTIONAL & NON-TRANSACTIONAL SHIELD: Filter out EMI offers, pre-approved loans, bill due reminders
   static final RegExp promotionalBlocklistRegex = RegExp(
     r'\b('
+    r'pay\s+(?:your\s+)?(?:bill|due|amt|amount|now|before|by)|'
+    r'bill\s+(?:due|is\s+due|of\s+(?:rs|inr|₹)|generated|reminder)|'
+    r'due\s+(?:date|amount|by|on)|'
+    r'recharge\s+(?:now|your|before)|'
+    r'avoid\s+(?:late\s+fee|disconnection)|'
+    r'kindly\s+pay|please\s+pay|'
     r'convert(?:\s+\w+)?\s+(?:to|in|into)\s+(?:flexi|easy|smart|no\s*cost)?\s*emi|'
     r'flexipay|flexi\s*emi|smartemi|easyemi|dial[\s\-]an[\s\-]emi|'
     r'pre[\s\-]approved|eligible\s+for|apply\s+now|congratulations|'
@@ -43,7 +49,6 @@ class IndianBankingConstants {
     r'limit\s+(?:increase|enhancement|upgrade)|'
     r'credit\s+card\s+offer|'
     r'(?:total|min|minimum)\s+(?:amt|amount)?\s*due|'
-    r'bill\s+(?:is\s+)?generated|'
     r'statement\s+for\s+your\s+(?:credit\s+card|account)|'
     r'promo\s*code|coupon\s*code|flat\s+(?:rs|inr|₹|\d+%)\s+off|'
     r'win\s+(?:upto|up\s+to)?\s*(?:rs|inr|₹)'
