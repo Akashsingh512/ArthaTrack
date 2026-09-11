@@ -123,8 +123,16 @@ class NotificationListenerChannel {
         ? DateTime.fromMillisecondsSinceEpoch(postTime)
         : DateTime.now();
 
+    String finalCategory = parsed.category;
+    if (finalCategory.toLowerCase() == 'other') {
+      final rememberedCat = await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+      if (rememberedCat != null) {
+        finalCategory = rememberedCat;
+      }
+    }
+
     final tx = TransactionModel.fromParsed(
-      parsed: parsed,
+      parsed: parsed.copyWith(category: finalCategory),
       accountId: accountId,
       source: 'NOTIFICATION',
       date: txDate,

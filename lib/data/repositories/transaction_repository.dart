@@ -249,4 +249,25 @@ class TransactionRepository {
     }
     return breakdown;
   }
+
+  /// Looks up user's previously chosen category for this merchant/payee (Memory Learning)
+  Future<String?> getCategoryForMerchant(String merchant) async {
+    final trimmed = merchant.trim();
+    if (trimmed.isEmpty || trimmed == 'Unknown' || trimmed == 'Unknown Merchant') return null;
+
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      TransactionsTable.tableName,
+      columns: [TransactionsTable.colCategory],
+      where: 'LOWER(${TransactionsTable.colMerchant}) = ? AND ${TransactionsTable.colCategory} != ?',
+      whereArgs: [trimmed.toLowerCase(), 'Other'],
+      orderBy: '${TransactionsTable.colDate} DESC',
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      return maps.first[TransactionsTable.colCategory] as String?;
+    }
+    return null;
+  }
 }

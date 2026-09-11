@@ -153,8 +153,16 @@ class SmsSyncService {
             resolvedAccountId = acc.id ?? accountId;
           }
 
+          String finalCategory = parsed.category;
+          if (finalCategory.toLowerCase() == 'other') {
+            final rememberedCat = await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+            if (rememberedCat != null) {
+              finalCategory = rememberedCat;
+            }
+          }
+
           final tx = TransactionModel.fromParsed(
-            parsed: parsed,
+            parsed: parsed.copyWith(category: finalCategory),
             accountId: resolvedAccountId,
             source: 'SMS',
             date: txDate,

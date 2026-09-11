@@ -68,4 +68,34 @@ class ParsedTransaction {
       isFinancial: map['is_financial'] as bool? ?? true,
     );
   }
+
+  ParsedTransaction copyWith({
+    double? amount,
+    TransactionType? type,
+    String? category,
+    String? merchant,
+    double? updatedBalance,
+    String? accountSnippet,
+    String? referenceNumber,
+    String? paymentSource,
+    String? rawText,
+    String? engine,
+    double? confidence,
+    bool? isFinancial,
+  }) {
+    return ParsedTransaction(
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      merchant: merchant ?? this.merchant,
+      updatedBalance: updatedBalance ?? this.updatedBalance,
+      accountSnippet: accountSnippet ?? this.accountSnippet,
+      referenceNumber: referenceNumber ?? this.referenceNumber,
+      paymentSource: paymentSource ?? this.paymentSource,
+      rawText: rawText ?? this.rawText,
+      engine: engine ?? this.engine,
+      confidence: confidence ?? this.confidence,
+      isFinancial: isFinancial ?? this.isFinancial,
+    );
+  }
 }
