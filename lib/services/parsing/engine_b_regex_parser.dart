@@ -143,17 +143,7 @@ class EngineBRegexParser {
   }
 
   static String _extractMerchant(String originalText, String lower, String? packageName) {
-    // 1. Check known popular Indian merchants first for high accuracy
-    for (final entry in IndianBankingConstants.categoryKeywords.entries) {
-      for (final keyword in entry.value) {
-        if (lower.contains(keyword)) {
-          // Capitalize nicely
-          return _capitalizeWords(keyword);
-        }
-      }
-    }
-
-    // 2. Try VPA / to / at regex extraction
+    // 1. Prioritize explicit payee/merchant extraction ("to XYZ", "at XYZ", "towards XYZ", "paid to XYZ")
     final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(originalText);
     if (vpaMatch != null && vpaMatch.groupCount >= 1) {
       var candidate = vpaMatch.group(1)?.trim();
@@ -163,12 +153,23 @@ class EngineBRegexParser {
           !candidate.toLowerCase().contains('a/c') &&
           !candidate.toLowerCase().contains('account') &&
           !candidate.toLowerCase().contains('bank')) {
-        // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal"
-        candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending).*$', caseSensitive: false), '').trim();
+        // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute"
+        candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
         // Remove trailing punctuation
         candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
         if (candidate.isNotEmpty && candidate.length > 1) {
           return _capitalizeWords(candidate);
+        }
+      }
+    }
+
+    // 2. Check known popular Indian merchants using WHOLE-WORD boundaries (\b)
+    // Never use substring matching which falsely matches "via" as "vi"
+    for (final entry in IndianBankingConstants.categoryKeywords.entries) {
+      for (final keyword in entry.value) {
+        final regex = RegExp(r'\b' + RegExp.escape(keyword) + r'\b', caseSensitive: false);
+        if (regex.hasMatch(lower)) {
+          return _capitalizeWords(keyword);
         }
       }
     }
@@ -184,7 +185,8 @@ class EngineBRegexParser {
       final keywords = entry.value;
 
       for (final kw in keywords) {
-        if (lowerMerchant.contains(kw) || lowerText.contains(kw)) {
+        final regex = RegExp(r'\b' + RegExp.escape(kw) + r'\b', caseSensitive: false);
+        if (regex.hasMatch(lowerMerchant) || regex.hasMatch(lowerText)) {
           return category;
         }
       }

@@ -329,25 +329,25 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                               ),
                                             ),
                                           ),
-                                          if (tx.paymentSource != null && tx.paymentSource!.isNotEmpty) ...[
-                                            const SizedBox(width: 5),
-                                            const Text('•',
-                                                style: TextStyle(
-                                                    color: AppColors.textMuted, fontSize: 10)),
-                                            const SizedBox(width: 5),
-                                            Flexible(
-                                              child: Text(
-                                                '${tx.paymentSource!.toLowerCase().contains('card') ? '💳 ' : (tx.paymentSource!.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.paymentSource}',
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppColors.textSecondary,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                           if (tx.displayPaymentSource.isNotEmpty) ...[
+                                             const SizedBox(width: 5),
+                                             const Text('•',
+                                                 style: TextStyle(
+                                                     color: AppColors.textMuted, fontSize: 10)),
+                                             const SizedBox(width: 5),
+                                             Flexible(
+                                               child: Text(
+                                                 '${tx.displayPaymentSource.toLowerCase().contains('card') ? '💳 ' : (tx.displayPaymentSource.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.displayPaymentSource}',
+                                                 maxLines: 1,
+                                                 overflow: TextOverflow.ellipsis,
+                                                 style: const TextStyle(
+                                                   fontSize: 10,
+                                                   fontWeight: FontWeight.w600,
+                                                   color: AppColors.textSecondary,
+                                                 ),
+                                               ),
+                                             ),
+                                           ],
                                         ],
                                       ),
                                     ],

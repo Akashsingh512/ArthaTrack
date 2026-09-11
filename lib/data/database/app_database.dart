@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/indian_banking_constants.dart';
 import 'tables/accounts_table.dart';
 import 'tables/balance_sheet_table.dart';
 import 'tables/budgets_table.dart';
@@ -48,6 +49,63 @@ class AppDatabase {
     if (oldVersion < 4) {
       try {
         await db.execute(BudgetsTable.createTableQuery);
+      } catch (_) {}
+    }
+    if (oldVersion < 5) {
+      try {
+        final rows = await db.query(TransactionsTable.tableName);
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final currentSource = row[TransactionsTable.colPaymentSource] as String?;
+          final currentMerchant = row[TransactionsTable.colMerchant] as String? ?? '';
+          final id = row[TransactionsTable.colId] as int?;
+
+          if (id == null || rawText.isEmpty) continue;
+          final updates = <String, dynamic>{};
+
+          if (currentSource == null || currentSource.isEmpty || currentSource == 'Primary Bank Account') {
+            final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(rawText);
+            if (bankMatch != null && bankMatch.groupCount >= 1) {
+              final rawBank = bankMatch.group(1);
+              if (rawBank != null) {
+                updates[TransactionsTable.colPaymentSource] = IndianBankingConstants.normalizeBankName(rawBank);
+              }
+            }
+          }
+
+          if (currentMerchant.toLowerCase() == 'vi') {
+            final textWithoutVia = rawText.replaceAll(RegExp(r'\bvia\b', caseSensitive: false), '');
+            final hasRealVi = RegExp(r'\bvi\b', caseSensitive: false).hasMatch(textWithoutVia);
+            if (!hasRealVi) {
+              final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(rawText);
+              if (vpaMatch != null && vpaMatch.groupCount >= 1) {
+                var cand = vpaMatch.group(1)?.trim();
+                if (cand != null &&
+                    cand.isNotEmpty &&
+                    !cand.toLowerCase().contains('your') &&
+                    !cand.toLowerCase().contains('a/c') &&
+                    !cand.toLowerCase().contains('account') &&
+                    !cand.toLowerCase().contains('bank')) {
+                  cand = cand.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
+                  cand = cand.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
+                  if (cand.isNotEmpty && cand.length > 1) {
+                    updates[TransactionsTable.colMerchant] = cand;
+                    updates[TransactionsTable.colCategory] = 'Other';
+                  }
+                }
+              }
+            }
+          }
+
+          if (updates.isNotEmpty) {
+            await db.update(
+              TransactionsTable.tableName,
+              updates,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+          }
+        }
       } catch (_) {}
     }
   }

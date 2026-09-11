@@ -1,3 +1,4 @@
+import '../../core/constants/indian_banking_constants.dart';
 import 'parsed_transaction.dart';
 
 class TransactionModel {
@@ -77,24 +78,86 @@ class TransactionModel {
   }
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
+    String? source = map['payment_source'] as String?;
+    final raw = map['raw_text'] as String? ?? '';
+    String merch = map['merchant'] as String? ?? 'Unknown';
+    String cat = map['category'] as String? ?? 'Other';
+
+    // Auto-heal missing or generic payment_source from rawText
+    if ((source == null || source.isEmpty || source == 'Primary Bank Account') && raw.isNotEmpty) {
+      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(raw);
+      if (bankMatch != null && bankMatch.groupCount >= 1) {
+        final rawBank = bankMatch.group(1);
+        if (rawBank != null) {
+          source = IndianBankingConstants.normalizeBankName(rawBank);
+        }
+      }
+    }
+
+    // Auto-heal false 'Vi' merchant caused by 'via UPI' in earlier builds
+    if (merch.toLowerCase() == 'vi' && raw.isNotEmpty) {
+      final textWithoutVia = raw.replaceAll(RegExp(r'\bvia\b', caseSensitive: false), '');
+      final hasRealVi = RegExp(r'\bvi\b', caseSensitive: false).hasMatch(textWithoutVia);
+      if (!hasRealVi) {
+        final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(raw);
+        if (vpaMatch != null && vpaMatch.groupCount >= 1) {
+          var cand = vpaMatch.group(1)?.trim();
+          if (cand != null &&
+              cand.isNotEmpty &&
+              !cand.toLowerCase().contains('your') &&
+              !cand.toLowerCase().contains('a/c') &&
+              !cand.toLowerCase().contains('account') &&
+              !cand.toLowerCase().contains('bank')) {
+            cand = cand.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
+            cand = cand.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
+            if (cand.isNotEmpty && cand.length > 1) {
+              merch = cand;
+              if (cat.toLowerCase() == 'bills' || cat.toLowerCase() == 'travel') {
+                cat = 'Other';
+              }
+            }
+          }
+        }
+      }
+    }
+
     return TransactionModel(
       id: map['id'] as int?,
       accountId: map['account_id'] as int,
       amount: (map['amount'] as num).toDouble(),
       type: map['type'] as String,
-      category: map['category'] as String,
-      merchant: map['merchant'] as String,
-      rawText: map['raw_text'] as String? ?? '',
+      category: cat,
+      merchant: merch,
+      rawText: raw,
       date: map['date'] as String,
       source: map['source'] as String? ?? 'MANUAL',
       engine: map['engine'] as String? ?? 'REGEX',
       referenceNumber: map['reference_number'] as String?,
-      paymentSource: map['payment_source'] as String?,
+      paymentSource: source,
     );
   }
 
   bool get isExpense => type.toUpperCase() == 'EXPENSE';
   bool get isIncome => type.toUpperCase() == 'INCOME';
+
+  /// Clean payment source label for UI display with automatic inference fallback
+  String get displayPaymentSource {
+    if (paymentSource != null &&
+        paymentSource!.trim().isNotEmpty &&
+        paymentSource != 'Primary Bank Account') {
+      return paymentSource!;
+    }
+    if (rawText.isNotEmpty) {
+      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(rawText);
+      if (bankMatch != null && bankMatch.groupCount >= 1) {
+        final rawBank = bankMatch.group(1);
+        if (rawBank != null) {
+          return IndianBankingConstants.normalizeBankName(rawBank);
+        }
+      }
+    }
+    return paymentSource ?? 'Primary Bank Account';
+  }
 
   factory TransactionModel.fromParsed({
     required ParsedTransaction parsed,

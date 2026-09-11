@@ -73,6 +73,15 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       _selectedAccountId = accounts.isNotEmpty ? accounts.first.id : null;
     }
 
+    // If selected account is generic/primary but transaction has a detected bank/card source, match by name
+    final detectedSource = widget.transaction.displayPaymentSource;
+    if (_selectedAccountId == 1 && detectedSource != 'Primary Bank Account' && !_isCustomAccount) {
+      final matching = accounts.where((a) => a.name.toLowerCase() == detectedSource.toLowerCase());
+      if (matching.isNotEmpty) {
+        _selectedAccountId = matching.first.id;
+      }
+    }
+
     final isIncome = widget.transaction.isIncome;
     final sign = isIncome ? '+' : '-';
     final amountColor = isIncome ? AppColors.income : AppColors.expense;

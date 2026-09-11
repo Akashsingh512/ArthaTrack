@@ -143,13 +143,13 @@ class RecentTransactionsList extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (tx.paymentSource != null && tx.paymentSource!.isNotEmpty) ...[
+                                  if (tx.displayPaymentSource.isNotEmpty) ...[
                                     const SizedBox(width: 5),
                                     const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
                                     const SizedBox(width: 5),
                                     Flexible(
                                       child: Text(
-                                        '${tx.paymentSource!.toLowerCase().contains('card') ? '💳 ' : (tx.paymentSource!.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.paymentSource}',
+                                        '${tx.displayPaymentSource.toLowerCase().contains('card') ? '💳 ' : (tx.displayPaymentSource.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.displayPaymentSource}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
@@ -257,7 +257,7 @@ class RecentTransactionsList extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _DetailRow(label: 'Category', value: tx.category),
-              _DetailRow(label: 'Payment Source', value: tx.paymentSource ?? 'Primary Bank Account'),
+              _DetailRow(label: 'Payment Source', value: tx.displayPaymentSource),
               _DetailRow(label: 'Date & Time', value: DateFormatter.formatWithTime(DateFormatter.parse(tx.date))),
               if (tx.referenceNumber != null && tx.referenceNumber!.isNotEmpty)
                 _DetailRow(label: 'Reference / UPI ID', value: tx.referenceNumber!),

@@ -111,7 +111,7 @@ class IndianBankingConstants {
   // 6. Bank & Payment Source Detection Regex
   static final RegExp bankOrSourceRegex = RegExp(
     r'\b('
-    r'sbi\s*(?:card|credit\s*card)|'
+    r'sbi\s*(?:card|credit\s*card)?|sbicard|'
     r'sbi\s*bank|state\s*bank\s*of\s*india|\bsbi\b|'
     r'hdfc\s*(?:bank|card|credit\s*card)?|\bhdfc\b|'
     r'icici\s*(?:bank|card|credit\s*card)?|\bicici\b|'
@@ -132,7 +132,7 @@ class IndianBankingConstants {
   /// Cleans and formats bank name into a clean user-facing title
   static String normalizeBankName(String raw) {
     final lower = raw.trim().toLowerCase();
-    if (lower.contains('sbi card') || lower.contains('sbi credit')) return 'SBI Card';
+    if (lower.contains('sbi card') || lower.contains('sbi credit') || lower.contains('sbicard')) return 'SBI Card';
     if (lower.contains('sbi') || lower.contains('state bank')) return 'SBI';
     if (lower.contains('hdfc card') || lower.contains('hdfc credit')) return 'HDFC Card';
     if (lower.contains('hdfc')) return 'HDFC Bank';
