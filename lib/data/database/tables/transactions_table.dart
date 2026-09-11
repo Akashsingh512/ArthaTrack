@@ -12,6 +12,7 @@ class TransactionsTable {
   static const String colSource = 'source'; // 'NOTIFICATION', 'EMAIL', 'MANUAL'
   static const String colEngine = 'engine'; // 'AI', 'REGEX'
   static const String colReferenceNumber = 'reference_number';
+  static const String colPaymentSource = 'payment_source';
 
   static const String createTableQuery = '''
     CREATE TABLE $tableName (
@@ -26,6 +27,7 @@ class TransactionsTable {
       $colSource TEXT NOT NULL DEFAULT 'MANUAL',
       $colEngine TEXT NOT NULL DEFAULT 'REGEX',
       $colReferenceNumber TEXT,
+      $colPaymentSource TEXT,
       FOREIGN KEY ($colAccountId) REFERENCES accounts (id) ON DELETE CASCADE
     )
   ''';

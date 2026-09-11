@@ -37,6 +37,13 @@ class AppDatabase {
         );
       } catch (_) {}
     }
+    if (oldVersion < 3) {
+      try {
+        await db.execute(
+          'ALTER TABLE ${TransactionsTable.tableName} ADD COLUMN ${TransactionsTable.colPaymentSource} TEXT;',
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

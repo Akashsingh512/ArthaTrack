@@ -98,18 +98,23 @@ class NotificationListenerChannel {
     final parsed = await _pipeline.processText(fullRaw, packageName: pkgName);
     if (parsed == null || parsed.amount <= 0.0) return null;
 
-    // Resolve matching account (savings by default or matched by snippet)
-    final accounts = await _accountRepo.getAllAccounts();
+    // Resolve matching account (find or create by detected paymentSource / bank name)
     int accountId = 1;
-    if (accounts.isNotEmpty) {
-      if (parsed.accountSnippet != null) {
-        final matched = accounts.firstWhere(
-          (a) => a.name.contains(parsed.accountSnippet!),
-          orElse: () => accounts.first,
-        );
-        accountId = matched.id ?? 1;
-      } else {
-        accountId = accounts.first.id ?? 1;
+    if (parsed.paymentSource != null && parsed.paymentSource!.trim().isNotEmpty) {
+      final account = await _accountRepo.getOrCreateAccountByName(parsed.paymentSource!.trim());
+      accountId = account.id ?? 1;
+    } else {
+      final accounts = await _accountRepo.getAllAccounts();
+      if (accounts.isNotEmpty) {
+        if (parsed.accountSnippet != null) {
+          final matched = accounts.firstWhere(
+            (a) => a.name.contains(parsed.accountSnippet!),
+            orElse: () => accounts.first,
+          );
+          accountId = matched.id ?? 1;
+        } else {
+          accountId = accounts.first.id ?? 1;
+        }
       }
     }
 

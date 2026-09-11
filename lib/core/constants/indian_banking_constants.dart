@@ -98,7 +98,7 @@ class IndianBankingConstants {
 
   // 5. Merchant & Sender Extraction Heuristics
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$)',
+    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+from|received\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
@@ -107,6 +107,53 @@ class IndianBankingConstants {
     r'(?:a\/c|acct|account|card)\s*(?:no\.?)?\s*([xX\*]*\d{3,4})',
     caseSensitive: false,
   );
+
+  // 6. Bank & Payment Source Detection Regex
+  static final RegExp bankOrSourceRegex = RegExp(
+    r'\b('
+    r'sbi\s*(?:card|credit\s*card)|'
+    r'sbi\s*bank|state\s*bank\s*of\s*india|\bsbi\b|'
+    r'hdfc\s*(?:bank|card|credit\s*card)?|\bhdfc\b|'
+    r'icici\s*(?:bank|card|credit\s*card)?|\bicici\b|'
+    r'axis\s*(?:bank|card|credit\s*card)?|\baxis\b|'
+    r'kotak\s*(?:bank|mahindra\s*bank|card)?|\bkotak\b|'
+    r'indusind\s*(?:bank)?|'
+    r'idfc\s*(?:first\s*bank|bank|first)?|'
+    r'pnb|punjab\s*national\s*bank|'
+    r'canara\s*bank|bank\s*of\s*baroda|\bbob\b|'
+    r'federal\s*bank|yes\s*bank|union\s*bank|'
+    r'paytm\s*(?:payments\s*bank|wallet|bank)?|'
+    r'airtel\s*(?:payments\s*bank|money)?|'
+    r'cash'
+    r')\b',
+    caseSensitive: false,
+  );
+
+  /// Cleans and formats bank name into a clean user-facing title
+  static String normalizeBankName(String raw) {
+    final lower = raw.trim().toLowerCase();
+    if (lower.contains('sbi card') || lower.contains('sbi credit')) return 'SBI Card';
+    if (lower.contains('sbi') || lower.contains('state bank')) return 'SBI';
+    if (lower.contains('hdfc card') || lower.contains('hdfc credit')) return 'HDFC Card';
+    if (lower.contains('hdfc')) return 'HDFC Bank';
+    if (lower.contains('icici card') || lower.contains('icici credit')) return 'ICICI Card';
+    if (lower.contains('icici')) return 'ICICI Bank';
+    if (lower.contains('axis card') || lower.contains('axis credit')) return 'Axis Card';
+    if (lower.contains('axis')) return 'Axis Bank';
+    if (lower.contains('kotak')) return 'Kotak Bank';
+    if (lower.contains('indusind')) return 'IndusInd Bank';
+    if (lower.contains('idfc')) return 'IDFC FIRST Bank';
+    if (lower.contains('pnb') || lower.contains('punjab national')) return 'PNB';
+    if (lower.contains('canara')) return 'Canara Bank';
+    if (lower.contains('baroda') || lower == 'bob') return 'Bank of Baroda';
+    if (lower.contains('federal')) return 'Federal Bank';
+    if (lower.contains('yes bank')) return 'Yes Bank';
+    if (lower.contains('union bank')) return 'Union Bank';
+    if (lower.contains('paytm')) return 'Paytm Payments Bank';
+    if (lower.contains('airtel')) return 'Airtel Payments Bank';
+    if (lower.contains('cash')) return 'Cash in Hand';
+    return raw.trim();
+  }
 
   // Keyword to Category heuristics for popular Indian Merchants & Services
   static const Map<String, List<String>> categoryKeywords = {

@@ -11,6 +11,7 @@ class ParsedTransaction {
   final double? updatedBalance;
   final String? accountSnippet;
   final String? referenceNumber;
+  final String? paymentSource;
   final String rawText;
   final String engine; // 'AI_GEMINI', 'AI_GROQ', 'OFFLINE_REGEX'
   final double confidence; // 0.0 to 1.0
@@ -24,6 +25,7 @@ class ParsedTransaction {
     this.updatedBalance,
     this.accountSnippet,
     this.referenceNumber,
+    this.paymentSource,
     required this.rawText,
     required this.engine,
     this.confidence = 1.0,
@@ -42,6 +44,7 @@ class ParsedTransaction {
       'updated_balance': updatedBalance,
       'account_snippet': accountSnippet,
       'reference_number': referenceNumber,
+      'payment_source': paymentSource,
       'raw_text': rawText,
       'engine': engine,
       'confidence': confidence,
@@ -58,6 +61,7 @@ class ParsedTransaction {
       updatedBalance: (map['updated_balance'] as num?)?.toDouble(),
       accountSnippet: map['account_snippet'] as String?,
       referenceNumber: map['reference_number'] as String?,
+      paymentSource: map['payment_source'] as String?,
       rawText: map['raw_text'] as String? ?? '',
       engine: map['engine'] as String? ?? 'OFFLINE_REGEX',
       confidence: (map['confidence'] as num?)?.toDouble() ?? 1.0,

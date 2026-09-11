@@ -109,9 +109,8 @@ class TransactionController extends ChangeNotifier {
       // Filter by search query
       if (_searchQuery.isNotEmpty) {
         final matchesMerchant = tx.merchant.toLowerCase().contains(_searchQuery);
-        final matchesCategory = tx.category.toLowerCase().contains(_searchQuery);
-        final matchesRaw = tx.rawText.toLowerCase().contains(_searchQuery);
-        if (!matchesMerchant && !matchesCategory && !matchesRaw) {
+        final matchesSource = (tx.paymentSource ?? '').toLowerCase().contains(_searchQuery);
+        if (!matchesMerchant && !matchesCategory && !matchesRaw && !matchesSource) {
           return false;
         }
       }
@@ -137,9 +136,15 @@ class TransactionController extends ChangeNotifier {
       date: date.toIso8601String(),
       source: 'MANUAL',
       engine: 'REGEX',
+      paymentSource: 'Cash in Hand',
     );
 
     await _transactionRepo.insertTransaction(tx);
+    await loadTransactions();
+  }
+
+  Future<void> updateTransaction(TransactionModel updatedTx, {int? previousAccountId}) async {
+    await _transactionRepo.updateTransaction(updatedTx, previousAccountId: previousAccountId);
     await loadTransactions();
   }
 

@@ -146,9 +146,15 @@ class SmsSyncService {
             txDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
           }
 
+          int resolvedAccountId = accountId;
+          if (parsed.paymentSource != null && parsed.paymentSource!.trim().isNotEmpty) {
+            final acc = await _accountRepo.getOrCreateAccountByName(parsed.paymentSource!.trim());
+            resolvedAccountId = acc.id ?? accountId;
+          }
+
           final tx = TransactionModel.fromParsed(
             parsed: parsed,
-            accountId: accountId,
+            accountId: resolvedAccountId,
             source: 'SMS',
             date: txDate,
           );

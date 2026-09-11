@@ -17,6 +17,7 @@ You must output ONLY valid JSON matching this exact schema:
   "type": "EXPENSE",
   "category": "Food",
   "merchant": "Swiggy",
+  "payment_source": "SBI Card",
   "updated_balance": 15420.50,
   "account_snippet": "XX1234",
   "confidence": 0.98
@@ -27,7 +28,8 @@ Field rules:
 - amount: double strictly > 0.
 - type: strictly "EXPENSE" or "INCOME".
 - category: one of ["Food", "Groceries", "Travel", "Shopping", "Bills", "Entertainment", "Health", "Investment", "Salary", "Transfer", "Other"].
-- merchant: name of the entity, store, person, or service paid to/received from.
+- merchant: strictly the exact name of the person, shop, merchant, or service paid to or received from.
+- payment_source: bank or card used if mentioned (e.g. "SBI Card", "Kotak Bank", "HDFC Bank", "Axis Bank", "ICICI Bank", "Cash", etc.) or null.
 - updated_balance: double or null (if not mentioned).
 - account_snippet: last digits or card ending (e.g. "XX1234") or null.
 - confidence: number between 0.0 and 1.0.
@@ -161,6 +163,8 @@ Field rules:
       final merchant = map['merchant'] as String? ?? 'Unknown';
       final updatedBalance = (map['updated_balance'] as num?)?.toDouble();
       final accountSnippet = map['account_snippet'] as String?;
+      final paymentSource = map['payment_source'] as String?;
+      final referenceNumber = map['reference_number'] as String?;
       final confidence = (map['confidence'] as num?)?.toDouble() ?? 0.95;
 
       return ParsedTransaction(
@@ -170,6 +174,8 @@ Field rules:
         merchant: merchant,
         updatedBalance: updatedBalance,
         accountSnippet: accountSnippet,
+        referenceNumber: referenceNumber,
+        paymentSource: paymentSource,
         rawText: rawText,
         engine: engine,
         confidence: confidence,

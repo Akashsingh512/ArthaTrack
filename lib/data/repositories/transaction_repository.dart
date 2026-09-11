@@ -150,6 +150,41 @@ class TransactionRepository {
     });
   }
 
+  /// Updates transaction details (merchant, category, account, paymentSource)
+  /// and adjusts account balances if the account was changed
+  Future<int> updateTransaction(TransactionModel updatedTx, {int? previousAccountId}) async {
+    final db = await _dbProvider.database;
+
+    return await db.transaction((txn) async {
+      if (previousAccountId != null && previousAccountId != updatedTx.accountId) {
+        // Revert delta on previous account
+        final revertDelta = updatedTx.isExpense ? updatedTx.amount : -updatedTx.amount;
+        await txn.rawUpdate('''
+          UPDATE ${AccountsTable.tableName}
+          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+              ${AccountsTable.colUpdatedAt} = ?
+          WHERE ${AccountsTable.colId} = ?
+        ''', [revertDelta, DateTime.now().toIso8601String(), previousAccountId]);
+
+        // Apply delta to new account
+        final newDelta = updatedTx.isExpense ? -updatedTx.amount : updatedTx.amount;
+        await txn.rawUpdate('''
+          UPDATE ${AccountsTable.tableName}
+          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+              ${AccountsTable.colUpdatedAt} = ?
+          WHERE ${AccountsTable.colId} = ?
+        ''', [newDelta, DateTime.now().toIso8601String(), updatedTx.accountId]);
+      }
+
+      return await txn.update(
+        TransactionsTable.tableName,
+        updatedTx.toMap(),
+        where: '${TransactionsTable.colId} = ?',
+        whereArgs: [updatedTx.id],
+      );
+    });
+  }
+
   /// Returns total expenses for the given month
   Future<double> getTotalMonthlyExpenses({DateTime? forMonth}) async {
     final targetMonth = forMonth ?? DateTime.now();

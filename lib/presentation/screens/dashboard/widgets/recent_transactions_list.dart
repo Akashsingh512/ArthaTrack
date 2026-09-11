@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/transaction_model.dart';
+import '../../../controllers/dashboard_controller.dart';
 import '../../../widgets/engine_badge.dart';
+import '../../transactions/widgets/edit_transaction_sheet.dart';
 
 class RecentTransactionsList extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -129,10 +132,34 @@ class RecentTransactionsList extends StatelessWidget {
                                       color: AppColors.textMuted,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 5),
                                   const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
-                                  const SizedBox(width: 6),
-                                  EngineBadge(engine: tx.engine, compact: true),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    tx.category,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: catColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (tx.paymentSource != null && tx.paymentSource!.isNotEmpty) ...[
+                                    const SizedBox(width: 5),
+                                    const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        '${tx.paymentSource!.toLowerCase().contains('card') ? '💳 ' : (tx.paymentSource!.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.paymentSource}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ],
@@ -230,8 +257,10 @@ class RecentTransactionsList extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _DetailRow(label: 'Category', value: tx.category),
+              _DetailRow(label: 'Payment Source', value: tx.paymentSource ?? 'Primary Bank Account'),
               _DetailRow(label: 'Date & Time', value: DateFormatter.formatWithTime(DateFormatter.parse(tx.date))),
-              _DetailRow(label: 'Source', value: tx.source),
+              if (tx.referenceNumber != null && tx.referenceNumber!.isNotEmpty)
+                _DetailRow(label: 'Reference / UPI ID', value: tx.referenceNumber!),
               _DetailRow(label: 'Parsing Engine', value: tx.engine == 'AI' ? 'BYOK AI Key Engine' : 'Offline Indian Banking Regex'),
               const SizedBox(height: 16),
               const Text(
@@ -254,6 +283,25 @@ class RecentTransactionsList extends StatelessWidget {
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: AppColors.surface,
+                      builder: (ctx) => EditTransactionSheet(transaction: tx),
+                    ).then((_) {
+                      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                    });
+                  },
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Edit Transaction Details'),
                 ),
               ),
             ],

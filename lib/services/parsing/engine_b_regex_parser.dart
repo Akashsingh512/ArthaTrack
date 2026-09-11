@@ -90,6 +90,24 @@ class EngineBRegexParser {
       referenceNumber = refMatch.group(1)?.trim();
     }
 
+    // 5.1 Extract Bank or Payment Source (e.g. "SBI Card", "Kotak Bank", "Axis Bank", "HDFC Bank")
+    String? paymentSource;
+    if (packageName != null && IndianBankingConstants.packageBankMap.containsKey(packageName)) {
+      final mapped = IndianBankingConstants.packageBankMap[packageName];
+      if (mapped != null && !mapped.contains('Google') && !mapped.contains('PhonePe') && !mapped.contains('Paytm') && !mapped.contains('CRED')) {
+        paymentSource = mapped;
+      }
+    }
+    if (paymentSource == null) {
+      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(text);
+      if (bankMatch != null && bankMatch.groupCount >= 1) {
+        final rawBank = bankMatch.group(1);
+        if (rawBank != null) {
+          paymentSource = IndianBankingConstants.normalizeBankName(rawBank);
+        }
+      }
+    }
+
     // 6. Extract Merchant & Category
     String merchant = _extractMerchant(text, lower, packageName);
     String category = _inferCategory(lower, merchant);
@@ -116,6 +134,7 @@ class EngineBRegexParser {
       updatedBalance: updatedBalance,
       accountSnippet: accountSnippet,
       referenceNumber: referenceNumber,
+      paymentSource: paymentSource,
       rawText: rawText,
       engine: 'OFFLINE_REGEX',
       confidence: 0.88,
@@ -137,19 +156,21 @@ class EngineBRegexParser {
     // 2. Try VPA / to / at regex extraction
     final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(originalText);
     if (vpaMatch != null && vpaMatch.groupCount >= 1) {
-      final candidate = vpaMatch.group(1)?.trim();
+      var candidate = vpaMatch.group(1)?.trim();
       if (candidate != null &&
           candidate.isNotEmpty &&
           !candidate.toLowerCase().contains('your') &&
           !candidate.toLowerCase().contains('a/c') &&
+          !candidate.toLowerCase().contains('account') &&
           !candidate.toLowerCase().contains('bank')) {
-        return candidate;
+        // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal"
+        candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending).*$', caseSensitive: false), '').trim();
+        // Remove trailing punctuation
+        candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
+        if (candidate.isNotEmpty && candidate.length > 1) {
+          return _capitalizeWords(candidate);
+        }
       }
-    }
-
-    // 3. Fallback based on package name or bank sender
-    if (packageName != null && IndianBankingConstants.packageBankMap.containsKey(packageName)) {
-      return IndianBankingConstants.packageBankMap[packageName]!;
     }
 
     return 'Unknown Merchant';

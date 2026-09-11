@@ -12,6 +12,7 @@ class TransactionModel {
   final String source; // 'NOTIFICATION', 'EMAIL', 'MANUAL'
   final String engine; // 'AI', 'REGEX'
   final String? referenceNumber;
+  final String? paymentSource;
 
   TransactionModel({
     this.id,
@@ -25,6 +26,7 @@ class TransactionModel {
     this.source = 'NOTIFICATION',
     this.engine = 'REGEX',
     this.referenceNumber,
+    this.paymentSource,
   });
 
   TransactionModel copyWith({
@@ -39,6 +41,7 @@ class TransactionModel {
     String? source,
     String? engine,
     String? referenceNumber,
+    String? paymentSource,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -52,6 +55,7 @@ class TransactionModel {
       source: source ?? this.source,
       engine: engine ?? this.engine,
       referenceNumber: referenceNumber ?? this.referenceNumber,
+      paymentSource: paymentSource ?? this.paymentSource,
     );
   }
 
@@ -68,6 +72,7 @@ class TransactionModel {
       'source': source,
       'engine': engine,
       'reference_number': referenceNumber,
+      'payment_source': paymentSource,
     };
   }
 
@@ -84,6 +89,7 @@ class TransactionModel {
       source: map['source'] as String? ?? 'MANUAL',
       engine: map['engine'] as String? ?? 'REGEX',
       referenceNumber: map['reference_number'] as String?,
+      paymentSource: map['payment_source'] as String?,
     );
   }
 
@@ -107,6 +113,7 @@ class TransactionModel {
       source: source,
       engine: parsed.engine.startsWith('AI') ? 'AI' : 'REGEX',
       referenceNumber: parsed.referenceNumber,
+      paymentSource: parsed.paymentSource,
     );
   }
 }

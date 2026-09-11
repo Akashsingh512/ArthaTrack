@@ -7,6 +7,7 @@ import '../../controllers/dashboard_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../widgets/engine_badge.dart';
 import 'widgets/add_cash_transaction_sheet.dart';
+import 'widgets/edit_transaction_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -235,6 +236,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 child: ListTile(
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 4, vertical: 4),
+                                  onTap: () => _openEditSheet(context, tx),
                                   leading: Container(
                                     width: 42,
                                     height: 42,
@@ -256,31 +258,77 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       color: AppColors.textPrimary,
                                     ),
                                   ),
-                                  subtitle: Row(
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        DateFormatter.formatShort(
-                                            DateFormatter.parse(tx.date)),
-                                        style: const TextStyle(
-                                            fontSize: 11, color: AppColors.textMuted),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            DateFormatter.formatShort(
+                                                DateFormatter.parse(tx.date)),
+                                            style: const TextStyle(
+                                                fontSize: 11, color: AppColors.textMuted),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          const Text('•',
+                                              style: TextStyle(
+                                                  color: AppColors.textMuted, fontSize: 10)),
+                                          const SizedBox(width: 5),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: catColor.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              tx.category,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: catColor,
+                                              ),
+                                            ),
+                                          ),
+                                          if (tx.paymentSource != null && tx.paymentSource!.isNotEmpty) ...[
+                                            const SizedBox(width: 5),
+                                            const Text('•',
+                                                style: TextStyle(
+                                                    color: AppColors.textMuted, fontSize: 10)),
+                                            const SizedBox(width: 5),
+                                            Flexible(
+                                              child: Text(
+                                                '${tx.paymentSource!.toLowerCase().contains('card') ? '💳 ' : (tx.paymentSource!.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.paymentSource}',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text('•',
-                                          style: TextStyle(
-                                              color: AppColors.textMuted, fontSize: 10)),
-                                      const SizedBox(width: 6),
-                                      EngineBadge(engine: tx.engine, compact: true),
                                     ],
                                   ),
-                                  trailing: Text(
-                                    '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: isIncome
-                                          ? AppColors.income
-                                          : AppColors.expense,
-                                    ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: isIncome
+                                              ? AppColors.income
+                                              : AppColors.expense,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.edit_outlined, size: 14, color: AppColors.textMuted),
+                                    ],
                                   ),
                                 ),
                               );
@@ -342,5 +390,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       default:
         return Icons.account_balance_wallet;
     }
+  }
+
+  void _openEditSheet(BuildContext context, dynamic tx) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (context) => EditTransactionSheet(transaction: tx),
+    ).then((_) {
+      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+    });
   }
 }

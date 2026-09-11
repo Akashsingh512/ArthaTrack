@@ -40,6 +40,37 @@ class AccountRepository {
     );
   }
 
+  /// Finds existing account by name (case-insensitive) or creates a new one
+  Future<AccountModel> getOrCreateAccountByName(String name, {String? type}) async {
+    final trimmed = name.trim();
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      AccountsTable.tableName,
+      where: 'LOWER(${AccountsTable.colName}) = ?',
+      whereArgs: [trimmed.toLowerCase()],
+      limit: 1,
+    );
+
+    if (maps.isNotEmpty) {
+      return AccountModel.fromMap(maps.first);
+    }
+
+    final inferredType = type ??
+        ((trimmed.toLowerCase().contains('card') || trimmed.toLowerCase().contains('credit'))
+            ? 'CREDIT_CARD'
+            : (trimmed.toLowerCase().contains('cash') ? 'CASH' : 'SAVINGS'));
+
+    final newAcc = AccountModel(
+      name: trimmed,
+      type: inferredType,
+      balance: 0.0,
+      updatedAt: DateTime.now().toIso8601String(),
+    );
+
+    final insertedId = await insertAccount(newAcc);
+    return newAcc.copyWith(id: insertedId);
+  }
+
   Future<int> insertAccount(AccountModel account) async {
     final db = await _dbProvider.database;
     return await db.insert(
