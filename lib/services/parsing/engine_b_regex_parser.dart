@@ -125,7 +125,7 @@ class EngineBRegexParser {
     }
 
     // 6. Extract Merchant & Category
-    String merchant = _extractMerchant(text, lower, packageName);
+    String merchant = _extractMerchant(text, lower, packageName, type);
     String category = _inferCategory(lower, merchant);
 
     // If income and no merchant was determined, check salary/refund
@@ -158,24 +158,24 @@ class EngineBRegexParser {
     );
   }
 
-  static String _extractMerchant(String originalText, String lower, String? packageName) {
-    // 1. Prioritize explicit payee/merchant extraction ("to XYZ", "at XYZ", "towards XYZ", "paid to XYZ")
-    final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(originalText);
-    if (vpaMatch != null && vpaMatch.groupCount >= 1) {
-      var candidate = vpaMatch.group(1)?.trim();
-      if (candidate != null &&
-          candidate.isNotEmpty &&
-          !candidate.toLowerCase().contains('your') &&
-          !candidate.toLowerCase().contains('a/c') &&
-          !candidate.toLowerCase().contains('account') &&
-          !candidate.toLowerCase().contains('bank')) {
-        // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute"
-        candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
-        // Remove trailing punctuation
-        candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
-        if (candidate.isNotEmpty && candidate.length > 1) {
-          return _capitalizeWords(candidate);
-        }
+  static String _extractMerchant(String originalText, String lower, String? packageName, TransactionType type) {
+    // 1. Prioritize explicit payee/merchant extraction based on transaction type
+    final primaryRegex = type == TransactionType.EXPENSE
+        ? IndianBankingConstants.expenseMerchantRegex
+        : IndianBankingConstants.incomeMerchantRegex;
+
+    for (final match in primaryRegex.allMatches(originalText)) {
+      final candidate = _cleanMerchantCandidate(match);
+      if (candidate != null) {
+        return _capitalizeWords(candidate);
+      }
+    }
+
+    // Fallback to general vpaOrMerchantRegex if primary regex didn't match a valid payee
+    for (final match in IndianBankingConstants.vpaOrMerchantRegex.allMatches(originalText)) {
+      final candidate = _cleanMerchantCandidate(match);
+      if (candidate != null) {
+        return _capitalizeWords(candidate);
       }
     }
 
@@ -191,6 +191,24 @@ class EngineBRegexParser {
     }
 
     return 'Unknown Merchant';
+  }
+
+  static String? _cleanMerchantCandidate(RegExpMatch match) {
+    if (match.groupCount < 1) return null;
+    var candidate = match.group(1)?.trim();
+    if (candidate == null || candidate.isEmpty) return null;
+    final lowerCand = candidate.toLowerCase();
+    if (lowerCand.contains('your') ||
+        lowerCand.contains('a/c') ||
+        lowerCand.contains('account') ||
+        lowerCand.contains('bank')) {
+      return null;
+    }
+    // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute"
+    candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
+    // Remove trailing punctuation
+    candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
+    return (candidate.isNotEmpty && candidate.length > 1) ? candidate : null;
   }
 
   static String _inferCategory(String lowerText, String merchant) {

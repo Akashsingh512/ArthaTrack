@@ -57,7 +57,8 @@ class NotificationListener : NotificationListenerService() {
 
         val BANKING_KEYWORDS = listOf(
             "debited", "credited", "spent", "withdrawn", "paid",
-            "received", "₹", "inr", "rs.", "bal:", "avl bal", "balance"
+            "received", "₹", "inr", "rs.", "rs ", "rs", "bal:", "avl bal", "balance",
+            "sent", "transfer", "transferred", "trf", "payment"
         )
 
         // STRICT SECURITY GUARD: Unconditional blocklist for any OTP, 2FA, or verification messages

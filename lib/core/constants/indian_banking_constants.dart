@@ -69,7 +69,7 @@ class IndianBankingConstants {
 
   // Fallback Amount Regex: Matches cases like "paid 450.00" or "for 500.00"
   static final RegExp fallbackAmountRegex = RegExp(
-    r'(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|transferred)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|sent|transferred|transfer\s+of)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
@@ -82,9 +82,11 @@ class IndianBankingConstants {
   // 3. Action Triggers
   static final RegExp expenseTriggerRegex = RegExp(
     r'\b('
-    r'debited|spent|paid|withdrawn|charged|deducted|payment\s+of|'
-    r'transferred\s+to\s+(?!your\b)|'
-    r'sent\s+to\s+(?!your\b)'
+    r'debited|spent|paid|withdrawn|charged|deducted|payment\s+of|payment\s+to|'
+    r'sent\b(?!\s+you\b)|'
+    r'transferred\b(?!\s+from\b)|'
+    r'transfer\s+(?:of\s+.*?\s+)?to|'
+    r'trf\s+to'
     r')\b',
     caseSensitive: false,
   );
@@ -107,8 +109,18 @@ class IndianBankingConstants {
   );
 
   // 5. Merchant & Sender Extraction Heuristics
+  static final RegExp expenseMerchantRegex = RegExp(
+    r'(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    caseSensitive: false,
+  );
+
+  static final RegExp incomeMerchantRegex = RegExp(
+    r'(?:received\s+from|transfer\s+from|from|by)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+to|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    caseSensitive: false,
+  );
+
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+from|received\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
