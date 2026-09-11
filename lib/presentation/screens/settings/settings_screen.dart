@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
+import '../../../../services/ingestion/sms_sync_service.dart';
 import 'widgets/raw_sms_test_sandbox.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -60,6 +61,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // BYOK AI Engine Configuration Section
                 _buildByokSection(context, settings),
+                const SizedBox(height: 20),
+
+                // Bank SMS Inbox Sync Section
+                _buildSmsPermissionSection(context, settings),
                 const SizedBox(height: 20),
 
                 // Android Notification Listener Permission Section
@@ -281,6 +286,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSmsPermissionSection(
+      BuildContext context, SettingsController settings) {
+    final granted = settings.isSmsPermissionGranted;
+    final isSyncing = settings.isSmsSyncing;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.sms, color: AppColors.emerald, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Bank SMS Inbox Sync',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: (granted ? AppColors.emerald : AppColors.saffron).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    granted ? 'ACTIVE' : 'SETUP NEEDED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: granted ? AppColors.emerald : AppColors.saffron,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Reads incoming and past bank/UPI SMS (HDFC, SBI, ICICI, Axis, Paytm, PhonePe, GPay) directly on your device. Automatically imports transactions into SQLite while unconditionally dropping OTPs.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: granted ? AppColors.surfaceElevated : AppColors.emerald,
+                      foregroundColor: granted ? AppColors.textPrimary : Colors.black,
+                    ),
+                    onPressed: () async {
+                      if (!granted) {
+                        final res = await settings.requestSmsPermission();
+                        if (!res && context.mounted) {
+                          settings.openSmsAppSettings();
+                        }
+                      } else {
+                        await settings.openSmsAppSettings();
+                      }
+                    },
+                    icon: Icon(granted ? Icons.check_circle : Icons.lock_open, size: 18),
+                    label: Text(
+                      granted ? 'Permission Granted' : 'Grant SMS Permission',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald,
+                    foregroundColor: Colors.black,
+                  ),
+                  onPressed: isSyncing
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final dashboard = Provider.of<DashboardController>(context, listen: false);
+                          final txController = Provider.of<TransactionController>(context, listen: false);
+
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Scanning bank SMS inbox...'),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+
+                          final result = await settings.syncSmsInbox();
+
+                          if (result.status == SmsSyncStatus.permissionDenied) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: const Text('SMS permission denied. Tap to open Settings.'),
+                                backgroundColor: AppColors.ruby,
+                                action: SnackBarAction(
+                                  label: 'Settings',
+                                  textColor: Colors.white,
+                                  onPressed: () => settings.openSmsAppSettings(),
+                                ),
+                              ),
+                            );
+                          } else if (result.status == SmsSyncStatus.error) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('SMS sync error: ${result.errorMessage}'),
+                                backgroundColor: AppColors.ruby,
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  result.importedCount > 0
+                                      ? 'Imported ${result.importedCount} new bank transactions!'
+                                      : 'All SMS transactions are already up to date (0 new).',
+                                ),
+                                backgroundColor: AppColors.emerald,
+                              ),
+                            );
+                            await dashboard.loadDashboardData();
+                            await txController.loadTransactions();
+                          }
+                        },
+                  icon: isSyncing
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : const Icon(Icons.sync, size: 18),
+                  label: const Text(
+                    'Sync SMS',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildNotificationPermissionSection(
       BuildContext context, SettingsController settings) {
     final granted = settings.isNotificationPermissionGranted;
@@ -414,8 +567,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await gmail.signOut();
                         setState(() {});
                       } else {
-                        await gmail.signIn();
-                        setState(() {});
+                        try {
+                          final account = await gmail.signIn();
+                          if (account != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Connected to Google as ${account.email}'),
+                                backgroundColor: AppColors.emerald,
+                              ),
+                            );
+                          }
+                          setState(() {});
+                        } catch (e) {
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: AppColors.surfaceElevated,
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.info_outline, color: AppColors.saffron),
+                                    SizedBox(width: 8),
+                                    Text('Google Sign-In Info', style: TextStyle(fontSize: 16)),
+                                  ],
+                                ),
+                                content: Text(
+                                  'Google Sign-In error:\n$e\n\n'
+                                  'Why: On Android, Google Play Services requires registering an Android OAuth Client ID in Google Cloud Console with your app SHA-1 fingerprint.\n\n'
+                                  'Recommendation: Use the "Bank SMS Inbox Sync" above! It works 100% offline, requires zero configuration, and directly imports bank SMS messages on your phone.',
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Got it', style: TextStyle(color: AppColors.emerald)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
                       }
                     },
                     child: Text(isSignedIn ? 'Disconnect' : 'Connect Google Account'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../services/ingestion/sms_sync_service.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
@@ -88,6 +89,7 @@ class DashboardScreen extends StatelessWidget {
                   NetWorthCard(
                     snapshot: snapshot,
                     onAddCash: () => _openAddCashSheet(context),
+                    onSyncSms: () => _syncSms(context),
                     onSyncGmail: () => _syncGmail(context),
                     onTestSandbox: () => _openTestSandbox(context),
                   ),
@@ -137,6 +139,66 @@ class DashboardScreen extends StatelessWidget {
     });
   }
 
+  Future<void> _syncSms(BuildContext context) async {
+    final settings = Provider.of<SettingsController>(context, listen: false);
+    final dashboard = Provider.of<DashboardController>(context, listen: false);
+    final txController = Provider.of<TransactionController>(context, listen: false);
+    final scaffold = ScaffoldMessenger.of(context);
+
+    scaffold.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('Scanning bank SMS messages from inbox...'),
+          ],
+        ),
+        duration: Duration(seconds: 4),
+      ),
+    );
+
+    final result = await settings.syncSmsInbox();
+
+    if (result.status == SmsSyncStatus.permissionDenied) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: const Text('SMS permission denied. Tap to open Settings to allow SMS access.'),
+          backgroundColor: AppColors.ruby,
+          action: SnackBarAction(
+            label: 'Settings',
+            textColor: Colors.white,
+            onPressed: () => settings.openSmsAppSettings(),
+          ),
+        ),
+      );
+    } else if (result.status == SmsSyncStatus.error) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text('SMS sync notice: ${result.errorMessage}'),
+          backgroundColor: AppColors.ruby,
+        ),
+      );
+    } else {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.importedCount > 0
+                ? 'Successfully imported ${result.importedCount} new bank transactions from SMS!'
+                : 'All bank SMS messages are already up to date (0 new found).',
+          ),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+      await dashboard.loadDashboardData();
+      await txController.loadTransactions();
+    }
+  }
+
   Future<void> _syncGmail(BuildContext context) async {
     final settings = Provider.of<SettingsController>(context, listen: false);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
@@ -153,7 +215,7 @@ class DashboardScreen extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               ),
               SizedBox(width: 12),
-              Text('Scanning Gmail for recent transaction confirmations...'),
+              Text('Connecting to Google / Gmail...'),
             ],
           ),
           duration: Duration(seconds: 4),
@@ -176,8 +238,11 @@ class DashboardScreen extends StatelessWidget {
     } catch (e) {
       scaffold.showSnackBar(
         SnackBar(
-          content: Text('Gmail scan notice: $e'),
+          content: Text(
+            'Google Connection Notice: $e\nTip: Use offline "Sync SMS" which requires no Google Cloud configuration!',
+          ),
           backgroundColor: AppColors.surfaceElevated,
+          duration: const Duration(seconds: 6),
         ),
       );
     }

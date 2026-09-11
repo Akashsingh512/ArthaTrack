@@ -6,6 +6,7 @@ import '../../../../services/net_worth/net_worth_calculator.dart';
 class NetWorthCard extends StatelessWidget {
   final NetWorthSnapshot snapshot;
   final VoidCallback onAddCash;
+  final VoidCallback onSyncSms;
   final VoidCallback onSyncGmail;
   final VoidCallback onTestSandbox;
 
@@ -13,6 +14,7 @@ class NetWorthCard extends StatelessWidget {
     super.key,
     required this.snapshot,
     required this.onAddCash,
+    required this.onSyncSms,
     required this.onSyncGmail,
     required this.onTestSandbox,
   });
@@ -162,11 +164,29 @@ class NetWorthCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  onPressed: onSyncSms,
+                  icon: const Icon(Icons.sync, size: 16),
+                  label: const Text('Sync SMS', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emerald,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
                 child: OutlinedButton.icon(
                   onPressed: onAddCash,
-                  icon: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+                  icon: const Icon(Icons.add, size: 15, color: AppColors.textPrimary),
                   label: const Text(
-                    'Add Cash',
+                    'Cash',
                     style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -180,11 +200,12 @@ class NetWorthCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
+                flex: 2,
                 child: OutlinedButton.icon(
                   onPressed: onSyncGmail,
-                  icon: const Icon(Icons.mail_outline, size: 16, color: AppColors.royalBlue),
+                  icon: const Icon(Icons.mail_outline, size: 15, color: AppColors.royalBlue),
                   label: const Text(
-                    'Sync Gmail',
+                    'Gmail',
                     style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -197,22 +218,16 @@ class NetWorthCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onTestSandbox,
-                  icon: const Icon(Icons.science_outlined, size: 16, color: AppColors.aiEngine),
-                  label: const Text(
-                    'Test SMS',
-                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF334155)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              OutlinedButton(
+                onPressed: onTestSandbox,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
+                child: const Icon(Icons.terminal, size: 16, color: AppColors.aiEngine),
               ),
             ],
           ),

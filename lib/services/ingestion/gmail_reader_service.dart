@@ -28,6 +28,7 @@ class GmailReaderService {
 
   GoogleSignInAccount? _currentUser;
   bool _isScanning = false;
+  String? _lastError;
 
   GmailReaderService({
     GoogleSignIn? googleSignIn,
@@ -52,14 +53,17 @@ class GmailReaderService {
   GoogleSignInAccount? get currentUser => _currentUser;
   bool get isSignedIn => _currentUser != null;
   bool get isScanning => _isScanning;
+  String? get lastError => _lastError;
 
   Future<GoogleSignInAccount?> signIn() async {
+    _lastError = null;
     try {
       _currentUser = await _googleSignIn.signIn();
       return _currentUser;
     } catch (e) {
+      _lastError = e.toString();
       print('Google Sign-In Error: $e');
-      return null;
+      rethrow;
     }
   }
 
