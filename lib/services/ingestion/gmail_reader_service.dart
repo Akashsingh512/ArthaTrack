@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../core/constants/indian_banking_constants.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/account_repository.dart';
+import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../parsing/transaction_parser_pipeline.dart';
 
@@ -25,6 +26,7 @@ class GmailReaderService {
   final TransactionParserPipeline _pipeline;
   final TransactionRepository _transactionRepo;
   final AccountRepository _accountRepo;
+  final CategoryRepository _categoryRepo;
 
   GoogleSignInAccount? _currentUser;
   bool _isScanning = false;
@@ -35,6 +37,7 @@ class GmailReaderService {
     TransactionParserPipeline? pipeline,
     TransactionRepository? transactionRepo,
     AccountRepository? accountRepo,
+    CategoryRepository? categoryRepo,
   })  : _googleSignIn = googleSignIn ??
             GoogleSignIn(
               scopes: [
@@ -44,7 +47,8 @@ class GmailReaderService {
             ),
         _pipeline = pipeline ?? TransactionParserPipeline(),
         _transactionRepo = transactionRepo ?? TransactionRepository(),
-        _accountRepo = accountRepo ?? AccountRepository() {
+        _accountRepo = accountRepo ?? AccountRepository(),
+        _categoryRepo = categoryRepo ?? CategoryRepository() {
     _googleSignIn.onCurrentUserChanged.listen((account) {
       _currentUser = account;
     });
@@ -145,13 +149,11 @@ class GmailReaderService {
           }
 
           // 5. Category memory
-          String finalCategory = parsed.category;
-          if (finalCategory.toLowerCase() == 'other') {
-            final rememberedCat = await _transactionRepo.getCategoryForMerchant(parsed.merchant);
-            if (rememberedCat != null) {
-              finalCategory = rememberedCat;
-            }
-          }
+          final rememberedCat = await _categoryRepo.getRememberedCategory(parsed.merchant)
+              ?? await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+          final String finalCategory = (rememberedCat != null && rememberedCat.isNotEmpty)
+              ? rememberedCat
+              : parsed.category;
 
           final tx = TransactionModel.fromParsed(
             parsed: parsed.copyWith(category: finalCategory),

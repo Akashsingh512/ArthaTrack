@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../controllers/category_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../widgets/engine_badge.dart';
@@ -18,20 +19,6 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   final _searchController = TextEditingController();
-
-  final List<String> _categories = [
-    'ALL',
-    'Food',
-    'Groceries',
-    'Travel',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-    'Salary',
-    'Transfer',
-    'Other'
-  ];
 
   @override
   void initState() {
@@ -49,6 +36,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final catController = Provider.of<CategoryController>(context);
+    final filterCategories = ['ALL', ...catController.categories];
+
     return Consumer<TransactionController>(
       builder: (context, controller, child) {
         return Scaffold(
@@ -211,10 +201,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
+                  itemCount: filterCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 6),
                   itemBuilder: (context, index) {
-                    final cat = _categories[index];
+                    final cat = filterCategories[index];
                     final isSelected = (cat == 'ALL' && controller.selectedCategory == null) ||
                         (controller.selectedCategory == cat);
 

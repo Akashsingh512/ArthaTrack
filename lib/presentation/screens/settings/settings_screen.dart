@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../controllers/category_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
+import 'widgets/manage_categories_sheet.dart';
 import 'widgets/raw_sms_test_sandbox.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -87,6 +89,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Data Management & Export Section
                 _buildDataManagementSection(context, settings),
+                const SizedBox(height: 20),
+
+                // Custom Categories Management Section
+                _buildCategoryManagementSection(context),
                 const SizedBox(height: 20),
 
                 // Privacy-First Guarantee Card
@@ -903,6 +909,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCategoryManagementSection(BuildContext context) {
+    return Consumer<CategoryController>(
+      builder: (context, catController, _) {
+        final totalCats = catController.categories.length;
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF334155)),
+          ),
+          color: AppColors.surface,
+          child: InkWell(
+            onTap: () => ManageCategoriesSheet.show(context),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.category, color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Manage Categories',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceElevated,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$totalCats Active',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Add custom categories (e.g. Fitness, Pets, Rent) for transaction tagging and budgeting.',
+                          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

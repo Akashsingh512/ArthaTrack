@@ -201,46 +201,67 @@ class IndianBankingConstants {
       'swiggy', 'zomato', 'starbucks', 'mcdonald', 'mcdonalds', 'domino',
       'dominos', 'kfc', 'burger king', 'subway', 'eatclub', 'faasos',
       'chai point', 'chaayos', 'cafe', 'coffee', 'restaurant', 'barbeque',
-      'haldiram', 'bikanervala', 'pizza', 'bakery', 'sweet', 'dining'
+      'haldiram', 'bikanervala', 'pizza', 'bakery', 'baker', 'sweet', 'sweets',
+      'mithai', 'dining', 'hotel', 'dhaba', 'bhojanalaya', 'tiffin', 'mess',
+      'canteen', 'darshini', 'upahar', 'bhojan', 'caterer', 'caterers', 'biryani',
+      'bawarchi', 'shawarma', 'chaat', 'juice', 'tea', 'chai', 'tapri', 'kitchen',
+      'diner', 'rolls', 'paratha', 'dosa', 'idli', 'snack', 'snacks', 'food court',
+      'bar', 'pub', 'brewery', 'restro', 'treat', 'eats'
     ],
     'Groceries': [
       'zepto', 'blinkit', 'instamart', 'bigbasket', 'dmart', 'd-mart',
       'nature\'s basket', 'grofers', 'bbnow', 'spencer', 'more retail',
-      'dairy', 'milk', 'supermarket', 'kirana', 'fresho', 'country delight'
+      'dairy', 'milk', 'doodh', 'supermarket', 'kirana', 'fresho', 'country delight',
+      'provision', 'general store', 'store', 'bazaar', 'vegetables', 'fruits',
+      'sabzi', 'mandi', 'ration', 'daily needs', 'hypermarket', 'mart'
     ],
     'Travel': [
       'uber', 'ola', 'rapido', 'makemytrip', 'irctc', 'yatra', 'indigo',
       'air india', 'fastag', 'toll', 'metro', 'vistara', 'spicejet',
-      'redbus', 'abhibus', 'fuel', 'petrol', 'diesel', 'hpcl', 'bpcl', 'iocl'
+      'redbus', 'abhibus', 'fuel', 'petrol', 'diesel', 'cng', 'hpcl', 'bpcl', 'iocl',
+      'shell', 'gas station', 'petroleum', 'auto', 'cab', 'taxi', 'parking',
+      'railway', 'bus', 'flight', 'airline', 'cleartrip', 'goibibo', 'namma metro',
+      'delhi metro', 'transport', 'commute'
     ],
     'Shopping': [
       'amazon', 'flipkart', 'myntra', 'ajio', 'nykaa', 'meesho', 'zara',
       'tata cliq', 'croma', 'reliance digital', 'h&m', 'uniqlo', 'decathlon',
-      'lenskart', 'purplle', 'snitch', 'max fashion', 'westside', 'pantaloons'
+      'lenskart', 'purplle', 'snitch', 'max fashion', 'westside', 'pantaloons',
+      'cloth', 'clothes', 'textiles', 'silks', 'garments', 'jewellers', 'jewelers',
+      'jewellery', 'footwear', 'shoes', 'fashion', 'tailor', 'boutique', 'hardware',
+      'mobiles', 'electronics', 'stationery', 'book store', 'books', 'opticals',
+      'watches', 'mall', 'retail', 'fashions', 'apparel'
     ],
     'Bills': [
       'bescom', 'airtel', 'jio', 'vi', 'vodafone', 'electricity', 'water',
       'gas', 'broadband', 'billdesk', 'recharge', 'tata power', 'torrent',
-      'mahavitaran', 'cesc', 'adani electricity', 'piped gas', 'dth', 'tata play'
+      'mahavitaran', 'cesc', 'adani electricity', 'piped gas', 'dth', 'tata play',
+      'postpaid', 'prepaid', 'cylinder', 'indane', 'bharat gas', 'hp gas',
+      'wifi', 'utility', 'power', 'discom', 'cable', 'maintenance'
     ],
     'Entertainment': [
       'netflix', 'spotify', 'bookmyshow', 'prime video', 'hotstar', 'pvr',
       'inox', 'cinepolis', 'sony liv', 'zee5', 'youtube', 'apple music',
-      'gaana', 'jiosaavn', 'steam', 'playstation'
+      'gaana', 'jiosaavn', 'steam', 'playstation', 'cinema', 'theatre',
+      'movie', 'gaming', 'game', 'amusement', 'ticket', 'event', 'club'
     ],
     'Health': [
       'apollo', 'pharmeasy', '1mg', 'tata 1mg', 'netmeds', 'hospital',
       'clinic', 'pharmacy', 'practo', 'medplus', 'diagnostic', 'dr lal',
-      'metropolis', 'max healthcare', 'fortis', 'manipal'
+      'metropolis', 'max healthcare', 'fortis', 'manipal', 'medical', 'chemist',
+      'pharma', 'doctor', 'dr', 'diagnostics', 'pathology', 'dental', 'eyecare',
+      'optical', 'nursing', 'healthcare', 'ayurvedic', 'homeopathy', 'medicos'
     ],
     'Investment': [
       'zerodha', 'groww', 'kuvera', 'angel one', 'upstox', 'mutual fund',
       'sip', 'coin', 'smallcase', 'indmoney', 'etmoney', 'motilal', 'icici direct',
-      'uti', 'sbi mutual', 'hdfc mutual', 'nippon'
+      'uti', 'sbi mutual', 'hdfc mutual', 'nippon', 'stocks', 'shares', 'nse',
+      'bse', 'gold', 'ppf', 'nps', 'fixed deposit'
     ],
     'Salary': [
       'salary', 'payroll', 'stipend', 'bonus', 'salary credit',
-      'infosys', 'tcs', 'wipro', 'hcl', 'cognizant', 'accenture'
+      'infosys', 'tcs', 'wipro', 'hcl', 'cognizant', 'accenture', 'tech mahindra',
+      'capgemini'
     ],
   };
 

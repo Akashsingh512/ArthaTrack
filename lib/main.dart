@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'data/database/app_database.dart';
 import 'presentation/controllers/balance_sheet_controller.dart';
+import 'presentation/controllers/category_controller.dart';
 import 'presentation/controllers/dashboard_controller.dart';
 import 'presentation/controllers/settings_controller.dart';
 import 'presentation/controllers/transaction_controller.dart';
@@ -28,6 +29,7 @@ class ArthaTrackApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionController()),
         ChangeNotifierProvider(create: (_) => BalanceSheetController()),
         ChangeNotifierProvider(create: (_) => SettingsController()),
+        ChangeNotifierProvider(create: (_) => CategoryController()..loadCategories()),
       ],
       child: MaterialApp(
         title: 'ArthaTrack',

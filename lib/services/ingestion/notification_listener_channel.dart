@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/account_repository.dart';
+import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../parsing/transaction_parser_pipeline.dart';
 
@@ -123,13 +124,11 @@ class NotificationListenerChannel {
         ? DateTime.fromMillisecondsSinceEpoch(postTime)
         : DateTime.now();
 
-    String finalCategory = parsed.category;
-    if (finalCategory.toLowerCase() == 'other') {
-      final rememberedCat = await _transactionRepo.getCategoryForMerchant(parsed.merchant);
-      if (rememberedCat != null) {
-        finalCategory = rememberedCat;
-      }
-    }
+    final rememberedCat = await CategoryRepository().getRememberedCategory(parsed.merchant)
+        ?? await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+    final String finalCategory = (rememberedCat != null && rememberedCat.isNotEmpty)
+        ? rememberedCat
+        : parsed.category;
 
     final tx = TransactionModel.fromParsed(
       parsed: parsed.copyWith(category: finalCategory),

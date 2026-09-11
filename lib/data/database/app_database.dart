@@ -8,7 +8,10 @@ import '../models/parsed_transaction.dart';
 import 'tables/accounts_table.dart';
 import 'tables/balance_sheet_table.dart';
 import 'tables/budgets_table.dart';
+import 'tables/categories_table.dart';
+import 'tables/merchant_categories_table.dart';
 import 'tables/transactions_table.dart';
+import '../repositories/category_repository.dart';
 
 class AppDatabase {
   static final AppDatabase instance = AppDatabase._internal();
@@ -426,6 +429,51 @@ class AppDatabase {
         }
       } catch (_) {}
     }
+
+    if (oldVersion < 11) {
+      try {
+        await db.execute(CategoriesTable.createTableQuery);
+        await db.execute(MerchantCategoriesTable.createTableQuery);
+
+        final now = DateTime.now().toIso8601String();
+        for (final cat in CategoryRepository.defaultCategories) {
+          await db.insert(
+            CategoriesTable.tableName,
+            {
+              CategoriesTable.colName: cat,
+              CategoriesTable.colIsDefault: 1,
+              CategoriesTable.colCreatedAt: now,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        }
+
+        // Seed existing known merchants from past transactions into merchant_categories
+        final txRows = await db.query(
+          TransactionsTable.tableName,
+          columns: [TransactionsTable.colMerchant, TransactionsTable.colCategory],
+          where: '${TransactionsTable.colCategory} != ?',
+          whereArgs: ['Other'],
+        );
+        for (final row in txRows) {
+          final m = (row[TransactionsTable.colMerchant] as String? ?? '').trim().toLowerCase();
+          final c = row[TransactionsTable.colCategory] as String? ?? '';
+          if (m.isNotEmpty && m != 'unknown' && m != 'unknown merchant' && c.isNotEmpty) {
+            await db.insert(
+              MerchantCategoriesTable.tableName,
+              {
+                MerchantCategoriesTable.colMerchant: m,
+                MerchantCategoriesTable.colCategory: c,
+                MerchantCategoriesTable.colUpdatedAt: now,
+              },
+              conflictAlgorithm: ConflictAlgorithm.ignore,
+            );
+          }
+        }
+      } catch (e) {
+        print('Migration v11 error: $e');
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -433,6 +481,8 @@ class AppDatabase {
     await db.execute(BalanceSheetTable.createTableQuery);
     await db.execute(TransactionsTable.createTableQuery);
     await db.execute(BudgetsTable.createTableQuery);
+    await db.execute(CategoriesTable.createTableQuery);
+    await db.execute(MerchantCategoriesTable.createTableQuery);
 
     await _seedInitialData(db);
   }
@@ -442,6 +492,7 @@ class AppDatabase {
   /// - Zero demo assets
   /// - Zero demo debts
   /// - Zero demo transactions
+  /// - Standard default categories
   Future<void> _seedInitialData(Database db) async {
     final now = DateTime.now().toIso8601String();
 
@@ -460,7 +511,18 @@ class AppDatabase {
       AccountsTable.colUpdatedAt: now,
     });
 
-    // Zero demo assets, zero demo debts, zero demo transactions!
+    // 2. Seed default categories
+    for (final cat in CategoryRepository.defaultCategories) {
+      await db.insert(
+        CategoriesTable.tableName,
+        {
+          CategoriesTable.colName: cat,
+          CategoriesTable.colIsDefault: 1,
+          CategoriesTable.colCreatedAt: now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
   }
 
   Future<void> close() async {

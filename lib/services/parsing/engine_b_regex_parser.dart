@@ -332,21 +332,70 @@ class EngineBRegexParser {
   }
 
   static String _inferCategory(String lowerText, String merchant) {
-    final lowerMerchant = merchant.toLowerCase();
+    final lowerMerchant = merchant.toLowerCase().trim();
 
+    // 1. Check merchant name first with category keywords (highest accuracy)
+    if (lowerMerchant.isNotEmpty && lowerMerchant != 'unknown' && lowerMerchant != 'unknown merchant') {
+      for (final entry in IndianBankingConstants.categoryKeywords.entries) {
+        final category = entry.key;
+        final keywords = entry.value;
+
+        for (final kw in keywords) {
+          final regex = RegExp(r'\b' + RegExp.escape(kw) + r'\b', caseSensitive: false);
+          if (regex.hasMatch(lowerMerchant)) {
+            return category;
+          }
+        }
+      }
+    }
+
+    // 2. Check full SMS text with category keywords
     for (final entry in IndianBankingConstants.categoryKeywords.entries) {
       final category = entry.key;
       final keywords = entry.value;
 
       for (final kw in keywords) {
         final regex = RegExp(r'\b' + RegExp.escape(kw) + r'\b', caseSensitive: false);
-        if (regex.hasMatch(lowerMerchant) || regex.hasMatch(lowerText)) {
+        if (regex.hasMatch(lowerText)) {
           return category;
         }
       }
     }
 
+    // 3. Person-to-Person (P2P) transfer heuristic:
+    // Individual names (e.g. Adusumalli Nikhil) without commercial suffixes are Transfers!
+    if (_isPersonName(merchant)) {
+      return 'Transfer';
+    }
+
     return 'Other';
+  }
+
+  static bool _isPersonName(String merchant) {
+    final trimmed = merchant.trim();
+    if (trimmed.isEmpty || trimmed == 'Unknown' || trimmed == 'Unknown Merchant') return false;
+    final lower = trimmed.toLowerCase();
+
+    // Not a person if it contains commercial/store/utility keywords
+    final businessWords = RegExp(
+      r'\b(?:store|shop|mart|supermarket|hotel|cafe|restaurant|dhaba|baker|bakery|'
+      r'enterprise|enterprises|associates|agency|agencies|solutions|infotech|'
+      r'pharma|pharmacy|chemist|medical|hospital|clinic|diagnostics|dental|'
+      r'petrol|fuel|cng|service|services|centre|center|point|bazaar|sweets|'
+      r'pvt|ltd|limited|corp|corporation|bank|cards|telecom|broadband|recharge|'
+      r'club|bar|hub|station|plaza|market|bhojan|canteen|paratha|dosa|fast\s*food)\b',
+      caseSensitive: false,
+    );
+    if (businessWords.hasMatch(lower)) return false;
+
+    // Check if it's 2 or 3 words containing only letters/dots (e.g. "Adusumalli Nikhil", "Ramesh Kumar")
+    final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.length >= 2 && words.length <= 4) {
+      final isAllAlpha = words.every((w) => RegExp(r'^[a-zA-Z\.]+$').hasMatch(w));
+      if (isAllAlpha) return true;
+    }
+
+    return false;
   }
 
   static String _capitalizeWords(String str) {

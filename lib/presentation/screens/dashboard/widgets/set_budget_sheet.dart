@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/budget_model.dart';
+import '../../../controllers/category_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
 
 class SetBudgetSheet extends StatefulWidget {
@@ -24,24 +25,12 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
   late TextEditingController _amountController;
   late String _selectedCategory;
 
-  final List<String> _categories = [
-    'Food',
-    'Groceries',
-    'Travel',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-    'Investment',
-    'Other',
-  ];
-
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.existingBudget?.category ??
         widget.initialCategory ??
-        _categories.first;
+        'Food';
     _amountController = TextEditingController(
       text: widget.existingBudget != null
           ? widget.existingBudget!.monthlyLimit.toStringAsFixed(0)
@@ -106,6 +95,13 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.existingBudget != null;
+    final catController = Provider.of<CategoryController>(context);
+    final availableCategories = catController.categories
+        .where((c) => c != 'Salary' && c != 'Transfer')
+        .toList();
+    if (!availableCategories.contains(_selectedCategory)) {
+      availableCategories.add(_selectedCategory);
+    }
 
     return Container(
       padding: EdgeInsets.only(
@@ -192,7 +188,7 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
                     isExpanded: true,
                     dropdownColor: AppColors.surface,
                     style: const TextStyle(color: Colors.white, fontSize: 14),
-                    items: _categories.map((cat) {
+                    items: availableCategories.map((cat) {
                       return DropdownMenuItem<String>(
                         value: cat,
                         child: Row(

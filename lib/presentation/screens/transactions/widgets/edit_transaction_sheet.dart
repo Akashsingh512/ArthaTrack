@@ -6,6 +6,8 @@ import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/account_model.dart';
 import '../../../../data/models/transaction_model.dart';
 import '../../../../data/repositories/account_repository.dart';
+import '../../../../data/repositories/category_repository.dart';
+import '../../../controllers/category_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
 import '../../../controllers/transaction_controller.dart';
 
@@ -34,20 +36,6 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   bool _isCustomAccount = false;
   bool _showRawText = false;
 
-  final List<String> _categories = [
-    'Food',
-    'Groceries',
-    'Travel',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-    'Investment',
-    'Salary',
-    'Transfer',
-    'Other',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -71,7 +59,12 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   @override
   Widget build(BuildContext context) {
     final txController = Provider.of<TransactionController>(context);
+    final catController = Provider.of<CategoryController>(context);
     final accounts = txController.accounts;
+
+    final availableCategories = catController.categories.contains(_category)
+        ? catController.categories
+        : [...catController.categories, _category];
 
     // Ensure selected account is valid
     if (_selectedAccountId != null &&
@@ -361,12 +354,12 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                 height: 40,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
+                  itemCount: availableCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 6),
                   itemBuilder: (context, index) {
-                    final cat = _categories[index];
+                    final cat = availableCategories[index];
                     final isSelected = _category == cat;
-                    final catColor = AppColors.categoryColors[cat] ?? AppColors.textMuted;
+                    final catColor = AppColors.categoryColors[cat] ?? AppColors.primary;
 
                     return ChoiceChip(
                       label: Text(cat, style: const TextStyle(fontSize: 12)),
@@ -659,6 +652,9 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       previousAccountId: widget.transaction.accountId,
       previousType: widget.transaction.type,
     );
+
+    // Save merchant-to-category rule in SQLite memory so future transactions are auto-tagged!
+    await CategoryRepository().rememberMerchantCategory(updatedTx.merchant, updatedTx.category);
 
     await dashboardController.loadDashboardData();
 

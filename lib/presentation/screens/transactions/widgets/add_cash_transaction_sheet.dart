@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../controllers/category_controller.dart';
 import '../../../controllers/transaction_controller.dart';
 
 class AddCashTransactionSheet extends StatefulWidget {
@@ -20,18 +21,6 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
   int? _selectedAccountId;
   DateTime _selectedDate = DateTime.now();
 
-  final List<String> _categories = [
-    'Food',
-    'Groceries',
-    'Travel',
-    'Shopping',
-    'Bills',
-    'Entertainment',
-    'Health',
-    'Salary',
-    'Other'
-  ];
-
   @override
   void dispose() {
     _amountController.dispose();
@@ -42,7 +31,12 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
   @override
   Widget build(BuildContext context) {
     final txController = Provider.of<TransactionController>(context);
+    final catController = Provider.of<CategoryController>(context);
     final accounts = txController.accounts;
+
+    final availableCategories = catController.categories.contains(_category)
+        ? catController.categories
+        : [...catController.categories, _category];
 
     if (_selectedAccountId == null && accounts.isNotEmpty) {
       // Default to CASH account if available
@@ -207,7 +201,7 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                 value: _category,
                 decoration: const InputDecoration(labelText: 'Category'),
                 dropdownColor: AppColors.surfaceElevated,
-                items: _categories.map((c) {
+                items: availableCategories.map((c) {
                   return DropdownMenuItem(
                     value: c,
                     child: Row(
