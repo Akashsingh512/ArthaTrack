@@ -10,6 +10,11 @@ class EngineBRegexParser {
     final text = rawText.trim();
     final lower = text.toLowerCase();
 
+    // 0. STRICT SECURITY GUARD: Never parse or store OTPs or verification codes
+    if (IndianBankingConstants.otpBlocklistRegex.hasMatch(text)) {
+      return null;
+    }
+
     // 1. Determine Type: Expense vs Income
     TransactionType type = TransactionType.EXPENSE;
     final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);

@@ -27,6 +27,12 @@ class IndianBankingConstants {
     'PAYTMB': 'Paytm Payments Bank',
   };
 
+  // STRICT SECURITY SHIELD: Unconditional OTP and Authentication Filter
+  static final RegExp otpBlocklistRegex = RegExp(
+    r'\b(otp|one[\s\-]time\s+password|verification\s+code|security\s+code|login\s+code|passcode|secret\s+code|auth\s+code|authentication\s+code|do\s+not\s+share|never\s+share|valid\s+for\s+\d+\s+min)\b',
+    caseSensitive: false,
+  );
+
   // Regular Expression Patterns Tailored for Indian SMS and Push Notifications
   // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "₹1,24,500.00", "₹ 200"
   static final RegExp amountRegex = RegExp(

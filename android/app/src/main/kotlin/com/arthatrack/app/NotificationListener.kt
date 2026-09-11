@@ -46,6 +46,27 @@ class NotificationListener : NotificationListenerService() {
             "debited", "credited", "spent", "withdrawn", "paid",
             "received", "₹", "inr", "rs.", "bal:", "avl bal", "balance"
         )
+
+        // STRICT SECURITY GUARD: Unconditional blocklist for any OTP, 2FA, or verification messages
+        val OTP_BLOCKLIST_KEYWORDS = listOf(
+            "otp",
+            "one time password",
+            "one-time password",
+            "verification code",
+            "verification password",
+            "security code",
+            "auth code",
+            "authentication code",
+            "login code",
+            "passcode",
+            "secret code",
+            "do not share",
+            "never share",
+            "valid for",
+            "use code",
+            "confirmation code",
+            "is your code"
+        )
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -61,7 +82,13 @@ class NotificationListener : NotificationListenerService() {
 
         val combinedContent = "$title $text $bigText $subText".lowercase()
 
-        // Check if package is in target banking/UPI apps OR contains banking keywords
+        // 1. STRICT SECURITY SHIELD: If notification contains ANY OTP or authentication token, DISCARD IMMEDIATELY!
+        val containsOtp = OTP_BLOCKLIST_KEYWORDS.any { combinedContent.contains(it) }
+        if (containsOtp) {
+            return
+        }
+
+        // 2. Check if package is in target banking/UPI apps OR contains financial transaction keywords
         val isTargetApp = TARGET_PACKAGES.contains(pkgName)
         val hasBankingKeywords = BANKING_KEYWORDS.any { combinedContent.contains(it) }
 

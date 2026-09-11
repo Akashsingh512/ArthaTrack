@@ -1,3 +1,4 @@
+import '../../core/constants/indian_banking_constants.dart';
 import '../../data/models/parsed_transaction.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import 'engine_a_ai_parser.dart';
@@ -12,6 +13,11 @@ class TransactionParserPipeline {
   /// Orchestrates parsing with Engine A (Primary BYOK AI) and Engine B (Fallback Offline Regex)
   Future<ParsedTransaction?> processText(String rawText, {String? packageName}) async {
     if (rawText.trim().isEmpty) return null;
+
+    // 0. ABSOLUTE SECURITY SHIELD: Never parse or transmit any OTP or authentication message
+    if (IndianBankingConstants.otpBlocklistRegex.hasMatch(rawText)) {
+      return null;
+    }
 
     final hasApiKey = await _secureStorage.hasActiveApiKey();
 

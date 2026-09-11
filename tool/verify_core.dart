@@ -125,15 +125,19 @@ void main() {
     axis != null ? 'Parsed: ${axis.toMap()}' : 'Null result',
   );
 
-  // Test Non-financial OTP rejection
-  final otp = EngineBRegexParser.parse(
-    'Your login OTP is 481920. Do not share it with anyone.',
-  );
-  assertTest(
-    'Non-financial OTP rejection',
-    otp == null,
-    otp != null ? 'Unexpectedly parsed: ${otp.toMap()}' : null,
-  );
+  // Test Non-financial and Bank OTP rejections (CRITICAL SECURITY)
+  print('\n--- Testing Security Guard: OTP & Authentication Rejection ---');
+  final otp1 = EngineBRegexParser.parse('Your login OTP is 481920. Do not share it with anyone.');
+  assertTest('Standard OTP rejection', otp1 == null, 'Unexpectedly parsed: ${otp1?.toMap()}');
+
+  final otp2 = EngineBRegexParser.parse('Your OTP for Txn of INR 500.00 at Swiggy is 481920. Do not share with anyone.');
+  assertTest('Bank transaction OTP rejection', otp2 == null, 'Unexpectedly parsed: ${otp2?.toMap()}');
+
+  final otp3 = EngineBRegexParser.parse('SBI: 839201 is your OTP for payment of Rs 1,200.00. Valid for 5 mins.');
+  assertTest('SBI valid for 5 min OTP rejection', otp3 == null, 'Unexpectedly parsed: ${otp3?.toMap()}');
+
+  final otp4 = EngineBRegexParser.parse('HDFC Bank: Never share your secret code. Verification code is 192837.');
+  assertTest('Verification code rejection', otp4 == null, 'Unexpectedly parsed: ${otp4?.toMap()}');
 
   // 3. Net Worth Calculator Tests
   print('\n--- Testing NetWorthCalculator ---');
