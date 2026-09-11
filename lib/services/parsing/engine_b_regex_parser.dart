@@ -158,28 +158,81 @@ class EngineBRegexParser {
     );
   }
 
+  /// Standalone helper to re-extract merchant name from raw SMS text
+  static String? extractMerchantOnly(String rawText, TransactionType type) {
+    final lower = rawText.toLowerCase();
+    final res = _extractMerchant(rawText, lower, null, type);
+    if (res == 'Unknown Merchant' || res.isEmpty) return null;
+    return res;
+  }
+
   static String _extractMerchant(String originalText, String lower, String? packageName, TransactionType type) {
-    // 1. Prioritize explicit payee/merchant extraction based on transaction type
+    // 0. Remove dispute / fraud / card block footer so numbers like 919951860002 are never treated as payees
+    final cleanedText = originalText.replaceAll(IndianBankingConstants.disputeFooterRegex, '').trim();
+
+    // 1. Multi-line Card SMS check (e.g. Axis Bank card SMS with standalone merchant line)
+    if (cleanedText.contains('\n')) {
+      final lines = cleanedText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      for (final line in lines) {
+        final lLow = line.toLowerCase();
+        // Skip spent/amount lines
+        if (RegExp(r'\b(?:spent|debited|credited|paid|withdrawn|transaction|charged|deducted)\b').hasMatch(lLow) ||
+            RegExp(r'(?:inr|rs|₹)\s?[\d,]+').hasMatch(lLow)) {
+          continue;
+        }
+        // Skip card/bank/account lines
+        if (RegExp(r'\b(?:card|a\/c|acct|account|bank)\b').hasMatch(lLow)) {
+          continue;
+        }
+        // Skip timestamp / date lines
+        if (RegExp(r'\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b').hasMatch(lLow)) {
+          continue;
+        }
+        // Skip balance / limit lines
+        if (RegExp(r'\b(?:avl|bal|balance|limit|total)\b').hasMatch(lLow)) {
+          continue;
+        }
+        // Skip security / dispute / helpdesk lines
+        if (RegExp(r'\b(?:not\s+you|dispute|block|call|report|forward|helpdesk)\b').hasMatch(lLow)) {
+          continue;
+        }
+        final candidate = _cleanMerchantString(line);
+        if (candidate != null) {
+          return _capitalizeWords(candidate);
+        }
+      }
+    }
+
+    // 2. Inline Card SMS pattern (e.g. "17:34:28 IST SRI VENKATE Avl Limit: ...")
+    final cardMatch = IndianBankingConstants.cardMerchantRegex.firstMatch(cleanedText);
+    if (cardMatch != null && cardMatch.groupCount >= 1) {
+      final candidate = _cleanMerchantString(cardMatch.group(1));
+      if (candidate != null) {
+        return _capitalizeWords(candidate);
+      }
+    }
+
+    // 3. Prioritize explicit payee/merchant extraction based on transaction type
     final primaryRegex = type == TransactionType.EXPENSE
         ? IndianBankingConstants.expenseMerchantRegex
         : IndianBankingConstants.incomeMerchantRegex;
 
-    for (final match in primaryRegex.allMatches(originalText)) {
-      final candidate = _cleanMerchantCandidate(match);
+    for (final match in primaryRegex.allMatches(cleanedText)) {
+      final candidate = _cleanMerchantMatch(match);
       if (candidate != null) {
         return _capitalizeWords(candidate);
       }
     }
 
-    // Fallback to general vpaOrMerchantRegex if primary regex didn't match a valid payee
-    for (final match in IndianBankingConstants.vpaOrMerchantRegex.allMatches(originalText)) {
-      final candidate = _cleanMerchantCandidate(match);
+    // 4. Fallback to general vpaOrMerchantRegex if primary regex didn't match a valid payee
+    for (final match in IndianBankingConstants.vpaOrMerchantRegex.allMatches(cleanedText)) {
+      final candidate = _cleanMerchantMatch(match);
       if (candidate != null) {
         return _capitalizeWords(candidate);
       }
     }
 
-    // 2. Check known popular Indian merchants using WHOLE-WORD boundaries (\b)
+    // 5. Check known popular Indian merchants using WHOLE-WORD boundaries (\b)
     // Never use substring matching which falsely matches "via" as "vi"
     for (final entry in IndianBankingConstants.categoryKeywords.entries) {
       for (final keyword in entry.value) {
@@ -193,22 +246,33 @@ class EngineBRegexParser {
     return 'Unknown Merchant';
   }
 
-  static String? _cleanMerchantCandidate(RegExpMatch match) {
-    if (match.groupCount < 1) return null;
-    var candidate = match.group(1)?.trim();
-    if (candidate == null || candidate.isEmpty) return null;
+  static String? _cleanMerchantString(String? rawCandidate) {
+    if (rawCandidate == null) return null;
+    var candidate = rawCandidate.trim();
+    if (candidate.isEmpty) return null;
     final lowerCand = candidate.toLowerCase();
     if (lowerCand.contains('your') ||
         lowerCand.contains('a/c') ||
         lowerCand.contains('account') ||
-        lowerCand.contains('bank')) {
+        lowerCand.contains('bank') ||
+        lowerCand.contains('card')) {
       return null;
     }
-    // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute"
+    // Reject purely numeric strings, shortcodes, or phone numbers (e.g. 919951860002, 18002584455, 7876)
+    if (RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(candidate) ||
+        RegExp(r'^\d+$').hasMatch(candidate)) {
+      return null;
+    }
+    // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute", "trxn"
     candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
     // Remove trailing punctuation
     candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
     return (candidate.isNotEmpty && candidate.length > 1) ? candidate : null;
+  }
+
+  static String? _cleanMerchantMatch(RegExpMatch match) {
+    if (match.groupCount < 1) return null;
+    return _cleanMerchantString(match.group(1));
   }
 
   static String _inferCategory(String lowerText, String merchant) {

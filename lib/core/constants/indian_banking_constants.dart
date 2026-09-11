@@ -124,6 +124,20 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
+  // Fraud, dispute, and card block security footer regex
+  static final RegExp disputeFooterRegex = RegExp(
+    r'(?:\b(?:not\s+you\??|if\s+(?:this\s+was\s+|it\s+was\s+)?not\s+(?:done\s+by\s+|authorized\s+by\s+)?you\b|if\s+not\s+authorized|to\s+dispute|dispute\??|sms\s+block|call\s+(?:1800|1860|\+?91)|forward\s+this\s+sms\s+to|report\s+(?:fraud|at|to)|helpdesk)\b).*$',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  // Bank Card inline merchant regex (e.g. "17:34:28 IST SRI VENKATE Avl Limit: ...")
+  static final RegExp cardMerchantRegex = RegExp(
+    r'(?:\d{2}[:\.]\d{2}(?:[:\.]\d{2})?\s*(?:IST|AM|PM)?\s+)(.+?)(?:\s+(?:Avl\s+(?:Limit|Bal|Balance)|Total\s+Bal|Bal|Limit|Not\s+you|Ref|UPI|\n|$))',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
   // 5. Account Number Extraction (e.g. "a/c XX1234" or "A/C *5678")
   static final RegExp accountSnippetRegex = RegExp(
     r'(?:a\/c|acct|account|card)\s*(?:no\.?)?\s*([xX\*]*\d{3,4})',

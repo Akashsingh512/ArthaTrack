@@ -1,4 +1,5 @@
 import '../../core/constants/indian_banking_constants.dart';
+import '../../services/parsing/engine_b_regex_parser.dart';
 import 'parsed_transaction.dart';
 
 class TransactionModel {
@@ -117,6 +118,20 @@ class TransactionModel {
               }
             }
           }
+        }
+      }
+    }
+
+    // Auto-heal phone number / helpdesk merchant mistakenly parsed from dispute footers (e.g. 919951860002)
+    if ((RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(merch.trim()) || RegExp(r'^\d+$').hasMatch(merch.trim())) && raw.isNotEmpty) {
+      final tType = (map['type'] as String? ?? 'EXPENSE').toUpperCase() == 'INCOME'
+          ? TransactionType.INCOME
+          : TransactionType.EXPENSE;
+      final healed = EngineBRegexParser.extractMerchantOnly(raw, tType);
+      if (healed != null && healed.isNotEmpty && healed != 'Unknown Merchant') {
+        merch = healed;
+        if (cat.toLowerCase() == 'travel' || cat.toLowerCase() == 'bills') {
+          cat = 'Other';
         }
       }
     }

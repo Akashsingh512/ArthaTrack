@@ -3,6 +3,8 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/indian_banking_constants.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../services/parsing/engine_b_regex_parser.dart';
+import '../models/parsed_transaction.dart';
 import 'tables/accounts_table.dart';
 import 'tables/balance_sheet_table.dart';
 import 'tables/budgets_table.dart';
@@ -215,6 +217,36 @@ class AppDatabase {
                     ${AccountsTable.colUpdatedAt} = ?
                 WHERE ${AccountsTable.colId} = ?
               ''', [amount, DateTime.now().toIso8601String(), accId]);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    if (oldVersion < 9) {
+      try {
+        // Heal transactions where merchant was mistakenly recorded as a phone number or dispute footer number
+        final rows = await db.query(TransactionsTable.tableName);
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final id = row[TransactionsTable.colId] as int?;
+          final currentMerchant = row[TransactionsTable.colMerchant] as String? ?? '';
+          final typeStr = row[TransactionsTable.colType] as String? ?? 'EXPENSE';
+
+          if (id == null || rawText.isEmpty) continue;
+
+          if (RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(currentMerchant.trim()) ||
+              RegExp(r'^\d+$').hasMatch(currentMerchant.trim())) {
+            final tType = typeStr.toUpperCase() == 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE;
+            final healed = EngineBRegexParser.extractMerchantOnly(rawText, tType);
+            if (healed != null && healed.isNotEmpty && healed != 'Unknown Merchant') {
+              await db.update(
+                TransactionsTable.tableName,
+                {
+                  TransactionsTable.colMerchant: healed,
+                },
+                where: '${TransactionsTable.colId} = ?',
+                whereArgs: [id],
+              );
             }
           }
         }
