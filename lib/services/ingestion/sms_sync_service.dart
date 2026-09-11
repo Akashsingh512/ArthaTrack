@@ -71,7 +71,7 @@ class SmsSyncService {
   }
 
   /// Scans recent bank and UPI SMS messages from inbox and imports valid financial transactions
-  Future<SmsSyncResult> syncInbox({int limit = 2000}) async {
+  Future<SmsSyncResult> syncInbox({int limit = 5000}) async {
     if (_isSyncing) {
       return const SmsSyncResult(
         status: SmsSyncStatus.error,
@@ -147,7 +147,7 @@ class SmsSyncService {
         }
 
         // 4. Parse via Dual-Engine (AI or Local Regex Heuristics)
-        final parsed = await _pipeline.processText(body);
+        final parsed = await _pipeline.processText(body, packageName: sender);
         if (parsed != null && parsed.amount > 0.0) {
           DateTime? txDate;
           if (dateMs is int && dateMs > 0) {

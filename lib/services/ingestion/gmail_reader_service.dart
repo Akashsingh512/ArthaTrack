@@ -121,18 +121,49 @@ class GmailReaderService {
         final rawContent = _extractMessageText(fullMsg);
         if (rawContent.trim().isEmpty) continue;
 
-        // Prevent duplicate processing
-        final isDuplicate = await _transactionRepo.hasDuplicateRawText(rawContent);
-        if (isDuplicate) continue;
+        // 1. Security & Promotional Shield: Drop OTPs, promotions, and bill receipt acknowledgments
+        if (IndianBankingConstants.otpBlocklistRegex.hasMatch(rawContent)) continue;
+        if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(rawContent)) continue;
 
-        // Parse through pipeline
+        // 2. Prevent duplicate processing by raw email content
+        final hasRawDup = await _transactionRepo.hasDuplicateRawText(rawContent);
+        if (hasRawDup) continue;
+
+        // 3. Parse through dual-engine pipeline
         final parsed = await _pipeline.processText(rawContent);
         if (parsed != null && parsed.amount > 0.0) {
+          final internalDateMs = int.tryParse(fullMsg.internalDate ?? '');
+          final emailDate = (internalDateMs != null && internalDateMs > 0)
+              ? DateTime.fromMillisecondsSinceEpoch(internalDateMs)
+              : DateTime.now();
+
+          // 4. Resolve payment source / bank account
+          int resolvedAccountId = accountId;
+          if (parsed.paymentSource != null && parsed.paymentSource!.trim().isNotEmpty) {
+            final acc = await _accountRepo.getOrCreateAccountByName(parsed.paymentSource!.trim());
+            resolvedAccountId = acc.id ?? accountId;
+          }
+
+          // 5. Category memory
+          String finalCategory = parsed.category;
+          if (finalCategory.toLowerCase() == 'other') {
+            final rememberedCat = await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+            if (rememberedCat != null) {
+              finalCategory = rememberedCat;
+            }
+          }
+
           final tx = TransactionModel.fromParsed(
-            parsed: parsed,
-            accountId: accountId,
+            parsed: parsed.copyWith(category: finalCategory),
+            accountId: resolvedAccountId,
             source: 'EMAIL',
+            date: emailDate,
           );
+
+          // 6. Cross-Channel Smart Deduplication (matches against SMS and Notifications by Ref ID, Amount, Merchant, Date)
+          final isDup = await _transactionRepo.isDuplicate(tx);
+          if (isDup) continue;
+
           await _transactionRepo.insertTransaction(tx);
           importedCount++;
         }

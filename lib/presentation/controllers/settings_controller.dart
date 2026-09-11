@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../data/repositories/transaction_repository.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../services/ingestion/gmail_reader_service.dart';
 import '../../services/ingestion/notification_listener_channel.dart';
@@ -19,6 +22,7 @@ class SettingsController extends ChangeNotifier {
   bool _isNotificationPermissionGranted = false;
   bool _isSmsPermissionGranted = false;
   bool _isSmsSyncing = false;
+  bool _isExporting = false;
   bool _isTestingKey = false;
   String? _keyTestStatus; // 'SUCCESS', 'FAILED', or null
 
@@ -39,6 +43,7 @@ class SettingsController extends ChangeNotifier {
   bool get isNotificationPermissionGranted => _isNotificationPermissionGranted;
   bool get isSmsPermissionGranted => _isSmsPermissionGranted;
   bool get isSmsSyncing => _isSmsSyncing;
+  bool get isExporting => _isExporting;
   bool get isTestingKey => _isTestingKey;
   String? get keyTestStatus => _keyTestStatus;
   GmailReaderService get gmailService => _gmailService;
@@ -178,7 +183,7 @@ class SettingsController extends ChangeNotifier {
     await refreshSmsPermission();
   }
 
-  Future<SmsSyncResult> syncSmsInbox({int limit = 2000}) async {
+  Future<SmsSyncResult> syncSmsInbox({int limit = 5000}) async {
     _isSmsSyncing = true;
     notifyListeners();
 
@@ -198,5 +203,52 @@ class SettingsController extends ChangeNotifier {
         errorMessage: e.toString(),
       );
     }
+  }
+
+  Future<String?> exportTransactionsCsv() async {
+    _isExporting = true;
+    notifyListeners();
+
+    try {
+      final txRepo = TransactionRepository();
+      final transactions = await txRepo.getAllTransactions();
+
+      final buffer = StringBuffer();
+      // CSV Header
+      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+
+      for (final tx in transactions) {
+        final row = [
+          tx.id?.toString() ?? '',
+          _escapeCsv(tx.date),
+          _escapeCsv(tx.type),
+          tx.amount.toStringAsFixed(2),
+          _escapeCsv(tx.category),
+          _escapeCsv(tx.merchant),
+          _escapeCsv(tx.displayPaymentSource),
+          _escapeCsv(tx.referenceNumber ?? ''),
+          _escapeCsv(tx.source),
+        ];
+        buffer.writeln(row.join(','));
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/arthatrack_transactions.csv');
+      await file.writeAsString(buffer.toString());
+      return file.path;
+    } catch (e) {
+      print('CSV Export error: $e');
+      return null;
+    } finally {
+      _isExporting = false;
+      notifyListeners();
+    }
+  }
+
+  String _escapeCsv(String val) {
+    if (val.contains(',') || val.contains('"') || val.contains('\n') || val.contains('\r')) {
+      return '"${val.replaceAll('"', '""')}"';
+    }
+    return val;
   }
 }

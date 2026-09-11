@@ -20,6 +20,13 @@ class EngineBRegexParser {
       return null;
     }
 
+    // 0.2 FAILED & DECLINED STATUS GUARD: Discard failed, declined, or cancelled transactions
+    if (RegExp(r'\b(?:failed|declined|unsuccessful|cancelled|timed\s*out)\b', caseSensitive: false).hasMatch(lower)) {
+      if (!lower.contains('auto-reversed') && !lower.contains('refunded') && !lower.contains('reversed to') && !lower.contains('refund')) {
+        return null;
+      }
+    }
+
     // 1. Determine Type: Expense vs Income
     final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
     final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(lower);
@@ -283,6 +290,16 @@ class EngineBRegexParser {
     if (rawCandidate == null) return null;
     var candidate = rawCandidate.trim();
     if (candidate.isEmpty) return null;
+
+    // Strip UPI handle suffix (e.g. swiggy@hdfcbank -> swiggy, seti.momos@paytm -> seti momos)
+    if (candidate.contains('@')) {
+      final parts = candidate.split('@');
+      final prefix = parts[0].trim();
+      if (!RegExp(r'^\+?[\d\s\-]+$').hasMatch(prefix) && prefix.length > 2) {
+        candidate = prefix.replaceAll(RegExp(r'[\._\-]'), ' ').trim();
+      }
+    }
+
     final lowerCand = candidate.toLowerCase();
     if (lowerCand.contains('your') ||
         lowerCand.contains('a/c') ||

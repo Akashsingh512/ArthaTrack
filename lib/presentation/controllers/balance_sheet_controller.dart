@@ -44,7 +44,9 @@ class BalanceSheetController extends ChangeNotifier {
 
       _totalLiquid = await _accountRepo.getTotalLiquidBalance();
       _totalAssets = await _balanceSheetRepo.getTotalAssets();
-      _totalDebts = await _balanceSheetRepo.getTotalDebts();
+      final manualDebts = await _balanceSheetRepo.getTotalDebts();
+      final ccDues = await _accountRepo.getCreditCardDues();
+      _totalDebts = manualDebts + ccDues;
     } catch (e) {
       print('Error loading balance sheet: $e');
     } finally {

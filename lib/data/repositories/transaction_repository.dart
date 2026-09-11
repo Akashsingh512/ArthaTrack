@@ -190,7 +190,8 @@ class TransactionRepository {
         final oldIsExpense = oldType.toUpperCase() == 'EXPENSE';
         final newIsExpense = updatedTx.isExpense;
 
-        if (oldAccId != updatedTx.accountId || oldIsExpense != newIsExpense) {
+        final amountChanged = (existing.amount - updatedTx.amount).abs() > 0.001;
+        if (oldAccId != updatedTx.accountId || oldIsExpense != newIsExpense || amountChanged) {
           // Revert old transaction effect on old account
           final revertDelta = oldIsExpense ? existing.amount : -existing.amount;
           await txn.rawUpdate('''

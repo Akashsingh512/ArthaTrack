@@ -107,8 +107,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "readInboxSms" -> {
-                    val rawLimit = call.argument<Int>("limit") ?: 2000
-                    val limit = if (rawLimit <= 0) 0 else rawLimit.coerceIn(1, 10000)
+                    val rawLimit = call.argument<Int>("limit") ?: 5000
+                    val limit = if (rawLimit <= 0) 0 else rawLimit.coerceIn(1, 50000)
                     try {
                         val messages = readSmsMessages(limit)
                         result.success(messages)

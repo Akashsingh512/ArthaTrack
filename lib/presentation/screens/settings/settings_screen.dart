@@ -85,6 +85,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSandboxCard(context),
                 const SizedBox(height: 20),
 
+                // Data Management & Export Section
+                _buildDataManagementSection(context, settings),
+                const SizedBox(height: 20),
+
                 // Privacy-First Guarantee Card
                 _buildPrivacyNoticeCard(),
                 const SizedBox(height: 32),
@@ -393,105 +397,135 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: granted ? AppColors.surfaceElevated : AppColors.emerald,
-                      foregroundColor: granted ? AppColors.textPrimary : Colors.black,
-                    ),
-                    onPressed: () async {
-                      if (!granted) {
-                        final res = await settings.requestSmsPermission();
-                        if (!res && context.mounted) {
-                          settings.openSmsAppSettings();
-                        }
-                      } else {
-                        await settings.openSmsAppSettings();
-                      }
-                    },
-                    icon: Icon(granted ? Icons.check_circle : Icons.lock_open, size: 18),
-                    label: Text(
-                      granted ? 'Permission Granted' : 'Grant SMS Permission',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
+            if (!granted)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.emerald,
                     foregroundColor: Colors.black,
                   ),
-                  onPressed: isSyncing
-                      ? null
-                      : () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final dashboard = Provider.of<DashboardController>(context, listen: false);
-                          final txController = Provider.of<TransactionController>(context, listen: false);
-
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Scanning bank SMS inbox...'),
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-
-                          final result = await settings.syncSmsInbox();
-
-                          if (result.status == SmsSyncStatus.permissionDenied) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: const Text('SMS permission denied. Tap to open Settings.'),
-                                backgroundColor: AppColors.ruby,
-                                action: SnackBarAction(
-                                  label: 'Settings',
-                                  textColor: Colors.white,
-                                  onPressed: () => settings.openSmsAppSettings(),
-                                ),
-                              ),
-                            );
-                          } else if (result.status == SmsSyncStatus.error) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text('SMS sync error: ${result.errorMessage}'),
-                                backgroundColor: AppColors.ruby,
-                              ),
-                            );
-                          } else {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  result.importedCount > 0
-                                      ? 'Imported ${result.importedCount} new bank transactions!'
-                                      : 'All SMS transactions are already up to date (0 new).',
-                                ),
-                                backgroundColor: AppColors.emerald,
-                              ),
-                            );
-                            await dashboard.loadDashboardData();
-                            await txController.loadTransactions();
-                          }
-                        },
-                  icon: isSyncing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                        )
-                      : const Icon(Icons.sync, size: 18),
+                  onPressed: () async {
+                    final res = await settings.requestSmsPermission();
+                    if (!res && context.mounted) {
+                      settings.openSmsAppSettings();
+                    }
+                  },
+                  icon: const Icon(Icons.lock_open, size: 18),
                   label: const Text(
-                    'Sync SMS',
+                    'Grant SMS Permission',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-              ],
-            ),
+              )
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.emerald,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: isSyncing
+                          ? null
+                          : () => _triggerSmsSync(context, settings, limit: 5000),
+                      icon: isSyncing
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.sync, size: 18),
+                      label: const Text(
+                        'Sync (5,000)',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.emerald,
+                        side: const BorderSide(color: AppColors.emerald),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: isSyncing
+                          ? null
+                          : () => _triggerSmsSync(context, settings, limit: 0),
+                      icon: const Icon(Icons.all_inclusive, size: 18),
+                      label: const Text(
+                        'Deep Scan (All)',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _triggerSmsSync(
+    BuildContext context,
+    SettingsController settings, {
+    required int limit,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final dashboard = Provider.of<DashboardController>(context, listen: false);
+    final txController = Provider.of<TransactionController>(context, listen: false);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(limit <= 0
+            ? 'Deep scanning entire SMS inbox for all bank transactions...'
+            : 'Scanning up to $limit bank SMS messages...'),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+
+    final result = await settings.syncSmsInbox(limit: limit);
+
+    if (!context.mounted) return;
+
+    if (result.status == SmsSyncStatus.permissionDenied) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('SMS permission denied. Tap to open Settings.'),
+          backgroundColor: AppColors.ruby,
+          action: SnackBarAction(
+            label: 'Settings',
+            textColor: Colors.white,
+            onPressed: () => settings.openSmsAppSettings(),
+          ),
+        ),
+      );
+    } else if (result.status == SmsSyncStatus.error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('SMS sync error: ${result.errorMessage}'),
+          backgroundColor: AppColors.ruby,
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.importedCount > 0
+                ? 'Imported ${result.importedCount} new bank transactions (${result.scannedCount} scanned)!'
+                : 'All SMS transactions are already up to date (${result.scannedCount} scanned, 0 new).',
+          ),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+      await dashboard.loadDashboardData();
+      await txController.loadTransactions();
+    }
   }
 
   Widget _buildNotificationPermissionSection(
@@ -744,6 +778,129 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataManagementSection(BuildContext context, SettingsController settings) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF334155)),
+      ),
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.table_chart, color: AppColors.primary, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Data Management & Export',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Export all local transactions, merchant categories, and account records to a standard CSV spreadsheet for Excel, Google Sheets, or personal backups.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceElevated,
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: settings.isExporting
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Generating CSV export...'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        final path = await settings.exportTransactionsCsv();
+                        if (path != null && context.mounted) {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: AppColors.surfaceElevated,
+                              title: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: AppColors.emerald),
+                                  SizedBox(width: 8),
+                                  Text('Export Successful', style: TextStyle(fontSize: 18)),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Your transactions have been exported to CSV:',
+                                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: SelectableText(
+                                      path,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontFamily: 'monospace',
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else if (context.mounted) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to export transactions. Please try again.'),
+                              backgroundColor: AppColors.ruby,
+                            ),
+                          );
+                        }
+                      },
+                icon: settings.isExporting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      )
+                    : const Icon(Icons.download, size: 18),
+                label: Text(
+                  settings.isExporting ? 'Exporting CSV...' : 'Export Transactions to CSV',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

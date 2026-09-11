@@ -24,10 +24,12 @@ class EditTransactionSheet extends StatefulWidget {
 class _EditTransactionSheetState extends State<EditTransactionSheet> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _merchantController;
+  late TextEditingController _amountController;
   late TextEditingController _newAccountController;
 
   late String _category;
   late String _type;
+  late DateTime _selectedDate;
   int? _selectedAccountId;
   bool _isCustomAccount = false;
   bool _showRawText = false;
@@ -50,15 +52,18 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   void initState() {
     super.initState();
     _merchantController = TextEditingController(text: widget.transaction.merchant);
+    _amountController = TextEditingController(text: widget.transaction.amount.toStringAsFixed(2));
     _newAccountController = TextEditingController();
     _category = widget.transaction.category;
     _type = widget.transaction.type.toUpperCase();
     _selectedAccountId = widget.transaction.accountId;
+    _selectedDate = DateTime.tryParse(widget.transaction.date) ?? DateTime.now();
   }
 
   @override
   void dispose() {
     _merchantController.dispose();
+    _amountController.dispose();
     _newAccountController.dispose();
     super.dispose();
   }
@@ -85,7 +90,6 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
     }
 
     final isIncome = _type == 'INCOME';
-    final sign = isIncome ? '+' : '-';
     final amountColor = isIncome ? AppColors.income : AppColors.expense;
 
     return Padding(
@@ -183,7 +187,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Read-Only Transaction Banner
+              // Editable Amount & Date Row
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -196,25 +200,114 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          '$sign${IndianCurrencyFormatter.format(widget.transaction.amount)}',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: amountColor,
+                        // Amount Field
+                        Expanded(
+                          child: TextFormField(
+                            controller: _amountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: amountColor,
+                            ),
+                            decoration: InputDecoration(
+                              prefixText: '₹ ',
+                              prefixStyle: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: amountColor,
+                              ),
+                              labelText: 'Amount',
+                              labelStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF334155)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: Color(0xFF334155)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: amountColor),
+                              ),
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) return 'Enter amount';
+                              final num = double.tryParse(val.trim());
+                              if (num == null || num <= 0) return 'Invalid';
+                              return null;
+                            },
                           ),
                         ),
-                        Text(
-                          DateFormatter.formatShort(DateFormatter.parse(widget.transaction.date)),
-                          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 12),
+                        // Date picker button
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: const ColorScheme.dark(
+                                      primary: AppColors.primary,
+                                      surface: AppColors.surfaceElevated,
+                                      onSurface: Colors.white,
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _selectedDate = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                  _selectedDate.hour,
+                                  _selectedDate.minute,
+                                  _selectedDate.second,
+                                );
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.calendar_month, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  DateFormatter.formatShort(_selectedDate),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     if (widget.transaction.referenceNumber != null &&
                         widget.transaction.referenceNumber!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         'Ref / UPI ID: ${widget.transaction.referenceNumber}',
                         style: const TextStyle(
@@ -549,7 +642,11 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       targetPaymentSource = matchedAcc.name;
     }
 
+    final parsedAmount = double.tryParse(_amountController.text.trim()) ?? widget.transaction.amount;
+
     final updatedTx = widget.transaction.copyWith(
+      amount: parsedAmount,
+      date: _selectedDate.toIso8601String(),
       merchant: _merchantController.text.trim(),
       category: _category,
       accountId: targetAccountId,
