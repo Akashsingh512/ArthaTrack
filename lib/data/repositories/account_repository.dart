@@ -121,13 +121,33 @@ class AccountRepository {
     );
   }
 
-  /// Calculates total liquid bank and cash balance (including credit card debt as negative)
+  /// Calculates total liquid bank and cash balance (savings + cash only)
   Future<double> getTotalLiquidBalance() async {
     final accounts = await getAllAccounts();
     double total = 0.0;
     for (final acc in accounts) {
-      total += acc.balance;
+      if (acc.isSavings || acc.isCash) {
+        // If an account has a positive balance, add it.
+        // If negative due to untracked starting balance, clamp to 0 so Net Worth is never falsely negative.
+        total += acc.balance > 0 ? acc.balance : 0.0;
+      }
     }
     return total;
+  }
+
+  /// Calculates total credit card outstanding dues (liabilities)
+  Future<double> getCreditCardDues() async {
+    final accounts = await getAllAccounts();
+    double dues = 0.0;
+    for (final acc in accounts) {
+      if (acc.isCreditCard) {
+        if (acc.balance < 0) {
+          dues += acc.balance.abs();
+        } else {
+          dues += acc.balance;
+        }
+      }
+    }
+    return dues;
   }
 }

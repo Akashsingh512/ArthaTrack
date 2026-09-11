@@ -21,5 +21,5 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'arthatrack_local.db';
-  static const int databaseVersion = 5;
+  static const int databaseVersion = 6;
 }

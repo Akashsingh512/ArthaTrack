@@ -137,6 +137,11 @@ class NotificationListenerChannel {
     final insertedId = await _transactionRepo.insertTransaction(tx);
     final savedTx = tx.copyWith(id: insertedId);
 
+    // Update real account balance from live bank message if available
+    if (parsed.updatedBalance != null && parsed.updatedBalance! > 0) {
+      await _accountRepo.updateBalance(accountId, parsed.updatedBalance!);
+    }
+
     _onNewTransactionController.add(savedTx);
     onTransactionParsed?.call(savedTx);
 

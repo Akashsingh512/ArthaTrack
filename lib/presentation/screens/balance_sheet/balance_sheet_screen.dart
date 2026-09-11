@@ -191,13 +191,21 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               ),
               title: Text(acc.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(acc.type, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              trailing: Text(
-                IndianCurrencyFormatter.format(acc.balance),
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: acc.balance < 0 ? AppColors.ruby : AppColors.textPrimary,
-                ),
+              onTap: () => _showEditAccountDialog(context, controller, acc),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    IndianCurrencyFormatter.format(acc.balance.abs()),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: acc.balance < 0 ? AppColors.ruby : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.edit, size: 14, color: AppColors.emerald),
+                ],
               ),
             ),
           );
@@ -435,6 +443,64 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
           },
         );
       },
+    );
+  }
+
+  void _showEditAccountDialog(
+    BuildContext context,
+    BalanceSheetController controller,
+    dynamic acc,
+  ) {
+    final balCtrl = TextEditingController(
+      text: acc.balance == 0.0 ? '' : acc.balance.abs().toStringAsFixed(2),
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text('Set Balance for ${acc.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              acc.isCreditCard
+                  ? 'Enter outstanding credit card dues'
+                  : 'Enter current available bank balance',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: balCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Balance / Amount',
+                prefixText: '₹ ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final val = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
+              final target = acc.isCreditCard && val > 0 ? -val : val;
+              await controller.updateAccountBalance(acc.id!, target);
+              if (context.mounted) {
+                Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Save Balance'),
+          ),
+        ],
+      ),
     );
   }
 }

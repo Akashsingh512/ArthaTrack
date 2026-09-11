@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../services/net_worth/net_worth_calculator.dart';
+import 'account_balances_sheet.dart';
 
 class NetWorthCard extends StatelessWidget {
   final NetWorthSnapshot snapshot;
@@ -100,22 +101,40 @@ class NetWorthCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Main Net Worth Display in INR
-          Text(
-            IndianCurrencyFormatter.format(netWorth),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '(Liquid Bank Balances + Total Assets) − Total Debts',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w500,
+          InkWell(
+            onTap: () => AccountBalancesSheet.show(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        IndianCurrencyFormatter.format(netWorth),
+                        style: const TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.tune, size: 16, color: AppColors.textMuted),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '(Liquid Bank Balances + Total Assets) − Total Debts • Tap to view/set accounts',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -135,6 +154,7 @@ class NetWorthCard extends StatelessWidget {
                     amount: snapshot.liquidBalances,
                     color: AppColors.liquid,
                     icon: Icons.account_balance,
+                    onTap: () => AccountBalancesSheet.show(context),
                   ),
                 ),
                 Container(height: 36, width: 1, color: const Color(0xFF334155)),
@@ -242,18 +262,20 @@ class _MetricPillar extends StatelessWidget {
   final double amount;
   final Color color;
   final IconData icon;
+  final VoidCallback? onTap;
 
   const _MetricPillar({
     required this.title,
     required this.amount,
     required this.color,
     required this.icon,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -285,5 +307,14 @@ class _MetricPillar extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: content,
+      );
+    }
+    return content;
   }
 }

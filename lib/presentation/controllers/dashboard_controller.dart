@@ -48,12 +48,14 @@ class DashboardController extends ChangeNotifier {
       // 1. Calculate Net Worth: (Liquid Balances + Assets) - Debts
       final liquid = await _accountRepo.getTotalLiquidBalance();
       final assets = await _balanceSheetRepo.getTotalAssets();
-      final debts = await _balanceSheetRepo.getTotalDebts();
+      final manualDebts = await _balanceSheetRepo.getTotalDebts();
+      final ccDues = await _accountRepo.getCreditCardDues();
+      final totalDebts = manualDebts + ccDues;
 
       _netWorth = NetWorthCalculator.calculate(
         liquidBalances: liquid,
         totalAssets: assets,
-        totalDebts: debts,
+        totalDebts: totalDebts,
       );
 
       // 2. Fetch Monthly Expense Aggregation
@@ -82,6 +84,11 @@ class DashboardController extends ChangeNotifier {
 
   Future<void> deleteBudget(String category) async {
     await _budgetRepo.deleteBudget(category);
+    await loadDashboardData();
+  }
+
+  Future<void> updateAccountBalance(int accountId, double newBalance) async {
+    await _accountRepo.updateBalance(accountId, newBalance);
     await loadDashboardData();
   }
 }

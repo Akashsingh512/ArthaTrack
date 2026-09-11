@@ -65,7 +65,7 @@ class IndianBankingConstants {
 
   // 2. Available Balance Regex
   static final RegExp balanceRegex = RegExp(
-    r'(?:Bal|Avl Bal|Avl\sBalance|Balance|Avail\sBal|Available\sBalance)[:\s]+(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Bal|Avl\s*Bal|Avl\s*Balance|Balance|Avail\s*Bal|Available\s*Balance|Total\s*Avail\.?\s*Bal|A\/c\s*Bal)[:\s]*(?:is\s+)?(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 

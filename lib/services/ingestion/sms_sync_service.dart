@@ -119,6 +119,7 @@ class SmsSyncService {
 
       int importedCount = 0;
       int scannedCount = rawMessages.length;
+      final seenAccountsWithBalance = <int>{};
 
       for (final item in rawMessages) {
         if (item is! Map) continue;
@@ -158,6 +159,14 @@ class SmsSyncService {
             source: 'SMS',
             date: txDate,
           );
+
+          // 4.1 Update Account Balance from Bank SMS if available balance is present
+          if (parsed.updatedBalance != null && parsed.updatedBalance! > 0) {
+            if (!seenAccountsWithBalance.contains(resolvedAccountId)) {
+              seenAccountsWithBalance.add(resolvedAccountId);
+              await _accountRepo.updateBalance(resolvedAccountId, parsed.updatedBalance!);
+            }
+          }
 
           // 5. Smart Deduplication: Drop if exact, matching UPI ref, or within time window
           final isDup = await _transactionRepo.isDuplicate(tx);

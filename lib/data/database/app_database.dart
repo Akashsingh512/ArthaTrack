@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/indian_banking_constants.dart';
+import '../../core/utils/currency_formatter.dart';
 import 'tables/accounts_table.dart';
 import 'tables/balance_sheet_table.dart';
 import 'tables/budgets_table.dart';
@@ -106,6 +107,52 @@ class AppDatabase {
             );
           }
         }
+      } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      try {
+        // Auto-discover latest real balance from past transactions in SQLite
+        final rows = await db.query(
+          TransactionsTable.tableName,
+          orderBy: '${TransactionsTable.colDate} DESC',
+        );
+
+        final seenAccounts = <int>{};
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final accId = row[TransactionsTable.colAccountId] as int?;
+          if (accId == null || rawText.isEmpty || seenAccounts.contains(accId)) continue;
+
+          final balMatch = IndianBankingConstants.balanceRegex.firstMatch(rawText);
+          if (balMatch != null && balMatch.groupCount >= 1) {
+            final rawBal = balMatch.group(1);
+            if (rawBal != null) {
+              final bal = IndianCurrencyFormatter.parse(rawBal);
+              if (bal > 0) {
+                seenAccounts.add(accId);
+                await db.update(
+                  AccountsTable.tableName,
+                  {
+                    AccountsTable.colBalance: bal,
+                    AccountsTable.colUpdatedAt: DateTime.now().toIso8601String(),
+                  },
+                  where: '${AccountsTable.colId} = ?',
+                  whereArgs: [accId],
+                );
+              }
+            }
+          }
+        }
+
+        // For any savings/cash account that still has a negative balance due to untracked starting balance,
+        // reset to 0.00 so Net Worth is never artificially negative
+        await db.rawUpdate('''
+          UPDATE ${AccountsTable.tableName}
+          SET ${AccountsTable.colBalance} = 0.0,
+              ${AccountsTable.colUpdatedAt} = ?
+          WHERE ${AccountsTable.colBalance} < 0 
+            AND ${AccountsTable.colType} IN ('SAVINGS', 'CASH')
+        ''', [DateTime.now().toIso8601String()]);
       } catch (_) {}
     }
   }
