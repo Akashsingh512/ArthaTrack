@@ -41,6 +41,58 @@ class TransactionRepository {
     return maps.isNotEmpty;
   }
 
+  /// Comprehensive deduplication across multiple SMS and push notifications:
+  /// 1. Exact raw text match
+  /// 2. Reference number match (UPI Ref / RRN / Txn ID)
+  /// 3. Fuzzy time-window match (+/- 15 mins with same amount and type)
+  Future<bool> isDuplicate(TransactionModel tx) async {
+    final db = await _dbProvider.database;
+
+    // 1. Exact raw text match
+    if (tx.rawText.trim().isNotEmpty) {
+      final rawMatch = await db.query(
+        TransactionsTable.tableName,
+        where: '${TransactionsTable.colRawText} = ?',
+        whereArgs: [tx.rawText.trim()],
+        limit: 1,
+      );
+      if (rawMatch.isNotEmpty) return true;
+    }
+
+    // 2. Reference Number Match (UPI Ref, RRN, Txn ID)
+    if (tx.referenceNumber != null && tx.referenceNumber!.trim().isNotEmpty) {
+      final refMatch = await db.query(
+        TransactionsTable.tableName,
+        where: '${TransactionsTable.colReferenceNumber} = ?',
+        whereArgs: [tx.referenceNumber!.trim()],
+        limit: 1,
+      );
+      if (refMatch.isNotEmpty) return true;
+    }
+
+    // 3. Time Window Fuzzy Match (Same Amount, Same Type, within +/- 15 minutes)
+    final txDateTime = DateTime.tryParse(tx.date);
+    if (txDateTime != null && tx.amount > 0.0) {
+      final startWindow = txDateTime.subtract(const Duration(minutes: 15)).toIso8601String();
+      final endWindow = txDateTime.add(const Duration(minutes: 15)).toIso8601String();
+
+      final fuzzyMatch = await db.query(
+        TransactionsTable.tableName,
+        where: '''
+          ${TransactionsTable.colAmount} = ? 
+          AND ${TransactionsTable.colType} = ? 
+          AND ${TransactionsTable.colDate} >= ? 
+          AND ${TransactionsTable.colDate} <= ?
+        ''',
+        whereArgs: [tx.amount, tx.type, startWindow, endWindow],
+        limit: 1,
+      );
+      if (fuzzyMatch.isNotEmpty) return true;
+    }
+
+    return false;
+  }
+
   /// Inserts transaction and atomically updates the linked account balance
   Future<int> insertTransaction(TransactionModel transaction) async {
     final db = await _dbProvider.database;

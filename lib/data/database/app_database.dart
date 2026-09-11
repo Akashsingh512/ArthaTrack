@@ -25,7 +25,18 @@ class AppDatabase {
       path,
       version: AppConstants.databaseVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      try {
+        await db.execute(
+          'ALTER TABLE ${TransactionsTable.tableName} ADD COLUMN ${TransactionsTable.colReferenceNumber} TEXT;',
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

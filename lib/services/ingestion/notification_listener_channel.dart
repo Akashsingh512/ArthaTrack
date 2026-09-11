@@ -94,10 +94,6 @@ class NotificationListenerChannel {
     final fullRaw = '$title $text $bigText $subText'.trim();
     if (fullRaw.isEmpty) return null;
 
-    // Check duplicate
-    final isDup = await _transactionRepo.hasDuplicateRawText(fullRaw);
-    if (isDup) return null;
-
     // Process through dual-engine pipeline
     final parsed = await _pipeline.processText(fullRaw, packageName: pkgName);
     if (parsed == null || parsed.amount <= 0.0) return null;
@@ -117,11 +113,21 @@ class NotificationListenerChannel {
       }
     }
 
+    final postTime = event['postTime'] as int?;
+    final txDate = (postTime != null && postTime > 0)
+        ? DateTime.fromMillisecondsSinceEpoch(postTime)
+        : DateTime.now();
+
     final tx = TransactionModel.fromParsed(
       parsed: parsed,
       accountId: accountId,
       source: 'NOTIFICATION',
+      date: txDate,
     );
+
+    // Comprehensive Smart Deduplication Check
+    final isDup = await _transactionRepo.isDuplicate(tx);
+    if (isDup) return null;
 
     final insertedId = await _transactionRepo.insertTransaction(tx);
     final savedTx = tx.copyWith(id: insertedId);

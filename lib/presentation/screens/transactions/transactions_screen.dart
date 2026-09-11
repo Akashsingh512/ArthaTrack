@@ -100,6 +100,51 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
               ),
 
+              // Month Filter Horizontal List
+              SizedBox(
+                height: 38,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All Time', style: TextStyle(fontSize: 11)),
+                      selected: controller.selectedMonth == null,
+                      selectedColor: AppColors.emerald,
+                      backgroundColor: AppColors.surfaceElevated,
+                      labelStyle: TextStyle(
+                        color: controller.selectedMonth == null ? Colors.black : AppColors.textSecondary,
+                        fontWeight: controller.selectedMonth == null ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                      onSelected: (_) => controller.setMonthFilter(null),
+                    ),
+                    const SizedBox(width: 6),
+                    ...controller.availableMonths.map((m) {
+                      final isSelected = controller.selectedMonth != null &&
+                          controller.selectedMonth!.year == m.year &&
+                          controller.selectedMonth!.month == m.month;
+                      final label = DateFormatter.formatMonthYear(m);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(label, style: const TextStyle(fontSize: 11)),
+                          selected: isSelected,
+                          selectedColor: AppColors.emerald,
+                          backgroundColor: AppColors.surfaceElevated,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.black : AppColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                          onSelected: (_) => controller.setMonthFilter(m),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+
               // Filter Chips Row (Type: All, Expense, Income)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

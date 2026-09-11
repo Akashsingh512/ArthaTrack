@@ -16,6 +16,7 @@ class TransactionController extends ChangeNotifier {
   String? _selectedType; // 'ALL', 'EXPENSE', 'INCOME'
   String? _selectedCategory;
   String _searchQuery = '';
+  DateTime? _selectedMonth; // null = All Time
 
   TransactionController({
     TransactionRepository? transactionRepo,
@@ -28,6 +29,24 @@ class TransactionController extends ChangeNotifier {
   List<AccountModel> get accounts => _accounts;
   String? get selectedType => _selectedType;
   String? get selectedCategory => _selectedCategory;
+  DateTime? get selectedMonth => _selectedMonth;
+
+  /// Returns distinct months present in all loaded transactions, newest first
+  List<DateTime> get availableMonths {
+    final months = <DateTime>{};
+    for (final tx in _allTransactions) {
+      final dt = DateTime.tryParse(tx.date);
+      if (dt != null) {
+        months.add(DateTime(dt.year, dt.month));
+      }
+    }
+    // Also include current month if not present
+    final now = DateTime.now();
+    months.add(DateTime(now.year, now.month));
+
+    final sorted = months.toList()..sort((a, b) => b.compareTo(a));
+    return sorted;
+  }
 
   Future<void> loadTransactions() async {
     _isLoading = true;
@@ -57,6 +76,12 @@ class TransactionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMonthFilter(DateTime? month) {
+    _selectedMonth = month;
+    _applyFilters();
+    notifyListeners();
+  }
+
   void setSearchQuery(String query) {
     _searchQuery = query.toLowerCase().trim();
     _applyFilters();
@@ -65,6 +90,14 @@ class TransactionController extends ChangeNotifier {
 
   void _applyFilters() {
     _filteredTransactions = _allTransactions.where((tx) {
+      // Filter by month
+      if (_selectedMonth != null) {
+        final txDate = DateTime.tryParse(tx.date);
+        if (txDate != null &&
+            (txDate.year != _selectedMonth!.year || txDate.month != _selectedMonth!.month)) {
+          return false;
+        }
+      }
       // Filter by type
       if (_selectedType != null && tx.type != _selectedType) {
         return false;

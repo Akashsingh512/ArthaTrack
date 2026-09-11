@@ -33,7 +33,24 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // Regular Expression Patterns Tailored for Indian SMS and Push Notifications
+  // STRICT PROMOTIONAL & NON-TRANSACTIONAL SHIELD: Filter out EMI offers, pre-approved loans, and bill alerts
+  static final RegExp promotionalBlocklistRegex = RegExp(
+    r'\b('
+    r'convert(?:\s+\w+)?\s+(?:to|in|into)\s+(?:flexi|easy|smart|no\s*cost)?\s*emi|'
+    r'flexipay|flexi\s*emi|smartemi|easyemi|dial[\s\-]an[\s\-]emi|'
+    r'pre[\s\-]approved|eligible\s+for|apply\s+now|congratulations|'
+    r'avail\s+(?:instant|pre[\s\-]approved|paperless)?\s*(?:loan|credit|cash)|'
+    r'limit\s+(?:increase|enhancement|upgrade)|'
+    r'credit\s+card\s+offer|'
+    r'(?:total|min|minimum)\s+(?:amt|amount)?\s*due|'
+    r'bill\s+(?:is\s+)?generated|'
+    r'statement\s+for\s+your\s+(?:credit\s+card|account)|'
+    r'promo\s*code|coupon\s*code|flat\s+(?:rs|inr|₹|\d+%)\s+off|'
+    r'win\s+(?:upto|up\s+to)?\s*(?:rs|inr|₹)'
+    r')\b',
+    caseSensitive: false,
+  );
+
   // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "₹1,24,500.00", "₹ 200"
   static final RegExp amountRegex = RegExp(
     r'(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)',
@@ -54,18 +71,34 @@ class IndianBankingConstants {
 
   // 3. Action Triggers
   static final RegExp expenseTriggerRegex = RegExp(
-    r'\b(debited|spent|paid|transferred\s+to|withdrawn|sent\s+to|charged|deducted|payment\s+of)\b',
+    r'\b('
+    r'debited|spent|paid|withdrawn|charged|deducted|payment\s+of|'
+    r'transferred\s+to\s+(?!your\b)|'
+    r'sent\s+to\s+(?!your\b)'
+    r')\b',
     caseSensitive: false,
   );
 
   static final RegExp incomeTriggerRegex = RegExp(
-    r'\b(credited|received|added|deposited|refunded|refund|cashback|salary|credited\s+with)\b',
+    r'\b('
+    r'credited|received|added|deposited|refunded|refund|cashback|salary|'
+    r'credited\s+with|'
+    r'transferred\s+from|transfer\s+from|'
+    r'sent\s+you|received\s+from|'
+    r'to\s+your\s+(?:a\/c|acct|account|bank)'
+    r')\b',
     caseSensitive: false,
   );
 
-  // 4. Merchant Extraction Heuristics
+  // 4. Reference Number Regex for Cross-Message Deduplication
+  static final RegExp referenceNumberRegex = RegExp(
+    r'(?:UPI\s*Ref(?:\s*[:\-]|(?:\s*No\.?[:\s]*))|Ref(?:\s*No\.?|Num\.?)?[:\s]*|RRN[:\s]*|Txn\s*(?:Id|ID|no\.?)?[:\s]*|IMPS\s*(?:Ref)?[:\s]*)\s*([A-Za-z0-9]{8,24})',
+    caseSensitive: false,
+  );
+
+  // 5. Merchant & Sender Extraction Heuristics
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'(?:to|at|vpa|info|towards|paid\s+to)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$)',
+    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$)',
     caseSensitive: false,
   );
 

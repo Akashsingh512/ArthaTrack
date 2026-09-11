@@ -19,6 +19,11 @@ class TransactionParserPipeline {
       return null;
     }
 
+    // 0.1 PROMOTIONAL SHIELD: Drop non-transactional EMI offers and loan pitches
+    if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(rawText)) {
+      return null;
+    }
+
     final hasApiKey = await _secureStorage.hasActiveApiKey();
 
     // 1. Attempt Primary: Engine A (User AI Key)

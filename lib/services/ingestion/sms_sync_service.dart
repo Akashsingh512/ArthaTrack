@@ -133,11 +133,12 @@ class SmsSyncService {
           continue;
         }
 
-        // 4. Duplicate Check: Skip if raw text has already been imported
-        final isDuplicate = await _transactionRepo.hasDuplicateRawText(body);
-        if (isDuplicate) continue;
+        // 3.1 PROMOTIONAL & EMI SHIELD: Drop non-transactional marketing and EMI pitches
+        if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(body)) {
+          continue;
+        }
 
-        // 5. Parse via Dual-Engine (AI or Local Regex Heuristics)
+        // 4. Parse via Dual-Engine (AI or Local Regex Heuristics)
         final parsed = await _pipeline.processText(body);
         if (parsed != null && parsed.amount > 0.0) {
           DateTime? txDate;
@@ -151,6 +152,10 @@ class SmsSyncService {
             source: 'SMS',
             date: txDate,
           );
+
+          // 5. Smart Deduplication: Drop if exact, matching UPI ref, or within time window
+          final isDup = await _transactionRepo.isDuplicate(tx);
+          if (isDup) continue;
 
           await _transactionRepo.insertTransaction(tx);
           importedCount++;

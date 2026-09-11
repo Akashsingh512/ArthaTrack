@@ -15,6 +15,11 @@ class EngineBRegexParser {
       return null;
     }
 
+    // 0.1 PROMOTIONAL & NON-TRANSACTIONAL GUARD: Drop EMI offers, loan pitches, and bill due reminders
+    if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(text)) {
+      return null;
+    }
+
     // 1. Determine Type: Expense vs Income
     TransactionType type = TransactionType.EXPENSE;
     final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
@@ -78,12 +83,19 @@ class EngineBRegexParser {
       accountSnippet = acctMatch.group(1)?.replaceAll(RegExp(r'^[xX\*]+'), '');
     }
 
-    // 5. Extract Merchant & Category
+    // 5. Extract Reference / UPI / Txn ID for Deduplication
+    String? referenceNumber;
+    final refMatch = IndianBankingConstants.referenceNumberRegex.firstMatch(text);
+    if (refMatch != null && refMatch.groupCount >= 1) {
+      referenceNumber = refMatch.group(1)?.trim();
+    }
+
+    // 6. Extract Merchant & Category
     String merchant = _extractMerchant(text, lower, packageName);
     String category = _inferCategory(lower, merchant);
 
     // If income and no merchant was determined, check salary/refund
-    if (type == TransactionType.INCOME && (merchant == 'Unknown' || merchant.isEmpty)) {
+    if (type == TransactionType.INCOME && (merchant == 'Unknown' || merchant.isEmpty || merchant == 'Unknown Merchant')) {
       if (lower.contains('salary') || lower.contains('payroll')) {
         merchant = 'Employer Payroll';
         category = 'Salary';
@@ -103,6 +115,7 @@ class EngineBRegexParser {
       merchant: merchant,
       updatedBalance: updatedBalance,
       accountSnippet: accountSnippet,
+      referenceNumber: referenceNumber,
       rawText: rawText,
       engine: 'OFFLINE_REGEX',
       confidence: 0.88,
