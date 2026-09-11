@@ -27,6 +27,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   late TextEditingController _newAccountController;
 
   late String _category;
+  late String _type;
   int? _selectedAccountId;
   bool _isCustomAccount = false;
   bool _showRawText = false;
@@ -51,6 +52,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
     _merchantController = TextEditingController(text: widget.transaction.merchant);
     _newAccountController = TextEditingController();
     _category = widget.transaction.category;
+    _type = widget.transaction.type.toUpperCase();
     _selectedAccountId = widget.transaction.accountId;
   }
 
@@ -82,7 +84,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       }
     }
 
-    final isIncome = widget.transaction.isIncome;
+    final isIncome = _type == 'INCOME';
     final sign = isIncome ? '+' : '-';
     final amountColor = isIncome ? AppColors.income : AppColors.expense;
 
@@ -113,7 +115,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Title and Type Pill
+              // Title and Type Toggle (Expense vs Income)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -126,18 +128,55 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: amountColor.withOpacity(0.15),
+                      color: AppColors.surfaceElevated,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF334155)),
                     ),
-                    child: Text(
-                      widget.transaction.type,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: amountColor,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _type = 'EXPENSE'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _type == 'EXPENSE'
+                                  ? AppColors.ruby.withOpacity(0.2)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'EXPENSE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: _type == 'EXPENSE' ? AppColors.ruby : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _type = 'INCOME'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _type == 'INCOME'
+                                  ? AppColors.emerald.withOpacity(0.2)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'INCOME',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: _type == 'INCOME' ? AppColors.emerald : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -391,7 +430,24 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   ),
                 ),
               ],
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
+
+              // Delete Transaction Option
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _confirmDelete(context),
+                  icon: const Icon(Icons.delete_outline, color: AppColors.ruby, size: 18),
+                  label: const Text(
+                    'Delete This Transaction',
+                    style: TextStyle(
+                      color: AppColors.ruby,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
 
               // Action Buttons
               Row(
@@ -418,6 +474,49 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('Delete Transaction?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Are you sure you want to delete this transaction? This will automatically reverse its effect on your account balance.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.ruby),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && widget.transaction.id != null) {
+      final txController = Provider.of<TransactionController>(context, listen: false);
+      final dashboardController = Provider.of<DashboardController>(context, listen: false);
+
+      await txController.deleteTransaction(widget.transaction.id!);
+      await dashboardController.loadDashboardData();
+
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaction deleted successfully!'),
+            backgroundColor: AppColors.emerald,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _saveChanges(BuildContext context) async {
@@ -455,11 +554,13 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       category: _category,
       accountId: targetAccountId,
       paymentSource: targetPaymentSource,
+      type: _type,
     );
 
     await txController.updateTransaction(
       updatedTx,
       previousAccountId: widget.transaction.accountId,
+      previousType: widget.transaction.type,
     );
 
     await dashboardController.loadDashboardData();

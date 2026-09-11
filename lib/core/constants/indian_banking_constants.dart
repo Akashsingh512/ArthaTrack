@@ -33,7 +33,7 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // STRICT PROMOTIONAL & NON-TRANSACTIONAL SHIELD: Filter out EMI offers, pre-approved loans, bill due reminders
+  // STRICT PROMOTIONAL, NON-TRANSACTIONAL & RECEIPT SHIELD: Filter out EMI offers, pre-approved loans, bill due reminders, and payment receipts
   static final RegExp promotionalBlocklistRegex = RegExp(
     r'\b('
     r'pay\s+(?:your\s+)?(?:bill|due|amt|amount|now|before|by)|'
@@ -42,6 +42,11 @@ class IndianBankingConstants {
     r'recharge\s+(?:now|your|before)|'
     r'avoid\s+(?:late\s+fee|disconnection)|'
     r'kindly\s+pay|please\s+pay|'
+    r'payment\s+(?:of\s+.*?\s+)?(?:has\s+been\s+)?received\s+towards\s+(?:your\s+)?.*?(?:card|loan|emi|bill|mobile)|'
+    r'thank\s+you\s+for\s+(?:your\s+|the\s+)?payment\s+(?:of\s+.*?\s+)?towards\s+(?:your\s+)?.*?(?:card|loan|emi|bill|mobile)|'
+    r'we\s+have\s+received\s+(?:your\s+|the\s+)?payment\s+(?:of\s+.*?\s+)?towards\s+(?:your\s+)?.*?(?:card|loan|emi|bill|mobile)|'
+    r'payment\s+(?:of\s+.*?\s+)?received\s+for\s+(?:your\s+)?.*?(?:card|loan|emi|bill|mobile)|'
+    r'payment\s+of\s+.*?\s+towards\s+.*?(?:card|loan|emi|bill).*?(?:has\s+been\s+)?received|'
     r'convert(?:\s+\w+)?\s+(?:to|in|into)\s+(?:flexi|easy|smart|no\s*cost)?\s*emi|'
     r'flexipay|flexi\s*emi|smartemi|easyemi|dial[\s\-]an[\s\-]emi|'
     r'pre[\s\-]approved|eligible\s+for|apply\s+now|congratulations|'

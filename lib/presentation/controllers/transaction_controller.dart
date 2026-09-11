@@ -153,8 +153,12 @@ class TransactionController extends ChangeNotifier {
     await loadTransactions();
   }
 
-  Future<void> updateTransaction(TransactionModel updatedTx, {int? previousAccountId}) async {
-    await _transactionRepo.updateTransaction(updatedTx, previousAccountId: previousAccountId);
+  Future<void> updateTransaction(TransactionModel updatedTx, {int? previousAccountId, String? previousType}) async {
+    await _transactionRepo.updateTransaction(
+      updatedTx,
+      previousAccountId: previousAccountId,
+      previousType: previousType,
+    );
     await loadTransactions();
   }
 

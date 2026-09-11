@@ -24,9 +24,12 @@ You must output ONLY valid JSON matching this exact schema:
 }
 
 Field rules:
-- is_financial_transaction: boolean. Must be FALSE if it is an upcoming bill reminder, request to pay, due notice, or marketing offer where money has NOT yet actually been debited or credited. Only true if an actual completed debit/credit/payment transaction occurred.
+- is_financial_transaction: boolean. Must be FALSE if:
+  1) It is an upcoming bill reminder, request to pay, due notice, or marketing offer where money has NOT yet actually been debited or credited.
+  2) It is a payment receipt acknowledgement confirming payment received towards a credit card, loan, EMI, or bill (e.g. "Payment of INR ... has been received towards your Axis Bank Credit Card", "Thank you for payment of Rs ... towards HDFC Credit Card", "Payment received towards your Airtel bill"). These are receipts for debts/bills already debited from bank, NOT new transactions.
+  Only set to TRUE if an actual completed debit/credit/payment transaction occurred.
 - amount: double strictly > 0.
-- type: strictly "EXPENSE" or "INCOME".
+- type: strictly "EXPENSE" or "INCOME". CRITICAL: A payment received towards a credit card or bill is NEVER "INCOME".
 - category: one of ["Food", "Groceries", "Travel", "Shopping", "Bills", "Entertainment", "Health", "Investment", "Salary", "Transfer", "Other"].
 - merchant: strictly the exact name of the person, shop, merchant, or service paid to or received from.
 - payment_source: bank or card used if mentioned (e.g. "SBI Card", "Kotak Bank", "HDFC Bank", "Axis Bank", "ICICI Bank", "Cash", etc.) or null.

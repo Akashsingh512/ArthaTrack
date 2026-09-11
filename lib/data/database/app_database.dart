@@ -179,6 +179,47 @@ class AppDatabase {
         }
       } catch (_) {}
     }
+    if (oldVersion < 8) {
+      try {
+        // Automatically purge any credit card / loan / bill payment receipt acknowledgements
+        // that were mistakenly recorded as INCOME, and heal account balances!
+        final rows = await db.query(TransactionsTable.tableName);
+        for (final row in rows) {
+          final rawText = row[TransactionsTable.colRawText] as String? ?? '';
+          final id = row[TransactionsTable.colId] as int?;
+          final type = row[TransactionsTable.colType] as String? ?? '';
+          final amount = (row[TransactionsTable.colAmount] as num?)?.toDouble() ?? 0.0;
+          final accId = row[TransactionsTable.colAccountId] as int?;
+
+          if (id == null || rawText.isEmpty) continue;
+
+          final lower = rawText.toLowerCase();
+          final isReceipt = IndianBankingConstants.promotionalBlocklistRegex.hasMatch(rawText);
+          final isCreditCardReceiptIncome = type.toUpperCase() == 'INCOME' &&
+              (lower.contains('received towards') ||
+               (lower.contains('payment of') && lower.contains('credit card')) ||
+               (lower.contains('towards') && lower.contains('card')));
+
+          if (isReceipt || isCreditCardReceiptIncome) {
+            await db.delete(
+              TransactionsTable.tableName,
+              where: '${TransactionsTable.colId} = ?',
+              whereArgs: [id],
+            );
+
+            // If it was previously added as INCOME, heal the account balance by deducting this false income!
+            if (type.toUpperCase() == 'INCOME' && accId != null && amount > 0) {
+              await db.rawUpdate('''
+                UPDATE ${AccountsTable.tableName}
+                SET ${AccountsTable.colBalance} = MAX(0.0, ${AccountsTable.colBalance} - ?),
+                    ${AccountsTable.colUpdatedAt} = ?
+                WHERE ${AccountsTable.colId} = ?
+              ''', [amount, DateTime.now().toIso8601String(), accId]);
+            }
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

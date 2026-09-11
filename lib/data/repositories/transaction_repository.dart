@@ -150,30 +150,44 @@ class TransactionRepository {
     });
   }
 
-  /// Updates transaction details (merchant, category, account, paymentSource)
-  /// and adjusts account balances if the account was changed
-  Future<int> updateTransaction(TransactionModel updatedTx, {int? previousAccountId}) async {
+  /// Updates transaction details (merchant, category, account, type, paymentSource)
+  /// and adjusts account balances if the account or type was changed
+  Future<int> updateTransaction(TransactionModel updatedTx, {int? previousAccountId, String? previousType}) async {
     final db = await _dbProvider.database;
 
     return await db.transaction((txn) async {
-      if (previousAccountId != null && previousAccountId != updatedTx.accountId) {
-        // Revert delta on previous account
-        final revertDelta = updatedTx.isExpense ? updatedTx.amount : -updatedTx.amount;
-        await txn.rawUpdate('''
-          UPDATE ${AccountsTable.tableName}
-          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
-              ${AccountsTable.colUpdatedAt} = ?
-          WHERE ${AccountsTable.colId} = ?
-        ''', [revertDelta, DateTime.now().toIso8601String(), previousAccountId]);
+      final existingRows = await txn.query(
+        TransactionsTable.tableName,
+        where: '${TransactionsTable.colId} = ?',
+        whereArgs: [updatedTx.id],
+      );
 
-        // Apply delta to new account
-        final newDelta = updatedTx.isExpense ? -updatedTx.amount : updatedTx.amount;
-        await txn.rawUpdate('''
-          UPDATE ${AccountsTable.tableName}
-          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
-              ${AccountsTable.colUpdatedAt} = ?
-          WHERE ${AccountsTable.colId} = ?
-        ''', [newDelta, DateTime.now().toIso8601String(), updatedTx.accountId]);
+      if (existingRows.isNotEmpty) {
+        final existing = TransactionModel.fromMap(existingRows.first);
+        final oldAccId = previousAccountId ?? existing.accountId;
+        final oldType = previousType ?? existing.type;
+        final oldIsExpense = oldType.toUpperCase() == 'EXPENSE';
+        final newIsExpense = updatedTx.isExpense;
+
+        if (oldAccId != updatedTx.accountId || oldIsExpense != newIsExpense) {
+          // Revert old transaction effect on old account
+          final revertDelta = oldIsExpense ? existing.amount : -existing.amount;
+          await txn.rawUpdate('''
+            UPDATE ${AccountsTable.tableName}
+            SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+                ${AccountsTable.colUpdatedAt} = ?
+            WHERE ${AccountsTable.colId} = ?
+          ''', [revertDelta, DateTime.now().toIso8601String(), oldAccId]);
+
+          // Apply new transaction effect on new account
+          final newDelta = newIsExpense ? -updatedTx.amount : updatedTx.amount;
+          await txn.rawUpdate('''
+            UPDATE ${AccountsTable.tableName}
+            SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+                ${AccountsTable.colUpdatedAt} = ?
+            WHERE ${AccountsTable.colId} = ?
+          ''', [newDelta, DateTime.now().toIso8601String(), updatedTx.accountId]);
+        }
       }
 
       return await txn.update(

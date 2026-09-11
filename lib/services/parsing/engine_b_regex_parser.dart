@@ -48,6 +48,14 @@ class EngineBRegexParser {
       type = TransactionType.EXPENSE;
     }
 
+    // Safety guard: "received towards ... card/bill/loan" is an acknowledgment of debt/bill payment, NOT income!
+    if (type == TransactionType.INCOME) {
+      if (lower.contains('towards') &&
+          (lower.contains('card') || lower.contains('bill') || lower.contains('loan') || lower.contains('emi'))) {
+        return null;
+      }
+    }
+
     // 2. Extract Amount
     double amount = 0.0;
     final amountMatch = IndianBankingConstants.amountRegex.firstMatch(text);
