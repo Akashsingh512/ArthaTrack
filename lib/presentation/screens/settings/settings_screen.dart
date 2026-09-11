@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -614,13 +615,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.mail_lock, color: AppColors.royalBlue, size: 20),
-                    SizedBox(width: 8),
-                    Text(
+                    const Icon(Icons.mail_lock, color: AppColors.royalBlue, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
                       'Gmail Ingestion (Read-Only)',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.help_outline, color: AppColors.textMuted, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Google Cloud Setup Guide',
+                      onPressed: () => _showGoogleCloudSetupDialog(context),
                     ),
                   ],
                 ),
@@ -740,31 +749,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() {});
                     } catch (e) {
                       if (context.mounted) {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: AppColors.surfaceElevated,
-                            title: const Row(
-                              children: [
-                                Icon(Icons.info_outline, color: AppColors.saffron),
-                                SizedBox(width: 8),
-                                Text('Google Sign-In Info', style: TextStyle(fontSize: 16)),
-                              ],
-                            ),
-                            content: Text(
-                              'Google Sign-In error:\n$e\n\n'
-                              'Why: On Android, Google Play Services requires registering an Android OAuth Client ID in Google Cloud Console with your app SHA-1 fingerprint.\n\n'
-                              'Recommendation: Use the "Bank SMS Inbox Sync" above! It works 100% offline, requires zero configuration, and directly imports bank SMS messages on your phone.',
-                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Got it', style: TextStyle(color: AppColors.emerald)),
-                              ),
-                            ],
-                          ),
-                        );
+                        _showGoogleCloudSetupDialog(context, e.toString());
                       }
                     }
                   },
@@ -822,6 +807,223 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await dashboard.loadDashboardData();
       await txController.loadTransactions();
     }
+  }
+
+  void _showGoogleCloudSetupDialog(BuildContext context, [String? errorMessage]) {
+    const String packageName = 'com.arthatrack.app';
+    const String sha1 = '1D:F8:96:94:51:9C:8F:7C:78:65:8D:6E:44:A6:F3:06:05:DA:47:D2';
+    const String sha256 = '9F:64:55:F8:E4:AE:52:96:E9:58:05:CA:A7:BF:75:C1:26:7E:52:7E:E1:51:17:30:99:35:F4:82:9C:3C:78:F9';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.royalBlue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.cloud_sync, color: AppColors.royalBlue, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Google Cloud Setup Guide',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.ruby.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.ruby.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.error_outline, color: AppColors.ruby, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Google Play Services returned: ApiException 10 (DEVELOPER_ERROR).\nThis occurs when Google Cloud has not authorized your app fingerprint yet.',
+                            style: TextStyle(fontSize: 11, color: AppColors.ruby, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                const Text(
+                  'To connect Gmail, Google requires registering your app in Google Cloud Console:',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+
+                // Package Name Copy Box
+                _buildCopyBox(
+                  context,
+                  title: 'PACKAGE NAME',
+                  value: packageName,
+                ),
+                const SizedBox(height: 8),
+
+                // SHA-1 Copy Box
+                _buildCopyBox(
+                  context,
+                  title: 'PERMANENT RELEASE SHA-1 FINGERPRINT',
+                  value: sha1,
+                ),
+                const SizedBox(height: 8),
+
+                // SHA-256 Copy Box
+                _buildCopyBox(
+                  context,
+                  title: 'PERMANENT RELEASE SHA-256 FINGERPRINT',
+                  value: sha256,
+                ),
+                const SizedBox(height: 14),
+
+                const Text(
+                  '3-Step Setup on Google Cloud:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                _buildStepItem(
+                  step: '1',
+                  text: 'Visit console.cloud.google.com -> Create Project (or choose existing).',
+                ),
+                _buildStepItem(
+                  step: '2',
+                  text: 'Go to APIs & Services -> Credentials -> Create Credentials -> OAuth client ID -> Android. Paste the Package Name and SHA-1 above.',
+                ),
+                _buildStepItem(
+                  step: '3',
+                  text: 'Go to Enabled APIs & services -> Enable "Gmail API". In OAuth consent screen, add your email as a Test User.',
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.emerald.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, color: AppColors.emerald, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tip: Bank SMS Inbox Sync is already 100% active and works offline with zero Google Cloud setup!',
+                          style: TextStyle(fontSize: 11, color: AppColors.emerald, height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppColors.royalBlue)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCopyBox(BuildContext context, {required String title, required String value}) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.5),
+              ),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: value));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Copied $title to clipboard!'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: AppColors.emerald,
+                    ),
+                  );
+                },
+                child: const Row(
+                  children: [
+                    Icon(Icons.copy, size: 13, color: AppColors.royalBlue),
+                    SizedBox(width: 4),
+                    Text('Copy', style: TextStyle(fontSize: 11, color: AppColors.royalBlue, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            value,
+            style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepItem({required String step, required String text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: AppColors.royalBlue.withOpacity(0.5)),
+            ),
+            child: Text(step, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.royalBlue)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSandboxCard(BuildContext context) {
