@@ -86,4 +86,36 @@ class BalanceSheetRepository {
       whereArgs: [id],
     );
   }
+
+  /// Allocates savings into an asset (either updating an existing asset or creating a new one)
+  Future<void> allocateToAsset({
+    required String assetName,
+    required String category,
+    required double amount,
+  }) async {
+    final db = await _dbProvider.database;
+    final trimmed = assetName.trim();
+    final existing = await db.query(
+      BalanceSheetTable.tableName,
+      where: 'LOWER(${BalanceSheetTable.colName}) = ? AND ${BalanceSheetTable.colType} = ?',
+      whereArgs: [trimmed.toLowerCase(), 'ASSET'],
+      limit: 1,
+    );
+
+    if (existing.isNotEmpty) {
+      final current = BalanceSheetItemModel.fromMap(existing.first);
+      await updateItem(current.copyWith(
+        amount: current.amount + amount,
+        updatedAt: DateTime.now().toIso8601String(),
+      ));
+    } else {
+      await insertItem(BalanceSheetItemModel(
+        name: trimmed,
+        type: 'ASSET',
+        amount: amount,
+        category: category,
+        updatedAt: DateTime.now().toIso8601String(),
+      ));
+    }
+  }
 }

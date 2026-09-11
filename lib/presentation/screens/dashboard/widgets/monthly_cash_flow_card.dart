@@ -5,11 +5,13 @@ import '../../../../core/utils/currency_formatter.dart';
 class MonthlyCashFlowCard extends StatelessWidget {
   final double totalMonthlyIncome;
   final double totalMonthlyExpense;
+  final VoidCallback? onAllocateSavings;
 
   const MonthlyCashFlowCard({
     super.key,
     required this.totalMonthlyIncome,
     required this.totalMonthlyExpense,
+    this.onAllocateSavings,
   });
 
   @override
@@ -174,6 +176,67 @@ class MonthlyCashFlowCard extends StatelessWidget {
               ),
             ],
           ),
+
+          // Option A: Allocate Monthly Savings Action Button
+          if (isPositive && netCashFlow > 0) ...[
+            const SizedBox(height: 14),
+            const Divider(color: Color(0xFF26334D), height: 1),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: onAllocateSavings,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.emerald.withOpacity(0.18),
+                      AppColors.emerald.withOpacity(0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.emerald.withOpacity(0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.emerald.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.savings_outlined, color: AppColors.emerald, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'You saved ${IndianCurrencyFormatter.format(netCashFlow)} this month!',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Tap to confirm or allocate to savings/assets',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, color: AppColors.emerald, size: 14),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

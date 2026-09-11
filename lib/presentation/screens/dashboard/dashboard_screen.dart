@@ -7,6 +7,7 @@ import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../settings/widgets/raw_sms_test_sandbox.dart';
 import '../transactions/widgets/add_cash_transaction_sheet.dart';
+import 'widgets/allocate_savings_sheet.dart';
 import 'widgets/category_breakdown_chart.dart';
 import 'widgets/monthly_budgets_card.dart';
 import 'widgets/monthly_cash_flow_card.dart';
@@ -109,6 +110,7 @@ class DashboardScreen extends StatelessWidget {
                 MonthlyCashFlowCard(
                   totalMonthlyIncome: controller.totalMonthlyIncome,
                   totalMonthlyExpense: controller.totalMonthlyExpense,
+                  onAllocateSavings: () => _openAllocateSavingsSheet(context, controller.netCashFlow),
                 ),
                 const SizedBox(height: 20),
 
@@ -156,6 +158,18 @@ class DashboardScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       builder: (context) => const RawSmsTestSandbox(),
+    ).then((_) {
+      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+      Provider.of<TransactionController>(context, listen: false).loadTransactions();
+    });
+  }
+
+  void _openAllocateSavingsSheet(BuildContext context, double netSavings) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (context) => AllocateSavingsSheet(netSavings: netSavings),
     ).then((_) {
       Provider.of<DashboardController>(context, listen: false).loadDashboardData();
       Provider.of<TransactionController>(context, listen: false).loadTransactions();

@@ -91,4 +91,29 @@ class DashboardController extends ChangeNotifier {
     await _accountRepo.updateBalance(accountId, newBalance);
     await loadDashboardData();
   }
+
+  /// Allocates surplus monthly savings from liquid bank balance into a balance sheet asset
+  Future<void> allocateMonthlySavings({
+    required double amount,
+    required String assetName,
+    required String assetCategory,
+    int? sourceAccountId,
+  }) async {
+    if (amount <= 0 || assetName.trim().isEmpty) return;
+
+    // 1. Add to Asset in BalanceSheetRepository
+    await _balanceSheetRepo.allocateToAsset(
+      assetName: assetName,
+      category: assetCategory,
+      amount: amount,
+    );
+
+    // 2. Deduct from source bank account if specified
+    if (sourceAccountId != null) {
+      await _accountRepo.adjustBalance(sourceAccountId, -amount);
+    }
+
+    // 3. Refresh all dashboard data
+    await loadDashboardData();
+  }
 }
