@@ -17,6 +17,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
+  final _bedrockModelController = TextEditingController();
+  final _bedrockRegionController = TextEditingController();
   bool _obscureKey = true;
 
   @override
@@ -26,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final settings = Provider.of<SettingsController>(context, listen: false);
       settings.loadSettings().then((_) {
         _apiKeyController.text = settings.apiKey;
+        _bedrockModelController.text = settings.bedrockModel;
+        _bedrockRegionController.text = settings.bedrockRegion;
       });
     });
   }
@@ -33,6 +37,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _bedrockModelController.dispose();
+    _bedrockRegionController.dispose();
     super.dispose();
   }
 
@@ -162,9 +168,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Input your free-tier Google Gemini or Groq API key. Keys are securely stored in the Android Keystore via flutter_secure_storage and never leave your device.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            Text(
+              settings.selectedProvider == AppConstants.providerBedrock
+                  ? 'AWS Bedrock Converse API active with Alibaba Cloud Qwen. Paste your Bedrock API key / Bearer token below.'
+                  : 'Input your free-tier Google Gemini or Groq API key. Keys are securely stored in the Android Keystore via flutter_secure_storage and never leave your device.',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
             const SizedBox(height: 16),
 
@@ -182,24 +190,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: AppConstants.providerGroq,
                   child: Text('Groq (llama-3.3-70b-versatile)'),
                 ),
+                DropdownMenuItem(
+                  value: AppConstants.providerBedrock,
+                  child: Text('AWS Bedrock (qwen.qwen3-coder-next)'),
+                ),
               ],
               onChanged: (val) {
                 if (val != null) {
                   settings.setProvider(val).then((_) {
                     _apiKeyController.text = settings.apiKey;
+                    _bedrockModelController.text = settings.bedrockModel;
+                    _bedrockRegionController.text = settings.bedrockRegion;
                   });
                 }
               },
             ),
             const SizedBox(height: 14),
 
+            // Bedrock Model & Region configuration (visible when Bedrock is selected)
+            if (settings.selectedProvider == AppConstants.providerBedrock) ...[
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _bedrockModelController,
+                      decoration: const InputDecoration(
+                        labelText: 'Bedrock Model ID',
+                        hintText: 'qwen.qwen3-coder-next',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _bedrockRegionController,
+                      decoration: const InputDecoration(
+                        labelText: 'AWS Region',
+                        hintText: 'us-east-1',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+
             // Key Input
             TextField(
               controller: _apiKeyController,
               obscureText: _obscureKey,
               decoration: InputDecoration(
-                labelText: '${settings.selectedProvider} API Key',
-                hintText: 'Paste your secret API key here...',
+                labelText: settings.selectedProvider == AppConstants.providerBedrock
+                    ? 'Bedrock API Key / Bearer Token'
+                    : '${settings.selectedProvider} API Key',
+                hintText: settings.selectedProvider == AppConstants.providerBedrock
+                    ? 'Paste your Bedrock API key here...'
+                    : 'Paste your secret API key here...',
                 suffixIcon: IconButton(
                   icon: Icon(_obscureKey ? Icons.visibility : Icons.visibility_off, size: 18),
                   onPressed: () => setState(() => _obscureKey = !_obscureKey),
@@ -215,6 +263,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       await settings.saveApiKey(_apiKeyController.text);
+                      if (settings.selectedProvider == AppConstants.providerBedrock) {
+                        await settings.saveBedrockConfig(
+                          model: _bedrockModelController.text,
+                          region: _bedrockRegionController.text,
+                        );
+                      }
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -237,6 +291,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : () async {
                             await settings.saveApiKey(_apiKeyController.text);
+                            if (settings.selectedProvider == AppConstants.providerBedrock) {
+                              await settings.saveBedrockConfig(
+                                model: _bedrockModelController.text,
+                                region: _bedrockRegionController.text,
+                              );
+                            }
                             final success = await settings.testCurrentApiKey();
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

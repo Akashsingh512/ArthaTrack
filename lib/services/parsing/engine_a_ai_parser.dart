@@ -38,17 +38,26 @@ Field rules:
 - confidence: number between 0.0 and 1.0.
 ''';
 
-  /// Parses raw text using the user's BYOK LLM key (Gemini or Groq)
+  /// Parses raw text using the user's BYOK LLM key (Gemini, Groq, or AWS Bedrock)
   static Future<ParsedTransaction?> parse({
     required String rawText,
     required String apiKey,
     required String provider,
+    String? bedrockModel,
+    String? bedrockRegion,
   }) async {
     if (apiKey.trim().isEmpty) return null;
 
     try {
       if (provider == AppConstants.providerGroq) {
         return await _parseWithGroq(rawText, apiKey);
+      } else if (provider == AppConstants.providerBedrock) {
+        return await _parseWithBedrock(
+          rawText,
+          apiKey,
+          modelId: bedrockModel,
+          region: bedrockRegion,
+        );
       } else {
         return await _parseWithGemini(rawText, apiKey);
       }
@@ -151,9 +160,83 @@ Field rules:
     return _parseJsonOutput(content, rawText, 'AI_GROQ');
   }
 
+  /// Parses using AWS Bedrock Converse API (e.g. qwen.qwen3-coder-next in us-east-1)
+  static Future<ParsedTransaction?> _parseWithBedrock(
+    String rawText,
+    String apiKey, {
+    String? modelId,
+    String? region,
+  }) async {
+    final cleanKey = apiKey.trim();
+    final authHeader = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : 'Bearer $cleanKey';
+    final targetRegion = (region != null && region.isNotEmpty) ? region : AppConstants.defaultBedrockRegion;
+    final targetModel = (modelId != null && modelId.isNotEmpty) ? modelId : AppConstants.defaultBedrockModel;
+
+    final url = Uri.parse(
+      'https://bedrock-runtime.$targetRegion.amazonaws.com/model/$targetModel/converse',
+    );
+
+    final payload = {
+      "system": [
+        {"text": _systemPrompt}
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {"text": "Parse this raw Indian transaction notification text:\n\"$rawText\""}
+          ]
+        }
+      ],
+      "inferenceConfig": {
+        "temperature": 0.1,
+        "maxTokens": 1000,
+      },
+      "additionalModelRequestFields": {},
+      "performanceConfig": {
+        "latency": "standard",
+      }
+    };
+
+    final response = await http
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+          body: jsonEncode(payload),
+        )
+        .timeout(_requestTimeout);
+
+    if (response.statusCode != 200) {
+      throw Exception('AWS Bedrock returned status ${response.statusCode}: ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final output = data['output'] as Map<String, dynamic>?;
+    final message = output?['message'] as Map<String, dynamic>?;
+    final contentList = message?['content'] as List?;
+    if (contentList == null || contentList.isEmpty) return null;
+
+    final firstContent = contentList[0] as Map<String, dynamic>?;
+    final text = firstContent?['text'] as String?;
+    if (text == null || text.trim().isEmpty) return null;
+
+    return _parseJsonOutput(text, rawText, 'AI_BEDROCK');
+  }
+
   static ParsedTransaction? _parseJsonOutput(String jsonString, String rawText, String engine) {
     try {
-      final map = jsonDecode(jsonString.trim()) as Map<String, dynamic>;
+      var cleanJson = jsonString.trim();
+      // Strip markdown code fences like ```json ... ``` or ``` ... ```
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replaceFirst(RegExp(r'^```(?:json)?\s*'), '');
+        cleanJson = cleanJson.replaceFirst(RegExp(r'\s*```$'), '');
+        cleanJson = cleanJson.trim();
+      }
+
+      final map = jsonDecode(cleanJson) as Map<String, dynamic>;
       final isFinancial = map['is_financial_transaction'] as bool? ?? true;
       if (!isFinancial) return null;
 

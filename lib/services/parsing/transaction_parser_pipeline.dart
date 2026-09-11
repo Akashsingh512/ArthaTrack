@@ -37,6 +37,8 @@ class TransactionParserPipeline {
             rawText: rawText,
             apiKey: apiKey,
             provider: provider,
+            bedrockModel: await _secureStorage.getBedrockModel(),
+            bedrockRegion: await _secureStorage.getBedrockRegion(),
           );
 
           if (aiParsed != null && aiParsed.amount > 0) {

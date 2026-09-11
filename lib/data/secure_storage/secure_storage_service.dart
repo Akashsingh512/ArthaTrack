@@ -40,11 +40,42 @@ class SecureStorageService {
     await _storage.write(key: AppConstants.secureKeyGroqApiKey, value: key.trim());
   }
 
+  // AWS Bedrock API Key / Bearer Token
+  Future<String?> getBedrockApiKey() async {
+    return await _storage.read(key: AppConstants.secureKeyBedrockApiKey);
+  }
+
+  Future<void> setBedrockApiKey(String key) async {
+    await _storage.write(key: AppConstants.secureKeyBedrockApiKey, value: key.trim());
+  }
+
+  // AWS Bedrock Model (default: qwen.qwen3-coder-next)
+  Future<String> getBedrockModel() async {
+    final model = await _storage.read(key: AppConstants.secureKeyBedrockModel);
+    return (model != null && model.isNotEmpty) ? model : AppConstants.defaultBedrockModel;
+  }
+
+  Future<void> setBedrockModel(String model) async {
+    await _storage.write(key: AppConstants.secureKeyBedrockModel, value: model.trim());
+  }
+
+  // AWS Bedrock Region (default: us-east-1)
+  Future<String> getBedrockRegion() async {
+    final region = await _storage.read(key: AppConstants.secureKeyBedrockRegion);
+    return (region != null && region.isNotEmpty) ? region : AppConstants.defaultBedrockRegion;
+  }
+
+  Future<void> setBedrockRegion(String region) async {
+    await _storage.write(key: AppConstants.secureKeyBedrockRegion, value: region.trim());
+  }
+
   // Active Key depending on selected provider
   Future<String?> getActiveApiKey() async {
     final provider = await getAiProvider();
     if (provider == AppConstants.providerGroq) {
       return await getGroqApiKey();
+    } else if (provider == AppConstants.providerBedrock) {
+      return await getBedrockApiKey();
     } else {
       return await getGeminiApiKey();
     }
@@ -59,6 +90,8 @@ class SecureStorageService {
     final provider = await getAiProvider();
     if (provider == AppConstants.providerGroq) {
       await _storage.delete(key: AppConstants.secureKeyGroqApiKey);
+    } else if (provider == AppConstants.providerBedrock) {
+      await _storage.delete(key: AppConstants.secureKeyBedrockApiKey);
     } else {
       await _storage.delete(key: AppConstants.secureKeyGeminiApiKey);
     }

@@ -44,9 +44,20 @@ class SettingsController extends ChangeNotifier {
   GmailReaderService get gmailService => _gmailService;
   SmsSyncService get smsSyncService => _smsSyncService;
 
+  String _bedrockModel = AppConstants.defaultBedrockModel;
+  String _bedrockRegion = AppConstants.defaultBedrockRegion;
+
+  String get bedrockModel => _bedrockModel;
+  String get bedrockRegion => _bedrockRegion;
+
   // Active Engine Indicator
-  String get activeEngineLabel =>
-      _hasActiveKey ? 'AI Engine Active ($_selectedProvider)' : 'Local Regex Engine Active (Offline)';
+  String get activeEngineLabel {
+    if (!_hasActiveKey) return 'Local Regex Engine Active (Offline)';
+    if (_selectedProvider == AppConstants.providerBedrock) {
+      return 'AI Engine Active (AWS Bedrock: $_bedrockModel)';
+    }
+    return 'AI Engine Active ($_selectedProvider)';
+  }
 
   bool get isAiActive => _hasActiveKey;
 
@@ -59,6 +70,8 @@ class SettingsController extends ChangeNotifier {
       final key = await _secureStorage.getActiveApiKey();
       _apiKey = key ?? '';
       _hasActiveKey = _apiKey.isNotEmpty;
+      _bedrockModel = await _secureStorage.getBedrockModel();
+      _bedrockRegion = await _secureStorage.getBedrockRegion();
 
       _isNotificationPermissionGranted =
           await _notificationChannel.isPermissionGranted();
@@ -86,12 +99,22 @@ class SettingsController extends ChangeNotifier {
     final trimmed = key.trim();
     if (_selectedProvider == AppConstants.providerGroq) {
       await _secureStorage.setGroqApiKey(trimmed);
+    } else if (_selectedProvider == AppConstants.providerBedrock) {
+      await _secureStorage.setBedrockApiKey(trimmed);
     } else {
       await _secureStorage.setGeminiApiKey(trimmed);
     }
     _apiKey = trimmed;
     _hasActiveKey = trimmed.isNotEmpty;
     _keyTestStatus = null;
+    notifyListeners();
+  }
+
+  Future<void> saveBedrockConfig({required String model, required String region}) async {
+    _bedrockModel = model.trim().isNotEmpty ? model.trim() : AppConstants.defaultBedrockModel;
+    _bedrockRegion = region.trim().isNotEmpty ? region.trim() : AppConstants.defaultBedrockRegion;
+    await _secureStorage.setBedrockModel(_bedrockModel);
+    await _secureStorage.setBedrockRegion(_bedrockRegion);
     notifyListeners();
   }
 
