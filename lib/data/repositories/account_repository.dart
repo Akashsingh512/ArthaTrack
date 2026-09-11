@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import '../database/tables/accounts_table.dart';
+import '../database/tables/transactions_table.dart';
 import '../models/account_model.dart';
 
 class AccountRepository {
@@ -59,6 +60,31 @@ class AccountRepository {
         ((trimmed.toLowerCase().contains('card') || trimmed.toLowerCase().contains('credit'))
             ? 'CREDIT_CARD'
             : (trimmed.toLowerCase().contains('cash') ? 'CASH' : 'SAVINGS'));
+
+    // Smart Single Card Resolution:
+    // If incoming card name is generic (omits digits like XX1234) and user has exactly ONE numbered card for this bank,
+    // automatically link to that existing card!
+    final hasDigits = RegExp(r'\d{3,4}').hasMatch(trimmed);
+    if (!hasDigits && (inferredType == 'CREDIT_CARD' || trimmed.toLowerCase().contains('card'))) {
+      final all = await getAllAccounts();
+      final lower = trimmed.toLowerCase();
+      final bankKeyword = lower.contains('axis')
+          ? 'axis'
+          : (lower.contains('sbi')
+              ? 'sbi'
+              : (lower.contains('hdfc')
+                  ? 'hdfc'
+                  : (lower.contains('icici') ? 'icici' : (lower.contains('kotak') ? 'kotak' : null))));
+
+      if (bankKeyword != null) {
+        final matchingBankCards = all
+            .where((a) => a.isCreditCard && a.name.toLowerCase().contains(bankKeyword) && RegExp(r'\d{3,4}').hasMatch(a.name))
+            .toList();
+        if (matchingBankCards.length == 1) {
+          return matchingBankCards.first;
+        }
+      }
+    }
 
     final newAcc = AccountModel(
       name: trimmed,
@@ -136,6 +162,8 @@ class AccountRepository {
   }
 
   /// Calculates total credit card outstanding dues (liabilities)
+  /// Note: Positive balances on credit cards represent Available Credit Limits from SMS
+  /// and must NEVER be treated as debt liabilities.
   Future<double> getCreditCardDues() async {
     final accounts = await getAllAccounts();
     double dues = 0.0;
@@ -143,11 +171,58 @@ class AccountRepository {
       if (acc.isCreditCard) {
         if (acc.balance < 0) {
           dues += acc.balance.abs();
-        } else {
-          dues += acc.balance;
         }
       }
     }
     return dues;
+  }
+
+  /// Merges all transactions from [sourceAccountId] into [targetAccountId] and deletes [sourceAccountId].
+  Future<void> mergeAccounts(int sourceAccountId, int targetAccountId) async {
+    if (sourceAccountId == targetAccountId) return;
+    final db = await _dbProvider.database;
+    await db.transaction((txn) async {
+      await txn.rawUpdate('''
+        UPDATE ${TransactionsTable.tableName}
+        SET ${TransactionsTable.colAccountId} = ?
+        WHERE ${TransactionsTable.colAccountId} = ?
+      ''', [targetAccountId, sourceAccountId]);
+
+      await txn.delete(
+        AccountsTable.tableName,
+        where: '${AccountsTable.colId} = ?',
+        whereArgs: [sourceAccountId],
+      );
+    });
+  }
+
+  /// Finds generic card accounts (omitting card digits) where specific numbered cards also exist
+  Future<List<AccountModel>> getAmbiguousCardAccounts() async {
+    final all = await getAllAccounts();
+    final cards = all.where((a) => a.isCreditCard).toList();
+    final ambiguous = <AccountModel>[];
+
+    for (final card in cards) {
+      final hasDigits = RegExp(r'\d{3,4}').hasMatch(card.name);
+      if (!hasDigits) {
+        final lower = card.name.toLowerCase();
+        final bankKeyword = lower.contains('axis')
+            ? 'axis'
+            : (lower.contains('sbi')
+                ? 'sbi'
+                : (lower.contains('hdfc')
+                    ? 'hdfc'
+                    : (lower.contains('icici') ? 'icici' : null)));
+        if (bankKeyword != null) {
+          final hasSpecificCards = cards.any(
+            (c) => c.id != card.id && c.name.toLowerCase().contains(bankKeyword) && RegExp(r'\d{3,4}').hasMatch(c.name),
+          );
+          if (hasSpecificCards) {
+            ambiguous.add(card);
+          }
+        }
+      }
+    }
+    return ambiguous;
   }
 }

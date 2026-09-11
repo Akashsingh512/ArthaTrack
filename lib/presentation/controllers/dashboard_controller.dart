@@ -92,12 +92,13 @@ class DashboardController extends ChangeNotifier {
     await loadDashboardData();
   }
 
-  /// Allocates surplus monthly savings from liquid bank balance into a balance sheet asset
+  /// Allocates surplus monthly savings into a balance sheet asset
   Future<void> allocateMonthlySavings({
     required double amount,
     required String assetName,
     required String assetCategory,
     int? sourceAccountId,
+    bool deductFromBank = false,
   }) async {
     if (amount <= 0 || assetName.trim().isEmpty) return;
 
@@ -108,12 +109,31 @@ class DashboardController extends ChangeNotifier {
       amount: amount,
     );
 
-    // 2. Deduct from source bank account if specified
-    if (sourceAccountId != null) {
-      await _accountRepo.adjustBalance(sourceAccountId, -amount);
+    // 2. Deduct from source bank account ONLY if explicitly requested and account has enough balance
+    if (deductFromBank && sourceAccountId != null) {
+      final acc = await _accountRepo.getAccountById(sourceAccountId);
+      if (acc != null && acc.balance >= amount) {
+        await _accountRepo.adjustBalance(sourceAccountId, -amount);
+      }
     }
 
     // 3. Refresh all dashboard data
+    await loadDashboardData();
+  }
+
+  /// Confirms retaining monthly savings in the designated liquid savings account
+  Future<void> confirmKeepInSavingsAccount({
+    required double amount,
+    int? targetAccountId,
+  }) async {
+    if (amount <= 0) return;
+    if (targetAccountId != null) {
+      final acc = await _accountRepo.getAccountById(targetAccountId);
+      if (acc != null && acc.balance <= 0.0) {
+        // If starting balance wasn't set, initialize with this verified savings surplus
+        await _accountRepo.updateBalance(targetAccountId, amount);
+      }
+    }
     await loadDashboardData();
   }
 }

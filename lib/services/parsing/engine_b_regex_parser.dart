@@ -27,6 +27,11 @@ class EngineBRegexParser {
       }
     }
 
+    // 0.3 PAYMENT REQUEST / COLLECT REQUEST GUARD: Never parse incoming payment requests (e.g. PhonePe/GPay request to pay)
+    if (IndianBankingConstants.collectRequestBlocklistRegex.hasMatch(text)) {
+      return null;
+    }
+
     // 1. Determine Type: Expense vs Income
     final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
     final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(lower);
@@ -252,6 +257,18 @@ class EngineBRegexParser {
       }
     }
 
+    // 2.1 NACH debit pattern (e.g. "NACH debit towards GROWW INVEST TECH PR for INR 1,000.00")
+    final nachMatch = RegExp(
+      r'nach\s+debit\s+towards\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:for|with|in\s+a\/c|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
+    if (nachMatch != null && nachMatch.groupCount >= 1) {
+      final candidate = _cleanMerchantString(nachMatch.group(1));
+      if (candidate != null) {
+        return _capitalizeWords(candidate);
+      }
+    }
+
     // 3. Prioritize explicit payee/merchant extraction based on transaction type
     final primaryRegex = type == TransactionType.EXPENSE
         ? IndianBankingConstants.expenseMerchantRegex
@@ -299,6 +316,17 @@ class EngineBRegexParser {
         candidate = prefix.replaceAll(RegExp(r'[\._\-]'), ' ').trim();
       }
     }
+
+    // Reject standalone order references (e.g. "order SMOVBRTOT34553" or "order")
+    if (RegExp(r'^(?:your\s+)?order(?:\s+[A-Za-z0-9]+)?$', caseSensitive: false).hasMatch(candidate)) {
+      return null;
+    }
+
+    // Strip trailing order ID references (e.g. "Zepto order SMOVBRTOT34553" -> "Zepto")
+    candidate = candidate.replaceAll(RegExp(r'\s+order\s+[A-Za-z0-9]+.*$', caseSensitive: false), '').trim();
+
+    // Strip leading "your " (e.g. "your Zepto" -> "Zepto")
+    candidate = candidate.replaceFirst(RegExp(r'^your\s+', caseSensitive: false), '').trim();
 
     final lowerCand = candidate.toLowerCase();
     if (lowerCand.contains('your') ||

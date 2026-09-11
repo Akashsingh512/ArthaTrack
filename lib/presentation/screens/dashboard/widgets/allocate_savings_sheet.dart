@@ -532,16 +532,22 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
     final dashboardController = Provider.of<DashboardController>(context, listen: false);
 
     if (_selectedOption == 1) {
-      // Keep full surplus in bank
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Confirmed! ${IndianCurrencyFormatter.format(widget.netSavings)} remains safely in your liquid bank account.',
-          ),
-          backgroundColor: AppColors.emerald,
-        ),
+      // Keep full surplus in designated bank account
+      await dashboardController.confirmKeepInSavingsAccount(
+        amount: widget.netSavings,
+        targetAccountId: _selectedAccountId,
       );
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Confirmed! ${IndianCurrencyFormatter.format(widget.netSavings)} saved to your liquid bank account.',
+            ),
+            backgroundColor: AppColors.emerald,
+          ),
+        );
+      }
       return;
     }
 
@@ -565,6 +571,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
       assetName: goalName,
       assetCategory: _selectedGoalCategory,
       sourceAccountId: _selectedAccountId,
+      deductFromBank: false,
     );
 
     if (context.mounted) {

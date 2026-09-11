@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../data/models/account_model.dart';
+import '../../../../data/repositories/account_repository.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../widgets/engine_badge.dart';
 import 'widgets/add_cash_transaction_sheet.dart';
+import 'widgets/card_disambiguation_sheet.dart';
 import 'widgets/edit_transaction_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -19,13 +22,44 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   final _searchController = TextEditingController();
+  List<AccountModel> _ambiguousAccounts = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<TransactionController>(context, listen: false).loadTransactions();
+      _checkAmbiguousCards();
     });
+  }
+
+  Future<void> _checkAmbiguousCards() async {
+    final ambiguous = await AccountRepository().getAmbiguousCardAccounts();
+    if (mounted) {
+      setState(() {
+        _ambiguousAccounts = ambiguous;
+      });
+    }
+  }
+
+  void _openCardDisambiguation(AccountModel ambiguous) async {
+    final all = await AccountRepository().getAllAccounts();
+    final lower = ambiguous.name.toLowerCase();
+    final bankKeyword = lower.contains('axis')
+        ? 'axis'
+        : (lower.contains('sbi') ? 'sbi' : (lower.contains('hdfc') ? 'hdfc' : 'icici'));
+    final candidates = all
+        .where((a) => a.isCreditCard && a.name.toLowerCase().contains(bankKeyword) && RegExp(r'\d{3,4}').hasMatch(a.name))
+        .toList();
+
+    if (mounted && candidates.isNotEmpty) {
+      await CardDisambiguationSheet.show(
+        context,
+        ambiguousAccount: ambiguous,
+        candidateCards: candidates,
+      );
+      _checkAmbiguousCards();
+    }
   }
 
   @override
@@ -90,6 +124,51 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   onChanged: (val) => controller.setSearchQuery(val),
                 ),
               ),
+
+              // Ambiguous Card Resolution Banner
+              if (_ambiguousAccounts.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: InkWell(
+                    onTap: () => _openCardDisambiguation(_ambiguousAccounts.first),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.amber.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.amber.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: AppColors.amber, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Card Review: "${_ambiguousAccounts.first.name}"',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Tap to assign transactions to your specific card (e.g. ending in 7876 or 323)',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: AppColors.amber, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
 
               // Filtered Totals Quick Bar (Received vs Spent)
               Padding(

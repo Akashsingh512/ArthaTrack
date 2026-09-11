@@ -177,11 +177,14 @@ class SmsSyncService {
             date: txDate,
           );
 
-          // 4.1 Update Account Balance from Bank SMS if available balance is present
+          // 4.1 Update Account Balance from Bank SMS if available balance is present (Savings / Bank accounts only)
           if (parsed.updatedBalance != null && parsed.updatedBalance! > 0) {
-            if (!seenAccountsWithBalance.contains(resolvedAccountId)) {
-              seenAccountsWithBalance.add(resolvedAccountId);
-              await _accountRepo.updateBalance(resolvedAccountId, parsed.updatedBalance!);
+            final acc = await _accountRepo.getAccountById(resolvedAccountId);
+            if (acc != null && !acc.isCreditCard) {
+              if (!seenAccountsWithBalance.contains(resolvedAccountId)) {
+                seenAccountsWithBalance.add(resolvedAccountId);
+                await _accountRepo.updateBalance(resolvedAccountId, parsed.updatedBalance!);
+              }
             }
           }
 
@@ -194,20 +197,20 @@ class SmsSyncService {
         }
       }
 
-      _isSyncing = false;
       return SmsSyncResult(
         status: SmsSyncStatus.success,
         importedCount: importedCount,
         scannedCount: scannedCount,
       );
     } catch (e) {
-      _isSyncing = false;
       return SmsSyncResult(
         status: SmsSyncStatus.error,
         importedCount: 0,
         scannedCount: 0,
         errorMessage: e.toString(),
       );
+    } finally {
+      _isSyncing = false;
     }
   }
 }

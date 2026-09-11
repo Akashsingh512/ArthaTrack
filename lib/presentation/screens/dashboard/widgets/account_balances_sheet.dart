@@ -106,6 +106,73 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
     );
   }
 
+  void _showMergeDialog(AccountModel sourceAcc) {
+    final lower = sourceAcc.name.toLowerCase();
+    final bankKeyword = lower.contains('axis')
+        ? 'axis'
+        : (lower.contains('sbi')
+            ? 'sbi'
+            : (lower.contains('hdfc')
+                ? 'hdfc'
+                : (lower.contains('icici') ? 'icici' : 'kotak')));
+    final candidates = _accounts
+        .where((a) => a.id != sourceAcc.id && a.isCreditCard && a.name.toLowerCase().contains(bankKeyword))
+        .toList();
+
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No numbered cards found for ${sourceAcc.name} to merge into.'),
+          backgroundColor: AppColors.surfaceElevated,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: Text(
+          'Merge "${sourceAcc.name}"',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select which card to merge this account into. All transactions will be moved, and this duplicate account will be deleted.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            ...candidates.map((c) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.credit_card, color: AppColors.emerald),
+                  title: Text(c.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () async {
+                    await _accountRepo.mergeAccounts(sourceAcc.id!, c.id!);
+                    if (mounted) {
+                      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                      Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
+                      Navigator.pop(ctx);
+                      _loadAccounts();
+                    }
+                  },
+                )),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -250,6 +317,26 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                                 Icon(Icons.edit, size: 10, color: AppColors.emerald),
                               ],
                             ),
+                            if (isCard && !RegExp(r'\d{3,4}').hasMatch(acc.name)) ...[
+                              const SizedBox(height: 4),
+                              InkWell(
+                                onTap: () => _showMergeDialog(acc),
+                                child: const Row(
+                                  children: [
+                                    Text(
+                                      'Merge Card',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.amber,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(width: 2),
+                                    Icon(Icons.merge_type, size: 10, color: AppColors.amber),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ],

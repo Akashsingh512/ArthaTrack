@@ -65,6 +65,20 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
+  // STRICT PAYMENT / COLLECT REQUEST SHIELD: Drop incoming payment requests (e.g. PhonePe/GPay request to pay)
+  static final RegExp collectRequestBlocklistRegex = RegExp(
+    r'\b('
+    r'(?:has\s+)?requested\s+(?:a\s+)?payment|'
+    r'requested\s+money|'
+    r'requesting\s+(?:a\s+)?payment|'
+    r'tap\s+link\s+to\s+pay|'
+    r'request\s+to\s+pay|'
+    r'approve\s+(?:the\s+)?collect\s+request|'
+    r'collect\s+request'
+    r')\b',
+    caseSensitive: false,
+  );
+
   // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "₹1,24,500.00", "₹ 200"
   static final RegExp amountRegex = RegExp(
     r'(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)',
@@ -87,6 +101,7 @@ class IndianBankingConstants {
   static final RegExp expenseTriggerRegex = RegExp(
     r'\b('
     r'debited|spent|paid|withdrawn|charged|deducted|payment\s+of|payment\s+to|'
+    r'nach\s+debit|debit\b(?!\s+card)|'
     r'sent\b(?!\s+you\b)|'
     r'transferred\b(?!\s+from\b)|'
     r'transfer\s+(?:of\s+.*?\s+)?to|'
@@ -112,19 +127,19 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // 5. Merchant & Sender Extraction Heuristics
+  // 5. Merchant & Sender Extraction Heuristics with strict word boundaries
   static final RegExp expenseMerchantRegex = RegExp(
-    r'(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    r'\b(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:from|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp incomeMerchantRegex = RegExp(
-    r'(?:received\s+from|transfer\s+from|from|by)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+to|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    r'\b(?:received\s+from|transfer\s+from|from|by)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:to|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+from|\s+on|\s+ref|\s+upi|\s+avl|\s+bal|\.|\,|$|\n)',
+    r'\b(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:from|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
@@ -253,10 +268,11 @@ class IndianBankingConstants {
       'optical', 'nursing', 'healthcare', 'ayurvedic', 'homeopathy', 'medicos'
     ],
     'Investment': [
-      'zerodha', 'groww', 'kuvera', 'angel one', 'upstox', 'mutual fund',
+      'zerodha', 'groww', 'groww invest', 'kuvera', 'angel one', 'upstox', 'mutual fund',
       'sip', 'coin', 'smallcase', 'indmoney', 'etmoney', 'motilal', 'icici direct',
       'uti', 'sbi mutual', 'hdfc mutual', 'nippon', 'stocks', 'shares', 'nse',
-      'bse', 'gold', 'ppf', 'nps', 'fixed deposit'
+      'bse', 'gold', 'ppf', 'nps', 'fixed deposit', 'indian clearing corp', 'iccl',
+      'nsccl', 'nach'
     ],
     'Salary': [
       'salary', 'payroll', 'stipend', 'bonus', 'salary credit',
