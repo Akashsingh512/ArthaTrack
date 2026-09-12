@@ -248,18 +248,6 @@ class NetWorthCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: onTestSandbox,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: colors.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Icon(Icons.terminal, size: 16, color: colors.aiEngine),
-              ),
             ],
           ),
         ],
