@@ -20,12 +20,14 @@ class RecentTransactionsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: colors.surfaceCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF26334D)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,12 +35,12 @@ class RecentTransactionsList extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Recent Transactions',
+              Text(
+                'Latest',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               TextButton(
@@ -48,12 +50,12 @@ class RecentTransactionsList extends StatelessWidget {
                   minimumSize: const Size(50, 30),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
+                child: Text(
                   'View All',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.royalBlue,
+                    color: colors.royalBlue,
                   ),
                 ),
               ),
@@ -62,12 +64,12 @@ class RecentTransactionsList extends StatelessWidget {
           const SizedBox(height: 12),
 
           if (transactions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
                   'No transactions recorded yet.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: colors.textMuted, fontSize: 13),
                 ),
               ),
             )
@@ -76,11 +78,11 @@ class RecentTransactionsList extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: transactions.length,
-              separatorBuilder: (_, __) => const Divider(color: Color(0xFF1E293B), height: 16),
+              separatorBuilder: (_, __) => Divider(color: colors.borderSubtle, height: 16),
               itemBuilder: (context, index) {
                 final tx = transactions[index];
                 final isIncome = tx.isIncome;
-                final catColor = AppColors.categoryColors[tx.category] ?? AppColors.textMuted;
+                final catColor = AppColors.categoryColors[tx.category] ?? colors.textMuted;
 
                 return InkWell(
                   onTap: () => _showTransactionDetailModal(context, tx),
@@ -114,10 +116,10 @@ class RecentTransactionsList extends StatelessWidget {
                                 tx.merchant,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -127,13 +129,13 @@ class RecentTransactionsList extends StatelessWidget {
                                     DateFormatter.getRelativeTime(
                                       DateFormatter.parse(tx.date),
                                     ),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textMuted,
+                                      color: colors.textMuted,
                                     ),
                                   ),
                                   const SizedBox(width: 5),
-                                  const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                  Text('•', style: TextStyle(color: colors.textMuted, fontSize: 10)),
                                   const SizedBox(width: 5),
                                   Text(
                                     tx.category,
@@ -145,17 +147,17 @@ class RecentTransactionsList extends StatelessWidget {
                                   ),
                                   if (tx.displayPaymentSource.isNotEmpty) ...[
                                     const SizedBox(width: 5),
-                                    const Text('•', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                    Text('•', style: TextStyle(color: colors.textMuted, fontSize: 10)),
                                     const SizedBox(width: 5),
                                     Flexible(
                                       child: Text(
-                                        '${tx.displayPaymentSource.toLowerCase().contains('card') ? '💳 ' : (tx.displayPaymentSource.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.displayPaymentSource}',
+                                        tx.displayPaymentSource,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
+                                          color: colors.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -166,14 +168,56 @@ class RecentTransactionsList extends StatelessWidget {
                           ),
                         ),
 
-                        // Amount
-                        Text(
-                          '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: isIncome ? AppColors.income : AppColors.expense,
-                          ),
+                        // Amount & Status
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              tx.isFailed
+                                  ? IndianCurrencyFormatter.format(tx.amount)
+                                  : '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                decoration: tx.isFailed ? TextDecoration.lineThrough : null,
+                                color: tx.isFailed
+                                    ? colors.ruby
+                                    : (tx.isPendingHold
+                                        ? colors.amber
+                                        : (isIncome ? colors.income : colors.expense)),
+                              ),
+                            ),
+                            if (tx.isFailed || tx.isRefund || tx.isPendingHold) ...[
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: tx.isFailed
+                                      ? AppColors.ruby.withOpacity(0.15)
+                                      : (tx.isPendingHold
+                                          ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                          : AppColors.emerald.withOpacity(0.15)),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  tx.isFailed
+                                      ? 'DECLINED'
+                                      : (tx.isPendingHold ? 'ON HOLD' : 'REFUND'),
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.3,
+                                    color: tx.isFailed
+                                        ? AppColors.ruby
+                                        : (tx.isPendingHold
+                                            ? const Color(0xFFF59E0B)
+                                            : AppColors.emerald),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -256,12 +300,67 @@ class RecentTransactionsList extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              if (tx.status != 'SUCCESS')
+                _DetailRow(
+                  label: 'Status',
+                  value: tx.status,
+                  valueColor: tx.isFailed ? AppColors.ruby : const Color(0xFFF59E0B),
+                ),
+              if (tx.failureReason != null && tx.failureReason!.isNotEmpty)
+                _DetailRow(
+                  label: 'Decline Reason',
+                  value: tx.failureReason!,
+                  valueColor: AppColors.ruby,
+                ),
               _DetailRow(label: 'Category', value: tx.category),
               _DetailRow(label: 'Payment Source', value: tx.displayPaymentSource),
               _DetailRow(label: 'Date & Time', value: DateFormatter.formatWithTime(DateFormatter.parse(tx.date))),
               if (tx.referenceNumber != null && tx.referenceNumber!.isNotEmpty)
                 _DetailRow(label: 'Reference / UPI ID', value: tx.referenceNumber!),
               _DetailRow(label: 'Parsing Engine', value: tx.engine == 'AI' ? 'BYOK AI Key Engine' : 'Offline Indian Banking Regex'),
+              if (tx.supportRecourse != null && tx.supportRecourse!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF451A03).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.shield_outlined, color: Color(0xFFF59E0B), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Bank Fraud & Dispute Recourse',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFF59E0B),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            SelectableText(
+                              tx.supportRecourse!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               const Text(
                 'Raw Intercepted Text',
@@ -315,8 +414,13 @@ class RecentTransactionsList extends StatelessWidget {
 class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
+  final Color? valueColor;
 
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +430,14 @@ class _DetailRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

@@ -73,26 +73,37 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final catController = Provider.of<CategoryController>(context);
     final filterCategories = ['ALL', ...catController.categories];
 
+    final colors = context.colors;
+
     return Consumer<TransactionController>(
       builder: (context, controller, child) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('All Transactions'),
+            title: Text(
+              'Transactions',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: colors.textPrimary,
+              ),
+            ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: Icon(Icons.refresh, color: colors.textPrimary),
                 onPressed: () => controller.loadTransactions(),
               ),
             ],
           ),
           floatingActionButton: FloatingActionButton(
-            backgroundColor: AppColors.emerald,
-            foregroundColor: Colors.black,
+            backgroundColor: colors.emerald,
+            foregroundColor: colors.isDark ? Colors.black : Colors.white,
+            elevation: 2,
             onPressed: () {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                backgroundColor: AppColors.surface,
+                backgroundColor: colors.surface,
                 builder: (context) => const AddCashTransactionSheet(),
               ).then((_) {
                 controller.loadTransactions();
@@ -110,10 +121,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Search merchant, note, or raw SMS...',
-                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+                    prefixIcon: Icon(Icons.search, size: 20, color: colors.textMuted),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
+                            icon: Icon(Icons.clear, size: 18, color: colors.textMuted),
                             onPressed: () {
                               _searchController.clear();
                               controller.setSearchQuery('');
@@ -135,13 +146,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.amber.withOpacity(0.12),
+                        color: colors.amber.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.amber.withOpacity(0.4)),
+                        border: Border.all(color: colors.amber.withOpacity(0.35)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: AppColors.amber, size: 20),
+                          Icon(Icons.warning_amber_rounded, color: colors.amber, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
@@ -149,21 +160,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               children: [
                                 Text(
                                   'Card Review: "${_ambiguousAccounts.first.name}"',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
-                                    color: AppColors.textPrimary,
+                                    color: colors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                const Text(
+                                Text(
                                   'Tap to assign transactions to your specific card (e.g. ending in 7876 or 323)',
-                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: TextStyle(fontSize: 11, color: colors.textSecondary),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: AppColors.amber, size: 20),
+                          Icon(Icons.chevron_right, color: colors.amber, size: 20),
                         ],
                       ),
                     ),
@@ -172,34 +183,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
               // Filtered Totals Quick Bar (Received vs Spent)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.arrow_downward, size: 13, color: AppColors.income),
+                        Icon(Icons.arrow_downward, size: 13, color: colors.income),
                         const SizedBox(width: 3),
                         Text(
                           'Received: +${IndianCurrencyFormatter.format(controller.filteredIncome)}',
-                          style: const TextStyle(
-                            fontSize: 11,
+                          style: TextStyle(
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.income,
+                            color: colors.income,
                           ),
                         ),
                       ],
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.arrow_upward, size: 13, color: AppColors.expense),
+                        Icon(Icons.arrow_upward, size: 13, color: colors.expense),
                         const SizedBox(width: 3),
                         Text(
                           'Spent: -${IndianCurrencyFormatter.format(controller.filteredExpense)}',
-                          style: const TextStyle(
-                            fontSize: 11,
+                          style: TextStyle(
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.expense,
+                            color: colors.expense,
                           ),
                         ),
                       ],
@@ -219,10 +230,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ChoiceChip(
                       label: const Text('All Time', style: TextStyle(fontSize: 11)),
                       selected: controller.selectedMonth == null,
-                      selectedColor: AppColors.emerald,
-                      backgroundColor: AppColors.surfaceElevated,
+                      selectedColor: colors.emerald,
+                      backgroundColor: colors.surfaceElevated,
                       labelStyle: TextStyle(
-                        color: controller.selectedMonth == null ? Colors.black : AppColors.textSecondary,
+                        color: controller.selectedMonth == null
+                            ? (colors.isDark ? Colors.black : Colors.white)
+                            : colors.textSecondary,
                         fontWeight: controller.selectedMonth == null ? FontWeight.w700 : FontWeight.w500,
                       ),
                       onSelected: (_) => controller.setMonthFilter(null),
@@ -239,10 +252,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         child: ChoiceChip(
                           label: Text(label, style: const TextStyle(fontSize: 11)),
                           selected: isSelected,
-                          selectedColor: AppColors.emerald,
-                          backgroundColor: AppColors.surfaceElevated,
+                          selectedColor: colors.emerald,
+                          backgroundColor: colors.surfaceElevated,
                           labelStyle: TextStyle(
-                            color: isSelected ? Colors.black : AppColors.textSecondary,
+                            color: isSelected
+                                ? (colors.isDark ? Colors.black : Colors.white)
+                                : colors.textSecondary,
                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           ),
                           onSelected: (_) => controller.setMonthFilter(m),
@@ -270,6 +285,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     _buildTypeChip('INCOME', controller.selectedType == 'INCOME', () {
                       controller.setTypeFilter('INCOME');
                     }),
+                    if (controller.hasFailedTransactions) ...[
+                      const Spacer(),
+                      _buildDeclinedBadgeChip(
+                        controller.failedCount,
+                        controller.selectedType == 'FAILED',
+                        () {
+                          if (controller.selectedType == 'FAILED') {
+                            controller.setTypeFilter('ALL');
+                          } else {
+                            controller.setTypeFilter('FAILED');
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -293,12 +322,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? Colors.black : AppColors.textSecondary,
+                          color: isSelected ? (colors.isDark ? Colors.black : Colors.white) : colors.textSecondary,
                         ),
                       ),
                       selected: isSelected,
-                      selectedColor: AppColors.emerald,
-                      backgroundColor: AppColors.surfaceElevated,
+                      selectedColor: colors.emerald,
+                      backgroundColor: colors.surfaceElevated,
                       onSelected: (_) => controller.setCategoryFilter(cat),
                     );
                   },
@@ -308,24 +337,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               // Transaction List View
               Expanded(
                 child: controller.isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.emerald))
+                    ? Center(child: CircularProgressIndicator(color: colors.emerald))
                     : controller.transactions.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'No matching transactions found.',
-                              style: TextStyle(color: AppColors.textMuted),
+                              style: TextStyle(color: colors.textMuted),
                             ),
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                             itemCount: controller.transactions.length,
                             separatorBuilder: (_, __) =>
-                                const Divider(color: Color(0xFF1E293B), height: 1),
+                                Divider(color: colors.borderSubtle, height: 1),
                             itemBuilder: (context, index) {
                               final tx = controller.transactions[index];
                               final isIncome = tx.isIncome;
                               final catColor =
-                                  AppColors.categoryColors[tx.category] ?? AppColors.textMuted;
+                                  AppColors.categoryColors[tx.category] ?? colors.textMuted;
 
                               return Dismissible(
                                 key: ValueKey(tx.id),
@@ -360,10 +389,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   ),
                                   title: Text(
                                     tx.merchant,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                   subtitle: Column(
@@ -375,13 +404,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           Text(
                                             DateFormatter.formatShort(
                                                 DateFormatter.parse(tx.date)),
-                                            style: const TextStyle(
-                                                fontSize: 11, color: AppColors.textMuted),
+                                            style: TextStyle(
+                                                fontSize: 11, color: colors.textMuted),
                                           ),
                                           const SizedBox(width: 5),
-                                          const Text('•',
+                                          Text('•',
                                               style: TextStyle(
-                                                  color: AppColors.textMuted, fontSize: 10)),
+                                                  color: colors.textMuted, fontSize: 10)),
                                           const SizedBox(width: 5),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -400,19 +429,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           ),
                                            if (tx.displayPaymentSource.isNotEmpty) ...[
                                              const SizedBox(width: 5),
-                                             const Text('•',
+                                             Text('•',
                                                  style: TextStyle(
-                                                     color: AppColors.textMuted, fontSize: 10)),
+                                                     color: colors.textMuted, fontSize: 10)),
                                              const SizedBox(width: 5),
                                              Flexible(
                                                child: Text(
-                                                 '${tx.displayPaymentSource.toLowerCase().contains('card') ? '💳 ' : (tx.displayPaymentSource.toLowerCase().contains('cash') ? '💵 ' : '🏦 ')}${tx.displayPaymentSource}',
+                                                 tx.displayPaymentSource,
                                                  maxLines: 1,
                                                  overflow: TextOverflow.ellipsis,
-                                                 style: const TextStyle(
+                                                 style: TextStyle(
                                                    fontSize: 10,
                                                    fontWeight: FontWeight.w600,
-                                                   color: AppColors.textSecondary,
+                                                   color: colors.textSecondary,
                                                  ),
                                                ),
                                              ),
@@ -421,25 +450,67 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       ),
                                     ],
                                   ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: isIncome
-                                              ? AppColors.income
-                                              : AppColors.expense,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.edit_outlined, size: 14, color: AppColors.textMuted),
-                                    ],
-                                  ),
-                                ),
-                              );
+                                   trailing: Row(
+                                     mainAxisSize: MainAxisSize.min,
+                                     children: [
+                                       Column(
+                                         crossAxisAlignment: CrossAxisAlignment.end,
+                                         mainAxisAlignment: MainAxisAlignment.center,
+                                         children: [
+                                           Text(
+                                             tx.isFailed
+                                                 ? IndianCurrencyFormatter.format(tx.amount)
+                                                 : '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                                             style: TextStyle(
+                                               fontSize: 14,
+                                               fontWeight: FontWeight.w700,
+                                               decoration: tx.isFailed ? TextDecoration.lineThrough : null,
+                                               color: tx.isFailed
+                                                   ? colors.ruby
+                                                   : (tx.isPendingHold
+                                                       ? colors.amber
+                                                       : (isIncome
+                                                           ? colors.income
+                                                           : colors.expense)),
+                                             ),
+                                           ),
+                                           if (tx.isFailed || tx.isRefund || tx.isPendingHold) ...[
+                                             const SizedBox(height: 2),
+                                             Container(
+                                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                               decoration: BoxDecoration(
+                                                 color: tx.isFailed
+                                                     ? AppColors.ruby.withOpacity(0.15)
+                                                     : (tx.isPendingHold
+                                                         ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                                         : AppColors.emerald.withOpacity(0.15)),
+                                                 borderRadius: BorderRadius.circular(4),
+                                               ),
+                                               child: Text(
+                                                 tx.isFailed
+                                                     ? 'DECLINED'
+                                                     : (tx.isPendingHold ? 'ON HOLD' : 'REFUND'),
+                                                 style: TextStyle(
+                                                   fontSize: 8.5,
+                                                   fontWeight: FontWeight.w800,
+                                                   letterSpacing: 0.3,
+                                                   color: tx.isFailed
+                                                       ? AppColors.ruby
+                                                       : (tx.isPendingHold
+                                                           ? const Color(0xFFF59E0B)
+                                                           : AppColors.emerald),
+                                                 ),
+                                               ),
+                                             ),
+                                           ],
+                                         ],
+                                       ),
+                                       const SizedBox(width: 4),
+                                       const Icon(Icons.edit_outlined, size: 14, color: AppColors.textMuted),
+                                     ],
+                                   ),
+                                 ),
+                               );
                             },
                           ),
               ),
@@ -451,16 +522,19 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildTypeChip(String label, bool isSelected, VoidCallback onTap) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.emerald.withOpacity(0.2) : AppColors.surfaceElevated,
+          color: isSelected
+              ? colors.emerald.withOpacity(colors.isDark ? 0.2 : 0.12)
+              : colors.surfaceElevated,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.emerald : const Color(0xFF334155),
+            color: isSelected ? colors.emerald : colors.border,
           ),
         ),
         child: Text(
@@ -468,8 +542,44 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: isSelected ? AppColors.emerald : AppColors.textMuted,
+            color: isSelected ? colors.emerald : colors.textSecondary,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeclinedBadgeChip(int count, bool isSelected, VoidCallback onTap) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colors.ruby.withOpacity(colors.isDark ? 0.25 : 0.15)
+              : colors.ruby.withOpacity(colors.isDark ? 0.12 : 0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? colors.ruby : colors.ruby.withOpacity(0.35),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 13, color: colors.ruby),
+            const SizedBox(width: 4),
+            Text(
+              'Declined ($count)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: colors.ruby,
+              ),
+            ),
+          ],
         ),
       ),
     );

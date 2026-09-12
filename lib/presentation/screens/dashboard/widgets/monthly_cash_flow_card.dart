@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
+import 'package:intl/intl.dart';
+
 class MonthlyCashFlowCard extends StatelessWidget {
   final double totalMonthlyIncome;
   final double totalMonthlyExpense;
@@ -16,34 +18,63 @@ class MonthlyCashFlowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final netCashFlow = totalMonthlyIncome - totalMonthlyExpense;
     final isPositive = netCashFlow >= 0;
+
+    final now = DateTime.now();
+    final monthName = DateFormat('MMMM').format(now);
+    final totalDays = DateTime(now.year, now.month + 1, 0).day;
+    final currentDay = now.day;
+
+    final double incomeFlex = totalMonthlyIncome > 0 ? totalMonthlyIncome : 1.0;
+    final double expenseFlex = totalMonthlyExpense > 0 ? totalMonthlyExpense : 0.0;
+    final double flowTotal = incomeFlex + expenseFlex;
+    final double outRatio = flowTotal > 0 ? (expenseFlex / flowTotal).clamp(0.0, 1.0) : 0.0;
+    final int spentPercentOfIncome = totalMonthlyIncome > 0
+        ? ((totalMonthlyExpense / totalMonthlyIncome) * 100).round()
+        : 100;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: colors.surfaceCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF26334D)),
+        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Header Row: Month Name & Days Progress
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.swap_vert, color: AppColors.emerald, size: 20),
-                  SizedBox(width: 8),
                   Text(
-                    'MONTHLY CASH FLOW',
+                    monthName.toUpperCase(),
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       letterSpacing: 1.1,
-                      color: AppColors.textSecondary,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: colors.borderSubtle),
+                    ),
+                    child: Text(
+                      '$currentDay of $totalDays days',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textMuted,
+                      ),
                     ),
                   ),
                 ],
@@ -52,135 +83,136 @@ class MonthlyCashFlowCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isPositive
-                      ? AppColors.emerald.withOpacity(0.15)
-                      : AppColors.ruby.withOpacity(0.15),
+                      ? colors.emerald.withOpacity(0.12)
+                      : colors.ruby.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isPositive ? 'NET SAVING' : 'NET DEFICIT',
+                  isPositive ? 'NET POSITIVE' : 'NET DEFICIT',
                   style: TextStyle(
-                    color: isPositive ? AppColors.emerald : AppColors.ruby,
+                    color: isPositive ? colors.emerald : colors.ruby,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Two Pillars: Received (Income) vs Spent (Expense)
+          // In vs Out Numerical Headline
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              // Received (Income)
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.emerald.withOpacity(0.25)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              // In (Income)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.arrow_downward, color: AppColors.income, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'Received (Income)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(color: colors.emerald, shape: BoxShape.circle),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(width: 5),
                       Text(
-                        '+${IndianCurrencyFormatter.format(totalMonthlyIncome)}',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.income,
-                          letterSpacing: -0.5,
-                        ),
+                        'In',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textMuted),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    IndianCurrencyFormatter.format(totalMonthlyIncome),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: colors.emerald,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
 
-              // Spent (Expenses)
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.expense.withOpacity(0.25)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              // Out (Expense)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.arrow_upward, color: AppColors.expense, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'Spent (Expense)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
                       Text(
-                        '-${IndianCurrencyFormatter.format(totalMonthlyExpense)}',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.expense,
-                          letterSpacing: -0.5,
-                        ),
+                        'Out',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.textMuted),
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(color: colors.ruby, shape: BoxShape.circle),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    IndianCurrencyFormatter.format(totalMonthlyExpense),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Bottom Net Balance Banner
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Net Cash Flow This Month:',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          // Dual-Segment Sleek Progress Track (Direction 2a)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Container(
+              height: 7,
+              width: double.infinity,
+              color: colors.surfaceElevated,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: ((1.0 - outRatio) * 1000).toInt().clamp(1, 1000),
+                    child: Container(color: colors.emerald),
+                  ),
+                  Expanded(
+                    flex: (outRatio * 1000).toInt().clamp(0, 1000),
+                    child: Container(color: colors.ruby.withOpacity(0.85)),
+                  ),
+                ],
               ),
-              Text(
-                '${isPositive ? '+' : ''}${IndianCurrencyFormatter.format(netCashFlow)}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isPositive ? AppColors.income : AppColors.expense,
-                ),
-              ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Helper Text Caption (Direction 2a)
+          Text(
+            totalMonthlyIncome > 0
+                ? '$spentPercentOfIncome% of what came in has gone out • Net ${isPositive ? 'saved' : 'deficit'} ${IndianCurrencyFormatter.format(netCashFlow.abs())}'
+                : (totalMonthlyExpense > 0
+                    ? 'Total outflow of ${IndianCurrencyFormatter.format(totalMonthlyExpense)} recorded'
+                    : 'No transactions recorded yet this month'),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: colors.textMuted,
+            ),
           ),
 
-          // Option A: Allocate Monthly Savings Action Button
+          // Allocate Savings Action Banner (If positive net cash flow)
           if (isPositive && netCashFlow > 0) ...[
             const SizedBox(height: 14),
-            const Divider(color: Color(0xFF26334D), height: 1),
+            Divider(color: colors.borderSubtle, height: 1),
             const SizedBox(height: 12),
             InkWell(
               onTap: onAllocateSavings,
@@ -188,24 +220,19 @@ class MonthlyCashFlowCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.emerald.withOpacity(0.18),
-                      AppColors.emerald.withOpacity(0.08),
-                    ],
-                  ),
+                  color: colors.emerald.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.emerald.withOpacity(0.35)),
+                  border: Border.all(color: colors.emerald.withOpacity(0.25)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppColors.emerald.withOpacity(0.2),
+                        color: colors.emerald.withOpacity(0.18),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.savings_outlined, color: AppColors.emerald, size: 18),
+                      child: Icon(Icons.savings_outlined, color: colors.emerald, size: 16),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -214,24 +241,24 @@ class MonthlyCashFlowCard extends StatelessWidget {
                         children: [
                           Text(
                             'You saved ${IndianCurrencyFormatter.format(netCashFlow)} this month!',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Tap to confirm or allocate to savings/assets',
+                          const SizedBox(height: 1),
+                          Text(
+                            'Tap to confirm or allocate to investments/savings',
                             style: TextStyle(
                               fontSize: 10,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios, color: AppColors.emerald, size: 14),
+                    Icon(Icons.chevron_right, color: colors.emerald, size: 18),
                   ],
                 ),
               ),
@@ -242,3 +269,4 @@ class MonthlyCashFlowCard extends StatelessWidget {
     );
   }
 }
+

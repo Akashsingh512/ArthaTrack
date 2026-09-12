@@ -31,6 +31,9 @@ class TransactionController extends ChangeNotifier {
   String? get selectedCategory => _selectedCategory;
   DateTime? get selectedMonth => _selectedMonth;
 
+  bool get hasFailedTransactions => _allTransactions.any((t) => t.isFailed);
+  int get failedCount => _allTransactions.where((t) => t.isFailed).length;
+
   double get filteredIncome => _filteredTransactions
       .where((t) => t.isIncome)
       .fold(0.0, (sum, t) => sum + t.amount);
@@ -107,8 +110,16 @@ class TransactionController extends ChangeNotifier {
         }
       }
       // Filter by type
-      if (_selectedType != null && tx.type != _selectedType) {
-        return false;
+      if (_selectedType != null) {
+        if (_selectedType == 'FAILED') {
+          if (!tx.isFailed) return false;
+        } else if (_selectedType == 'EXPENSE') {
+          if (!tx.isExpense || tx.isFailed) return false;
+        } else if (_selectedType == 'INCOME') {
+          if (!tx.isIncome || tx.isFailed) return false;
+        } else if (tx.type != _selectedType) {
+          return false;
+        }
       }
       // Filter by category
       if (_selectedCategory != null && tx.category != _selectedCategory) {

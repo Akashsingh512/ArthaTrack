@@ -34,20 +34,36 @@ class _RawSmsTestSandboxState extends State<RawSmsTestSandbox> {
       'text': 'Dear SBI User, your A/C 9876 credited by INR 75,000.00 on 01-09-26 by SALARY. Bal: INR 88,500.00',
     },
     {
-      'title': 'PhonePe Push (Starbucks)',
-      'text': 'Paid ₹350 to Starbucks on PhonePe',
+      'title': 'FASTag Toll (Kherki Daula)',
+      'text': 'Rs 150.00 deducted for FASTag XX3456 at Kherki Daula Toll Plaza on 12-Sep-26. Wallet Bal: Rs 850.00.',
     },
     {
-      'title': 'ICICI Bank (Amazon Shopping)',
-      'text': 'ICICI Bank: Acct XX4321 debited for INR 1,299.00 on 05-Sep-26 by Amazon. Bal: INR 4,320.00',
+      'title': 'NACH EMI (Bajaj Fin)',
+      'text': 'EMI of Rs 15,400.00 deducted from HDFC Bank A/c **8910 via NACH for BAJAJ FIN on 12/09/2026. Avl Bal: Rs 8,750.20.',
     },
     {
-      'title': 'GPay Push (Zepto Groceries)',
-      'text': 'You paid ₹480 to Zepto using Google Pay',
+      'title': 'Bank Fee (SMS Charges)',
+      'text': 'Rs 17.70 deducted from your A/c 4321 towards SMS Alert Charges for Q2. Avl Bal: Rs 15,182.30.',
     },
     {
-      'title': 'Axis Card (Uber Transit)',
-      'text': 'Axis Bank: INR 320.00 spent on your Card XX9900 at Uber India on 08-09-2026. Avail Bal: INR 12,000.00',
+      'title': 'Auto-Reversal / Refund',
+      'text': 'Reversal of Rs. 499.00 processed for your A/c ending 4321 on 12-Sep-26. UPI Ref: 625612. Avl Bal: Rs. 15,200.00.',
+    },
+    {
+      'title': 'Declined (Insufficient Bal)',
+      'text': 'Txn of INR 12,000.00 on Axis Bank Card ending 7890 DECLINED due to insufficient balance on 12-Sep-26.',
+    },
+    {
+      'title': 'Auth Failure (Wrong PIN)',
+      'text': 'UPI Txn of Rs 500.00 failed for A/c 4321 due to incorrect UPI PIN. To reset PIN, visit YONO app.',
+    },
+    {
+      'title': 'Fuel Pre-Auth Hold (HPCL)',
+      'text': 'Hold of INR 2,500.00 placed on SCB Card 5678 at HPCL PETROL on 12-Sep-26. Avail Limit adjusted.',
+    },
+    {
+      'title': 'SIP AutoPay (Kotak)',
+      'text': 'SIP of INR 5,000.00 registered via AutoPay debited from Kotak A/c 4411. Ref: MUTUALFUND.',
     },
   ];
 
@@ -256,8 +272,17 @@ class _RawSmsTestSandboxState extends State<RawSmsTestSandbox> {
                       ],
                     ),
                     const SizedBox(height: 8),
+                    _ResultRow(label: 'Status', value: _parsedResult!.status),
+                    if (_parsedResult!.failureReason != null)
+                      _ResultRow(label: 'Failure Reason', value: _parsedResult!.failureReason!),
                     _ResultRow(label: 'Type', value: _parsedResult!.type.name),
                     _ResultRow(label: 'Category', value: _parsedResult!.category),
+                    if (_parsedResult!.paymentSource != null)
+                      _ResultRow(label: 'Payment Source', value: _parsedResult!.paymentSource!),
+                    if (_parsedResult!.referenceNumber != null)
+                      _ResultRow(label: 'Ref No / RRN', value: _parsedResult!.referenceNumber!),
+                    if (_parsedResult!.vpa != null)
+                      _ResultRow(label: 'UPI VPA', value: _parsedResult!.vpa!),
                     if (_parsedResult!.updatedBalance != null)
                       _ResultRow(
                         label: 'Updated Balance',
@@ -265,6 +290,8 @@ class _RawSmsTestSandboxState extends State<RawSmsTestSandbox> {
                       ),
                     if (_parsedResult!.accountSnippet != null)
                       _ResultRow(label: 'Account Extracted', value: _parsedResult!.accountSnippet!),
+                    if (_parsedResult!.supportRecourse != null)
+                      _ResultRow(label: 'Recourse / Helpline', value: _parsedResult!.supportRecourse!),
                     _ResultRow(
                       label: 'Confidence Score',
                       value: '${(_parsedResult!.confidence * 100).toInt()}%',

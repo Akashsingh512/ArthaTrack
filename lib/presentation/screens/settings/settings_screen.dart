@@ -9,7 +9,6 @@ import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
 import 'widgets/manage_categories_sheet.dart';
-import 'widgets/raw_sms_test_sandbox.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -66,7 +65,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 // Active Engine Banner
                 _buildActiveEngineBanner(settings),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Appearance & Theme Section
+                _buildThemeModeSection(context, settings),
+                const SizedBox(height: 16),
 
                 // BYOK AI Engine Configuration Section
                 _buildByokSection(context, settings),
@@ -82,10 +85,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Gmail Integration Section
                 _buildGmailSection(context, settings),
-                const SizedBox(height: 20),
-
-                // Interactive Test Sandbox Card
-                _buildSandboxCard(context),
                 const SizedBox(height: 20),
 
                 // Data Management & Export Section
@@ -1026,47 +1025,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSandboxCard(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: AppColors.surface,
-            builder: (context) => const RawSmsTestSandbox(),
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: const Padding(
-          padding: EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Icon(Icons.terminal, color: AppColors.aiEngine, size: 28),
-              SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Interactive SMS & Notification Sandbox',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Simulate HDFC, SBI, ICICI, PhonePe, and Swiggy notifications in real time.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildDataManagementSection(BuildContext context, SettingsController settings) {
     return Card(
@@ -1302,6 +1260,138 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildThemeModeSection(BuildContext context, SettingsController settings) {
+    final colors = context.colors;
+    final currentMode = settings.themeMode;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colors.emerald.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.palette_outlined, color: colors.emerald, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Appearance & Theme',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Select dark, light, or system appearance',
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _ThemeOptionTile(
+                    title: 'Dark',
+                    icon: Icons.dark_mode_outlined,
+                    isSelected: currentMode == ThemeMode.dark,
+                    onTap: () => settings.setThemeMode(ThemeMode.dark),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ThemeOptionTile(
+                    title: 'Light',
+                    icon: Icons.light_mode_outlined,
+                    isSelected: currentMode == ThemeMode.light,
+                    onTap: () => settings.setThemeMode(ThemeMode.light),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ThemeOptionTile(
+                    title: 'System',
+                    icon: Icons.brightness_auto_outlined,
+                    isSelected: currentMode == ThemeMode.system,
+                    onTap: () => settings.setThemeMode(ThemeMode.system),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeOptionTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeOptionTile({
+    required this.title,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colors.emerald.withOpacity(colors.isDark ? 0.2 : 0.12)
+              : colors.surfaceElevated,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? colors.emerald : colors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? colors.emerald : colors.textSecondary,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? colors.emerald : colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

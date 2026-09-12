@@ -23,12 +23,14 @@ class MonthlyBudgetsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surfaceCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,35 +44,35 @@ class MonthlyBudgetsCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: colors.emerald.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.pie_chart_outline,
-                      color: AppColors.primary,
-                      size: 18,
+                      color: colors.emerald,
+                      size: 16,
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'Monthly Budgets',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ],
               ),
               TextButton.icon(
                 onPressed: () => _openSetBudget(context),
-                icon: const Icon(Icons.add, size: 16, color: AppColors.primary),
-                label: const Text(
+                icon: Icon(Icons.add, size: 15, color: colors.emerald),
+                label: Text(
                   'Set Limit',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: colors.emerald,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
                 ),
                 style: TextButton.styleFrom(
@@ -85,36 +87,36 @@ class MonthlyBudgetsCard extends StatelessWidget {
 
           // Content: Empty State OR List of Budgets
           if (budgets.isEmpty)
-            _buildEmptyState(context)
+            _buildEmptyState(context, colors)
           else
             Column(
-              children: budgets.map((item) => _buildBudgetItem(context, item)).toList(),
+              children: budgets.map((item) => _buildBudgetItem(context, item, colors)).toList(),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, AppThemeColors colors) {
     return InkWell(
       onTap: () => _openSetBudget(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.background.withOpacity(0.5),
+          color: colors.surfaceElevated,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10, style: BorderStyle.solid),
+          border: Border.all(color: colors.borderSubtle),
         ),
         child: Column(
           children: [
-            Icon(Icons.savings_outlined, size: 36, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.savings_outlined, size: 32, color: colors.textMuted),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'No category budgets set',
               style: TextStyle(
-                color: Colors.white70,
+                color: colors.textPrimary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -124,7 +126,7 @@ class MonthlyBudgetsCard extends StatelessWidget {
               'Tap here to set spending limits for Food, Travel, etc.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.4),
+                color: colors.textMuted,
                 fontSize: 11,
               ),
             ),
@@ -134,14 +136,14 @@ class MonthlyBudgetsCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBudgetItem(BuildContext context, BudgetProgress progress) {
+  Widget _buildBudgetItem(BuildContext context, BudgetProgress progress, AppThemeColors colors) {
     final isOver = progress.isOverBudget;
     final ratio = progress.progressRatio;
     
     // Status color: Red if >=100%, Amber if >=80%, Emerald green otherwise
     final progressColor = isOver
-        ? AppColors.expenseRed
-        : (ratio >= 0.8 ? Colors.amberAccent : AppColors.incomeGreen);
+        ? colors.ruby
+        : (ratio >= 0.8 ? colors.amber : colors.emerald);
 
     return InkWell(
       onTap: () => _openSetBudget(context, existingBudget: progress.budget),
@@ -160,15 +162,15 @@ class MonthlyBudgetsCard extends StatelessWidget {
                     Icon(
                       _getCategoryIcon(progress.budget.category),
                       size: 16,
-                      color: Colors.white70,
+                      color: colors.textSecondary,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       progress.budget.category,
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ],
@@ -181,14 +183,14 @@ class MonthlyBudgetsCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: isOver ? AppColors.expenseRed : Colors.white,
+                          color: isOver ? colors.ruby : colors.textPrimary,
                         ),
                       ),
                       TextSpan(
                         text: ' / ${CurrencyFormatter.formatINR(progress.budget.monthlyLimit)}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.5),
+                          color: colors.textMuted,
                         ),
                       ),
                     ],
@@ -203,8 +205,8 @@ class MonthlyBudgetsCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: ratio,
-                minHeight: 6,
-                backgroundColor: Colors.white10,
+                minHeight: 5,
+                backgroundColor: colors.surfaceElevated,
                 valueColor: AlwaysStoppedAnimation<Color>(progressColor),
               ),
             ),
@@ -221,7 +223,7 @@ class MonthlyBudgetsCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: isOver ? AppColors.expenseRed : Colors.white54,
+                    color: isOver ? colors.ruby : colors.textMuted,
                   ),
                 ),
                 Text(
@@ -234,12 +236,13 @@ class MonthlyBudgetsCard extends StatelessWidget {
                 ),
               ],
             ),
-            const Divider(color: Colors.white10, height: 16),
+            Divider(color: colors.borderSubtle, height: 16),
           ],
         ),
       ),
     );
   }
+
 
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {

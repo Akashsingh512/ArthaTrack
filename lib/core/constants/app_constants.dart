@@ -11,6 +11,7 @@ class AppConstants {
   static const String secureKeyBedrockModel = 'byok_bedrock_model';
   static const String secureKeyBedrockRegion = 'byok_bedrock_region';
   static const String secureKeyActiveModel = 'byok_active_model';
+  static const String secureKeyThemeMode = 'app_theme_mode';
 
   // AI Providers
   static const String providerGemini = 'Gemini';
@@ -27,5 +28,5 @@ class AppConstants {
 
   // Database
   static const String databaseName = 'arthatrack_local.db';
-  static const int databaseVersion = 11;
+  static const int databaseVersion = 12;
 }

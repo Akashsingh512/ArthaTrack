@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -400,17 +401,10 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   dropdownColor: AppColors.surfaceElevated,
                   items: [
                     ...accounts.map((acc) {
-                      final isCard = acc.isCreditCard;
-                      final isCash = acc.isCash;
-                      final icon = isCard
-                          ? '💳 '
-                          : isCash
-                              ? '💵 '
-                              : '🏦 ';
                       return DropdownMenuItem<int>(
                         value: acc.id,
                         child: Text(
-                          '$icon${acc.name}',
+                          acc.name,
                           style: const TextStyle(fontSize: 13),
                         ),
                       );
@@ -418,7 +412,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     const DropdownMenuItem<int>(
                       value: -1,
                       child: Text(
-                        '➕ Add New Bank / Card...',
+                        'Add New Bank / Card...',
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.emerald,
@@ -516,6 +510,84 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   ),
                 ),
               ],
+
+              // 12-digit UPI Ref / RRN Copy Card
+              if (widget.transaction.referenceNumber != null && widget.transaction.referenceNumber!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF334155)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'UPI Ref / RRN Identifier',
+                            style: TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            widget.transaction.referenceNumber!,
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 16, color: AppColors.emerald),
+                        tooltip: 'Copy UPI Ref No',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: widget.transaction.referenceNumber!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('UPI Ref No copied to clipboard!'), duration: Duration(seconds: 2)),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // RBI Mandated Dispute / Fraud Helpline & Recourse Card
+              if (widget.transaction.supportRecourse != null && widget.transaction.supportRecourse!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF450A0A).withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF991B1B).withOpacity(0.6)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.shield_outlined, size: 18, color: Color(0xFFF87171)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Dispute Recourse / Fraud Helpline',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFFCA5A5)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.transaction.supportRecourse!,
+                              style: const TextStyle(fontSize: 11, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 18),
 
               // Delete Transaction Option

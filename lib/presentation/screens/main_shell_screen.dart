@@ -117,6 +117,8 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       const SettingsScreen(),
     ];
 
+    final colors = context.colors;
+
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(
@@ -125,15 +127,15 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
         ),
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFF1E293B), width: 1)),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colors.border, width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (i) => setState(() => _currentIndex = i),
-          backgroundColor: AppColors.surface,
-          selectedItemColor: AppColors.emerald,
-          unselectedItemColor: AppColors.textMuted,
+          backgroundColor: colors.surface,
+          selectedItemColor: colors.emerald,
+          unselectedItemColor: colors.textMuted,
           type: BottomNavigationBarType.fixed,
           selectedFontSize: 11,
           unselectedFontSize: 11,

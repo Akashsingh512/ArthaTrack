@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/repositories/transaction_repository.dart';
@@ -16,6 +16,7 @@ class SettingsController extends ChangeNotifier {
   final SmsSyncService _smsSyncService;
 
   bool _isLoading = false;
+  ThemeMode _themeMode = ThemeMode.dark;
   String _selectedProvider = AppConstants.providerGemini;
   String _apiKey = '';
   bool _hasActiveKey = false;
@@ -38,6 +39,7 @@ class SettingsController extends ChangeNotifier {
         _smsSyncService = smsSyncService ?? SmsSyncService();
 
   bool get isLoading => _isLoading;
+  ThemeMode get themeMode => _themeMode;
   String get selectedProvider => _selectedProvider;
   String get apiKey => _apiKey;
   bool get hasActiveKey => _hasActiveKey;
@@ -57,6 +59,15 @@ class SettingsController extends ChangeNotifier {
   String get bedrockModel => _bedrockModel;
   String get bedrockRegion => _bedrockRegion;
 
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    notifyListeners();
+    final modeStr = mode == ThemeMode.light
+        ? 'light'
+        : (mode == ThemeMode.system ? 'system' : 'dark');
+    await _secureStorage.setThemeMode(modeStr);
+  }
+
   // Active Engine Indicator
   String get activeEngineLabel {
     if (!_hasActiveKey) return 'Local Regex Engine Active (Offline)';
@@ -73,6 +84,15 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final themeStr = await _secureStorage.getThemeMode();
+      if (themeStr == 'light') {
+        _themeMode = ThemeMode.light;
+      } else if (themeStr == 'system') {
+        _themeMode = ThemeMode.system;
+      } else {
+        _themeMode = ThemeMode.dark;
+      }
+
       _selectedProvider = await _secureStorage.getAiProvider();
       final key = await _secureStorage.getActiveApiKey();
       _apiKey = key ?? '';

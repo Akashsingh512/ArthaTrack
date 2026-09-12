@@ -14,31 +14,33 @@ class CategoryBreakdownChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     if (categoryExpenses.isEmpty || totalMonthlyExpense <= 0) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
+          color: colors.surfaceCard,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF26334D)),
+          border: Border.all(color: colors.border),
         ),
         child: Column(
           children: [
-            const Icon(Icons.pie_chart_outline, size: 40, color: AppColors.textMuted),
+            Icon(Icons.pie_chart_outline, size: 36, color: colors.textMuted),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'No Expense Records This Month',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Transactions from bank notifications or Gmail will appear here categorized automatically.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 12, color: colors.textMuted),
             ),
           ],
         ),
@@ -52,9 +54,9 @@ class CategoryBreakdownChart extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
+        color: colors.surfaceCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF26334D)),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,27 +66,27 @@ class CategoryBreakdownChart extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'Monthly Breakdown',
+                  Text(
+                    'Where it went',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.emerald.withOpacity(0.15),
+                      color: colors.emerald.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
+                    child: Text(
                       'THIS MONTH',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.emerald,
+                        color: colors.emerald,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -93,10 +95,10 @@ class CategoryBreakdownChart extends StatelessWidget {
               ),
               Text(
                 IndianCurrencyFormatter.format(totalMonthlyExpense),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.expense,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
@@ -107,11 +109,11 @@ class CategoryBreakdownChart extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: SizedBox(
-              height: 10,
+              height: 8,
               child: Row(
                 children: sortedEntries.map((entry) {
                   final ratio = (entry.value / totalMonthlyExpense).clamp(0.0, 1.0);
-                  final color = AppColors.categoryColors[entry.key] ?? AppColors.textMuted;
+                  final color = AppColors.categoryColors[entry.key] ?? colors.textMuted;
                   return Flexible(
                     flex: (ratio * 1000).toInt(),
                     child: Container(color: color),
@@ -120,9 +122,9 @@ class CategoryBreakdownChart extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // Detailed Category Rows
+          // Detailed Category Rows (Linear Progress Bars)
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -131,15 +133,15 @@ class CategoryBreakdownChart extends StatelessWidget {
             itemBuilder: (context, index) {
               final entry = sortedEntries[index];
               final percentage = (entry.value / totalMonthlyExpense) * 100;
-              final color = AppColors.categoryColors[entry.key] ?? AppColors.textMuted;
+              final color = AppColors.categoryColors[entry.key] ?? colors.textMuted;
 
               return Column(
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 10,
-                        height: 10,
+                        width: 8,
+                        height: 8,
                         decoration: BoxDecoration(
                           color: color,
                           shape: BoxShape.circle,
@@ -149,28 +151,28 @@ class CategoryBreakdownChart extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entry.key,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                       ),
                       Text(
                         '${percentage.toStringAsFixed(1)}%',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color: colors.textMuted,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         IndianCurrencyFormatter.format(entry.value),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ],
@@ -180,7 +182,7 @@ class CategoryBreakdownChart extends StatelessWidget {
                     borderRadius: BorderRadius.circular(3),
                     child: LinearProgressIndicator(
                       value: percentage / 100,
-                      backgroundColor: const Color(0xFF1E293B),
+                      backgroundColor: colors.surfaceElevated,
                       valueColor: AlwaysStoppedAnimation<Color>(color),
                       minHeight: 4,
                     ),
@@ -194,3 +196,4 @@ class CategoryBreakdownChart extends StatelessWidget {
     );
   }
 }
+

@@ -33,12 +33,12 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
   List<BalanceSheetItemModel> _existingAssets = [];
   bool _isLoading = true;
 
-  final List<Map<String, String>> _goalPresets = [
-    {'name': 'Emergency Fund', 'category': 'Emergency Fund', 'icon': '🛡️'},
-    {'name': 'Fixed Deposit (FD)', 'category': 'Bank Deposit', 'icon': '🏦'},
-    {'name': 'Mutual Funds / SIP', 'category': 'Investment', 'icon': '📈'},
-    {'name': 'Gold / Silver', 'category': 'Precious Metals', 'icon': '🪙'},
-    {'name': 'Custom Goal', 'category': 'Savings Goal', 'icon': '🎯'},
+  final List<Map<String, dynamic>> _goalPresets = [
+    {'name': 'Emergency Fund', 'category': 'Emergency Fund', 'icon': Icons.shield_outlined},
+    {'name': 'Fixed Deposit (FD)', 'category': 'Bank Deposit', 'icon': Icons.account_balance_outlined},
+    {'name': 'Mutual Funds / SIP', 'category': 'Investment', 'icon': Icons.trending_up},
+    {'name': 'Gold / Silver', 'category': 'Precious Metals', 'icon': Icons.monetization_on_outlined},
+    {'name': 'Custom Goal', 'category': 'Savings Goal', 'icon': Icons.flag_outlined},
   ];
 
   @override
@@ -125,7 +125,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                           color: AppColors.emerald.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Text('🎉', style: TextStyle(fontSize: 22)),
+                        child: const Icon(Icons.savings_outlined, color: AppColors.emerald, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -286,7 +286,12 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                       children: _goalPresets.map((preset) {
                         final isSelected = _selectedGoalPreset == preset['name'];
                         return ChoiceChip(
-                          label: Text('${preset['icon']} ${preset['name']}'),
+                          avatar: Icon(
+                            preset['icon'] as IconData,
+                            size: 14,
+                            color: isSelected ? AppColors.emerald : AppColors.textSecondary,
+                          ),
+                          label: Text(preset['name'] as String),
                           selected: isSelected,
                           selectedColor: AppColors.emerald.withOpacity(0.2),
                           backgroundColor: AppColors.surfaceElevated,
@@ -579,7 +584,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '🎉 Successfully allocated ${IndianCurrencyFormatter.format(_allocatedAmount)} to "$goalName"!',
+            'Successfully allocated ${IndianCurrencyFormatter.format(_allocatedAmount)} to "$goalName"!',
           ),
           backgroundColor: AppColors.emerald,
         ),

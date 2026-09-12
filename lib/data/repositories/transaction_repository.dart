@@ -124,17 +124,20 @@ class TransactionRepository {
         transaction.toMap()..remove('id'),
       );
 
-      // Adjust account balance:
-      // If EXPENSE -> decrease balance
-      // If INCOME -> increase balance
-      final delta = transaction.isExpense ? -transaction.amount : transaction.amount;
+      // Adjust account balance ONLY if this is a settled SUCCESS transaction
+      // Failed payments or temporary pending holds DO NOT alter account balance!
+      if (!transaction.isFailed && !transaction.isPendingHold) {
+        // If EXPENSE -> decrease balance
+        // If INCOME or REFUND -> increase balance
+        final delta = transaction.isExpense ? -transaction.amount : transaction.amount;
 
-      await txn.rawUpdate('''
-        UPDATE ${AccountsTable.tableName}
-        SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
-            ${AccountsTable.colUpdatedAt} = ?
-        WHERE ${AccountsTable.colId} = ?
-      ''', [delta, DateTime.now().toIso8601String(), transaction.accountId]);
+        await txn.rawUpdate('''
+          UPDATE ${AccountsTable.tableName}
+          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+              ${AccountsTable.colUpdatedAt} = ?
+          WHERE ${AccountsTable.colId} = ?
+        ''', [delta, DateTime.now().toIso8601String(), transaction.accountId]);
+      }
 
       return id;
     });
@@ -154,14 +157,16 @@ class TransactionRepository {
       if (maps.isEmpty) return 0;
       final tx = TransactionModel.fromMap(maps.first);
 
-      // Reverse adjustment
-      final revertDelta = tx.isExpense ? tx.amount : -tx.amount;
-      await txn.rawUpdate('''
-        UPDATE ${AccountsTable.tableName}
-        SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
-            ${AccountsTable.colUpdatedAt} = ?
-        WHERE ${AccountsTable.colId} = ?
-      ''', [revertDelta, DateTime.now().toIso8601String(), tx.accountId]);
+      // Reverse adjustment only if it was a settled SUCCESS transaction
+      if (!tx.isFailed && !tx.isPendingHold) {
+        final revertDelta = tx.isExpense ? tx.amount : -tx.amount;
+        await txn.rawUpdate('''
+          UPDATE ${AccountsTable.tableName}
+          SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
+              ${AccountsTable.colUpdatedAt} = ?
+          WHERE ${AccountsTable.colId} = ?
+        ''', [revertDelta, DateTime.now().toIso8601String(), tx.accountId]);
+      }
 
       return await txn.delete(
         TransactionsTable.tableName,

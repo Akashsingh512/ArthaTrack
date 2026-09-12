@@ -6,7 +6,7 @@ class TransactionModel {
   final int? id;
   final int accountId;
   final double amount;
-  final String type; // 'EXPENSE' or 'INCOME'
+  final String type; // 'EXPENSE', 'INCOME', or 'REFUND'
   final String category;
   final String merchant;
   final String rawText;
@@ -15,6 +15,9 @@ class TransactionModel {
   final String engine; // 'AI', 'REGEX'
   final String? referenceNumber;
   final String? paymentSource;
+  final String status; // 'SUCCESS', 'FAILED', 'PENDING_HOLD'
+  final String? failureReason;
+  final String? supportRecourse;
 
   TransactionModel({
     this.id,
@@ -29,6 +32,9 @@ class TransactionModel {
     this.engine = 'REGEX',
     this.referenceNumber,
     this.paymentSource,
+    this.status = 'SUCCESS',
+    this.failureReason,
+    this.supportRecourse,
   });
 
   TransactionModel copyWith({
@@ -44,6 +50,9 @@ class TransactionModel {
     String? engine,
     String? referenceNumber,
     String? paymentSource,
+    String? status,
+    String? failureReason,
+    String? supportRecourse,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -58,6 +67,9 @@ class TransactionModel {
       engine: engine ?? this.engine,
       referenceNumber: referenceNumber ?? this.referenceNumber,
       paymentSource: paymentSource ?? this.paymentSource,
+      status: status ?? this.status,
+      failureReason: failureReason ?? this.failureReason,
+      supportRecourse: supportRecourse ?? this.supportRecourse,
     );
   }
 
@@ -75,6 +87,9 @@ class TransactionModel {
       'engine': engine,
       'reference_number': referenceNumber,
       'payment_source': paymentSource,
+      'status': status,
+      'failure_reason': failureReason,
+      'support_recourse': supportRecourse,
     };
   }
 
@@ -171,11 +186,17 @@ class TransactionModel {
       engine: map['engine'] as String? ?? 'REGEX',
       referenceNumber: map['reference_number'] as String?,
       paymentSource: source,
+      status: map['status'] as String? ?? 'SUCCESS',
+      failureReason: map['failure_reason'] as String?,
+      supportRecourse: map['support_recourse'] as String?,
     );
   }
 
   bool get isExpense => type.toUpperCase() == 'EXPENSE';
   bool get isIncome => type.toUpperCase() == 'INCOME';
+  bool get isRefund => type.toUpperCase() == 'REFUND';
+  bool get isFailed => status.toUpperCase() == 'FAILED';
+  bool get isPendingHold => status.toUpperCase() == 'PENDING_HOLD';
 
   /// Clean payment source label for UI display with automatic inference fallback
   String get displayPaymentSource {
@@ -222,6 +243,9 @@ class TransactionModel {
       engine: parsed.engine.startsWith('AI') ? 'AI' : 'REGEX',
       referenceNumber: parsed.referenceNumber,
       paymentSource: parsed.paymentSource,
+      status: parsed.status,
+      failureReason: parsed.failureReason,
+      supportRecourse: parsed.supportRecourse,
     );
   }
 

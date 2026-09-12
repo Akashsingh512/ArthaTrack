@@ -97,6 +97,16 @@ class SecureStorageService {
     }
   }
 
+  // Theme Mode ('dark', 'light', 'system')
+  Future<String> getThemeMode() async {
+    final mode = await _storage.read(key: AppConstants.secureKeyThemeMode);
+    return mode ?? 'dark';
+  }
+
+  Future<void> setThemeMode(String mode) async {
+    await _storage.write(key: AppConstants.secureKeyThemeMode, value: mode);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

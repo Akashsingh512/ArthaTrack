@@ -9,7 +9,6 @@ class NetWorthCard extends StatelessWidget {
   final VoidCallback onAddCash;
   final VoidCallback onSyncSms;
   final VoidCallback onSyncGmail;
-  final VoidCallback onTestSandbox;
 
   const NetWorthCard({
     super.key,
@@ -17,119 +16,129 @@ class NetWorthCard extends StatelessWidget {
     required this.onAddCash,
     required this.onSyncSms,
     required this.onSyncGmail,
-    required this.onTestSandbox,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final netWorth = snapshot.netWorth;
     final isPositive = netWorth >= 0;
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1E293B),
-            Color(0xFF0F172A),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF334155), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: colors.surfaceCard,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.border, width: 1),
+        boxShadow: colors.isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Header Row: Clean Micro-label & Status Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(
-                      color: AppColors.emerald.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet,
-                      color: AppColors.emerald,
-                      size: 20,
+                      color: isPositive ? colors.emerald : colors.ruby,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'TOTAL NET WORTH',
+                  const SizedBox(width: 8),
+                  Text(
+                    'NET WORTH',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
-                      color: AppColors.textSecondary,
+                      color: colors.textMuted,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
                   color: isPositive
-                      ? AppColors.emerald.withOpacity(0.15)
-                      : AppColors.ruby.withOpacity(0.15),
+                      ? colors.emerald.withOpacity(0.12)
+                      : colors.ruby.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(
-                  isPositive ? 'HEALTHY' : 'DEFICIT',
-                  style: TextStyle(
-                    color: isPositive ? AppColors.emerald : AppColors.ruby,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPositive ? Icons.trending_up : Icons.trending_down,
+                      size: 13,
+                      color: isPositive ? colors.emerald : colors.ruby,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isPositive ? 'HEALTHY' : 'DEFICIT',
+                      style: TextStyle(
+                        color: isPositive ? colors.emerald : colors.ruby,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Main Net Worth Display in INR
+          // Main Net Worth Display in INR (Hero Typography)
           InkWell(
             onTap: () => AccountBalancesSheet.show(context),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
                         IndianCurrencyFormatter.format(netWorth),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
-                          color: AppColors.textPrimary,
+                          letterSpacing: -0.8,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.tune, size: 16, color: AppColors.textMuted),
+                      Icon(Icons.tune, size: 16, color: colors.textMuted),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '(Liquid Bank Balances + Total Assets) − Total Debts • Tap to view/set accounts',
+                  const SizedBox(height: 3),
+                  Text(
+                    'Liquid Bank + Assets − Debts • Tap to inspect accounts',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -137,41 +146,42 @@ class NetWorthCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // Three Metric Pillars
+          // Three Metric Mini-Pillars (Clean Dividing Lines, Direction 2a)
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.surface.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(16),
+              color: colors.surfaceElevated,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: colors.borderSubtle),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: _MetricPillar(
-                    title: 'Liquid Bank',
+                    title: 'Bank',
                     amount: snapshot.liquidBalances,
-                    color: AppColors.liquid,
+                    color: colors.liquid,
                     icon: Icons.account_balance,
                     onTap: () => AccountBalancesSheet.show(context),
                   ),
                 ),
-                Container(height: 36, width: 1, color: const Color(0xFF334155)),
+                Container(height: 32, width: 1, color: colors.border),
                 Expanded(
                   child: _MetricPillar(
-                    title: 'Total Assets',
+                    title: 'Assets',
                     amount: snapshot.totalAssets,
-                    color: AppColors.asset,
-                    icon: Icons.trending_up,
+                    color: colors.asset,
+                    icon: Icons.pie_chart_outline,
                   ),
                 ),
-                Container(height: 36, width: 1, color: const Color(0xFF334155)),
+                Container(height: 32, width: 1, color: colors.border),
                 Expanded(
                   child: _MetricPillar(
-                    title: 'Total Debts',
+                    title: 'Debts',
                     amount: snapshot.totalDebts,
-                    color: AppColors.debt,
+                    color: colors.debt,
                     icon: Icons.credit_score,
                   ),
                 ),
@@ -190,9 +200,10 @@ class NetWorthCard extends StatelessWidget {
                   icon: const Icon(Icons.sync, size: 16),
                   label: const Text('Sync SMS', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.emerald,
-                    foregroundColor: Colors.black,
+                    backgroundColor: colors.emerald,
+                    foregroundColor: colors.isDark ? Colors.black : Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -204,13 +215,13 @@ class NetWorthCard extends StatelessWidget {
                 flex: 2,
                 child: OutlinedButton.icon(
                   onPressed: onAddCash,
-                  icon: const Icon(Icons.add, size: 15, color: AppColors.textPrimary),
-                  label: const Text(
+                  icon: Icon(Icons.add, size: 15, color: colors.textPrimary),
+                  label: Text(
                     'Cash',
-                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 12, color: colors.textPrimary, fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF334155)),
+                    side: BorderSide(color: colors.border),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -223,13 +234,13 @@ class NetWorthCard extends StatelessWidget {
                 flex: 2,
                 child: OutlinedButton.icon(
                   onPressed: onSyncGmail,
-                  icon: const Icon(Icons.mail_outline, size: 15, color: AppColors.royalBlue),
-                  label: const Text(
+                  icon: Icon(Icons.mail_outline, size: 15, color: colors.royalBlue),
+                  label: Text(
                     'Gmail',
-                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 12, color: colors.textPrimary, fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF334155)),
+                    side: BorderSide(color: colors.border),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -241,13 +252,13 @@ class NetWorthCard extends StatelessWidget {
               OutlinedButton(
                 onPressed: onTestSandbox,
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF334155)),
+                  side: BorderSide(color: colors.border),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Icon(Icons.terminal, size: 16, color: AppColors.aiEngine),
+                child: Icon(Icons.terminal, size: 16, color: colors.aiEngine),
               ),
             ],
           ),
@@ -256,6 +267,7 @@ class NetWorthCard extends StatelessWidget {
     );
   }
 }
+
 
 class _MetricPillar extends StatelessWidget {
   final String title;
@@ -286,9 +298,9 @@ class _MetricPillar extends StatelessWidget {
               Flexible(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textMuted,
+                    color: context.colors.textMuted,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

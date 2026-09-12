@@ -1,6 +1,7 @@
 enum TransactionType {
   EXPENSE,
   INCOME,
+  REFUND,
 }
 
 class ParsedTransaction {
@@ -16,6 +17,12 @@ class ParsedTransaction {
   final String engine; // 'AI_GEMINI', 'AI_GROQ', 'OFFLINE_REGEX'
   final double confidence; // 0.0 to 1.0
   final bool isFinancial;
+  final String status; // 'SUCCESS', 'FAILED', 'PENDING_HOLD'
+  final String? failureReason; // 'INSUFFICIENT_FUNDS', 'INCORRECT_PIN', 'DECLINED', 'FAILED'
+  final String? vpa;
+  final String? supportRecourse;
+  final bool isRecurringMandate;
+  final bool isFastag;
 
   ParsedTransaction({
     required this.amount,
@@ -30,10 +37,19 @@ class ParsedTransaction {
     required this.engine,
     this.confidence = 1.0,
     this.isFinancial = true,
+    this.status = 'SUCCESS',
+    this.failureReason,
+    this.vpa,
+    this.supportRecourse,
+    this.isRecurringMandate = false,
+    this.isFastag = false,
   });
 
   bool get isExpense => type == TransactionType.EXPENSE;
   bool get isIncome => type == TransactionType.INCOME;
+  bool get isRefund => type == TransactionType.REFUND;
+  bool get isFailed => status == 'FAILED';
+  bool get isPendingHold => status == 'PENDING_HOLD';
 
   Map<String, dynamic> toMap() {
     return {
@@ -49,13 +65,29 @@ class ParsedTransaction {
       'engine': engine,
       'confidence': confidence,
       'is_financial': isFinancial,
+      'status': status,
+      'failure_reason': failureReason,
+      'vpa': vpa,
+      'support_recourse': supportRecourse,
+      'is_recurring_mandate': isRecurringMandate,
+      'is_fastag': isFastag,
     };
   }
 
   factory ParsedTransaction.fromMap(Map<String, dynamic> map) {
+    TransactionType parsedType;
+    final tStr = map['type'] as String?;
+    if (tStr == 'INCOME') {
+      parsedType = TransactionType.INCOME;
+    } else if (tStr == 'REFUND') {
+      parsedType = TransactionType.REFUND;
+    } else {
+      parsedType = TransactionType.EXPENSE;
+    }
+
     return ParsedTransaction(
       amount: (map['amount'] as num).toDouble(),
-      type: (map['type'] == 'INCOME') ? TransactionType.INCOME : TransactionType.EXPENSE,
+      type: parsedType,
       category: map['category'] as String? ?? 'Other',
       merchant: map['merchant'] as String? ?? 'Unknown Merchant',
       updatedBalance: (map['updated_balance'] as num?)?.toDouble(),
@@ -66,6 +98,12 @@ class ParsedTransaction {
       engine: map['engine'] as String? ?? 'OFFLINE_REGEX',
       confidence: (map['confidence'] as num?)?.toDouble() ?? 1.0,
       isFinancial: map['is_financial'] as bool? ?? true,
+      status: map['status'] as String? ?? 'SUCCESS',
+      failureReason: map['failure_reason'] as String?,
+      vpa: map['vpa'] as String?,
+      supportRecourse: map['support_recourse'] as String?,
+      isRecurringMandate: map['is_recurring_mandate'] as bool? ?? false,
+      isFastag: map['is_fastag'] as bool? ?? false,
     );
   }
 
@@ -82,6 +120,12 @@ class ParsedTransaction {
     String? engine,
     double? confidence,
     bool? isFinancial,
+    String? status,
+    String? failureReason,
+    String? vpa,
+    String? supportRecourse,
+    bool? isRecurringMandate,
+    bool? isFastag,
   }) {
     return ParsedTransaction(
       amount: amount ?? this.amount,
@@ -96,6 +140,12 @@ class ParsedTransaction {
       engine: engine ?? this.engine,
       confidence: confidence ?? this.confidence,
       isFinancial: isFinancial ?? this.isFinancial,
+      status: status ?? this.status,
+      failureReason: failureReason ?? this.failureReason,
+      vpa: vpa ?? this.vpa,
+      supportRecourse: supportRecourse ?? this.supportRecourse,
+      isRecurringMandate: isRecurringMandate ?? this.isRecurringMandate,
+      isFastag: isFastag ?? this.isFastag,
     );
   }
 }

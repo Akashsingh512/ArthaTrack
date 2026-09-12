@@ -474,6 +474,24 @@ class AppDatabase {
         print('Migration v11 error: $e');
       }
     }
+
+    if (oldVersion < 12) {
+      try {
+        await db.execute(
+          'ALTER TABLE ${TransactionsTable.tableName} ADD COLUMN ${TransactionsTable.colStatus} TEXT NOT NULL DEFAULT "SUCCESS";',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE ${TransactionsTable.tableName} ADD COLUMN ${TransactionsTable.colFailureReason} TEXT;',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE ${TransactionsTable.tableName} ADD COLUMN ${TransactionsTable.colSupportRecourse} TEXT;',
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

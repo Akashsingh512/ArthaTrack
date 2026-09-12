@@ -31,11 +31,17 @@ class ArthaTrackApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsController()),
         ChangeNotifierProvider(create: (_) => CategoryController()..loadCategories()),
       ],
-      child: MaterialApp(
-        title: 'ArthaTrack',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const MainShellScreen(),
+      child: Consumer<SettingsController>(
+        builder: (context, settings, _) {
+          return MaterialApp(
+            title: 'ArthaTrack',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: settings.themeMode,
+            home: const MainShellScreen(),
+          );
+        },
       ),
     );
   }

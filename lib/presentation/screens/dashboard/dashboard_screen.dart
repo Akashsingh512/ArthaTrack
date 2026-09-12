@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../data/models/transaction_model.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
-import '../settings/widgets/raw_sms_test_sandbox.dart';
 import '../transactions/widgets/add_cash_transaction_sheet.dart';
+import '../transactions/widgets/edit_transaction_sheet.dart';
 import 'widgets/allocate_savings_sheet.dart';
 import 'widgets/category_breakdown_chart.dart';
 import 'widgets/monthly_budgets_card.dart';
@@ -26,19 +28,28 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Consumer<DashboardController>(
       builder: (context, controller, child) {
         if (controller.isLoading && controller.netWorth == null) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.emerald),
+          return Center(
+            child: CircularProgressIndicator(color: colors.emerald),
           );
         }
 
         final snapshot = controller.netWorth;
 
+        // Today's captured transactions count (Direction 2c)
+        final now = DateTime.now();
+        final todayCount = controller.recentTransactions.where((t) {
+          final d = DateTime.tryParse(t.date);
+          return d != null && d.day == now.day && d.month == now.month && d.year == now.year;
+        }).length;
+
         return RefreshIndicator(
-          color: AppColors.emerald,
-          backgroundColor: AppColors.surfaceElevated,
+          color: colors.emerald,
+          backgroundColor: colors.surfaceElevated,
           onRefresh: () async {
             try {
               final smsService = SmsSyncService();
@@ -57,20 +68,20 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top App Bar Greeting
+                // Top App Bar Greeting (Quiet Ledger)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'ArthaTrack',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -82,8 +93,8 @@ class DashboardScreen extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: settings.isAiActive
-                                    ? AppColors.aiEngine
-                                    : AppColors.regexEngine,
+                                    ? colors.aiEngine
+                                    : colors.regexEngine,
                               ),
                             );
                           },
@@ -91,46 +102,91 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.settings_outlined, color: AppColors.textPrimary),
+                      icon: Icon(Icons.settings_outlined, color: colors.textPrimary, size: 22),
                       onPressed: onNavigateToSettings,
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
 
-                // Net Worth Hero Card
+                // Direction 2c: Ambient Capture Feed Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bolt, color: colors.emerald, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          todayCount > 0
+                              ? '$todayCount transaction${todayCount > 1 ? 's' : ''} captured today • SMS • UPI'
+                              : 'Auto-capture active • SMS & notifications processed on-device',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colors.emerald,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Net Worth Hero Card (Quiet Ledger 2a & 2d)
                 if (snapshot != null)
                   NetWorthCard(
                     snapshot: snapshot,
                     onAddCash: () => _openAddCashSheet(context),
                     onSyncSms: () => _syncSms(context),
                     onSyncGmail: () => _syncGmail(context),
-                    onTestSandbox: () => _openTestSandbox(context),
                   ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // Monthly Cash Flow: Received Income vs Total Expenses
+                // Edge Case Alert: Payment Declined / Action Required
+                if (controller.recentTransactions.any((t) => t.isFailed)) ...[
+                  _FailedPaymentAlertBanner(
+                    failedTransactions: controller.recentTransactions.where((t) => t.isFailed).toList(),
+                    onTapTransaction: (tx) => _openEditSheet(context, tx),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Monthly Cash Flow: Received Income vs Total Expenses (Direction 2a)
                 MonthlyCashFlowCard(
                   totalMonthlyIncome: controller.totalMonthlyIncome,
                   totalMonthlyExpense: controller.totalMonthlyExpense,
                   onAllocateSavings: () => _openAllocateSavingsSheet(context, controller.netCashFlow),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 // Category Budgets Card
                 MonthlyBudgetsCard(
                   budgets: controller.budgetProgressList,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Category Expense Breakdown Chart
+                // Category Expense Breakdown Chart ("Where it went")
                 CategoryBreakdownChart(
                   categoryExpenses: controller.categoryExpenses,
                   totalMonthlyExpense: controller.totalMonthlyExpense,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Recent Transactions List
+                // Recent Transactions List ("Latest")
                 RecentTransactionsList(
                   transactions: controller.recentTransactions,
                   onViewAll: onNavigateToTransactions,
@@ -149,18 +205,6 @@ class DashboardScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       builder: (context) => const AddCashTransactionSheet(),
-    ).then((_) {
-      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
-      Provider.of<TransactionController>(context, listen: false).loadTransactions();
-    });
-  }
-
-  void _openTestSandbox(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      builder: (context) => const RawSmsTestSandbox(),
     ).then((_) {
       Provider.of<DashboardController>(context, listen: false).loadDashboardData();
       Provider.of<TransactionController>(context, listen: false).loadTransactions();
@@ -287,4 +331,121 @@ class DashboardScreen extends StatelessWidget {
       );
     }
   }
+
+  void _openEditSheet(BuildContext context, TransactionModel tx) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      builder: (ctx) => EditTransactionSheet(transaction: tx),
+    ).then((_) {
+      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+      Provider.of<TransactionController>(context, listen: false).loadTransactions();
+    });
+  }
 }
+
+class _FailedPaymentAlertBanner extends StatelessWidget {
+  final List<TransactionModel> failedTransactions;
+  final Function(TransactionModel) onTapTransaction;
+
+  const _FailedPaymentAlertBanner({
+    required this.failedTransactions,
+    required this.onTapTransaction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final latest = failedTransactions.first;
+    final count = failedTransactions.length;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.ruby.withOpacity(colors.isDark ? 0.12 : 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.ruby.withOpacity(0.35)),
+      ),
+      child: InkWell(
+        onTap: () => onTapTransaction(latest),
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colors.ruby.withOpacity(0.18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.warning_amber_rounded, color: colors.ruby, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        count > 1 ? '$count Payments Declined' : 'Payment Declined by Bank',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: colors.ruby,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Details',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: colors.royalBlue,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, size: 14, color: colors.royalBlue),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${latest.merchant}: ${IndianCurrencyFormatter.format(latest.amount)} was declined${latest.failureReason != null ? ' (${latest.failureReason})' : ''}. Balance was protected.',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: colors.textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                  if (latest.supportRecourse != null && latest.supportRecourse!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.shield_outlined, size: 12, color: colors.amber),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            latest.supportRecourse!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: colors.amber,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

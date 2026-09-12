@@ -72,49 +72,61 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
   }
 
   Widget _buildOverviewTab(BuildContext context, BalanceSheetController controller) {
+    final colors = context.colors;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Net Worth Headline Card
+          // Net Worth Headline Card (Quiet Ledger)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: colors.surfaceCard,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF334155)),
+              border: Border.all(color: colors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'NET FINANCIAL WORTH',
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 1,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textMuted,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: colors.emerald,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'NET FINANCIAL WORTH',
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
                   IndianCurrencyFormatter.format(controller.netWorth),
-                  style: const TextStyle(
-                    fontSize: 30,
+                  style: TextStyle(
+                    fontSize: 32,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    letterSpacing: -0.8,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Total Assets + Bank Balances − Total Liabilities',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: colors.textMuted),
                 ),
               ],
             ),
@@ -126,7 +138,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
             title: 'Liquid Bank & Cash',
             subtitle: '${controller.accounts.length} linked accounts',
             amount: controller.totalLiquid,
-            color: AppColors.liquid,
+            color: colors.liquid,
             icon: Icons.account_balance,
             onTap: () => _tabController.animateTo(1),
           ),
@@ -137,7 +149,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
             title: 'Total Assets (Gold, Equity, Property)',
             subtitle: '${controller.assets.length} active investments',
             amount: controller.totalAssets,
-            color: AppColors.asset,
+            color: colors.asset,
             icon: Icons.trending_up,
             onTap: () => _tabController.animateTo(2),
           ),
@@ -148,7 +160,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
             title: 'Total Liabilities & Debts',
             subtitle: '${controller.debts.length} active loans',
             amount: controller.totalDebts,
-            color: AppColors.debt,
+            color: colors.debt,
             icon: Icons.credit_score,
             onTap: () => _tabController.animateTo(3),
           ),
@@ -545,9 +557,16 @@ class _SummaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: context.colors.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Text(subtitle, style: TextStyle(fontSize: 12, color: context.colors.textMuted)),
                   ],
                 ),
               ),
@@ -559,7 +578,7 @@ class _SummaryCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color),
                   ),
                   const SizedBox(height: 2),
-                  const Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.textMuted),
+                  Icon(Icons.arrow_forward_ios, size: 12, color: context.colors.textMuted),
                 ],
               ),
             ],

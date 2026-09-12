@@ -13,19 +13,107 @@ class IndianBankingConstants {
     'com.dreamplug.androidapp': 'CRED',
   };
 
-  // Known SMS Sender codes for Indian Banks
+  // Known SMS Sender codes for Indian Banks (TRAI DLT 6-character Alpha IDs)
   static const Map<String, String> smsSenderBankMap = {
     'HDFCBK': 'HDFC Bank',
+    'HDFCBN': 'HDFC Bank',
+    'HDFCCC': 'HDFC Card',
+    'SBIINB': 'SBI',
+    'SBIPAY': 'SBI UPI',
+    'SBICRD': 'SBI Card',
     'SBINB': 'SBI',
     'SBIPSG': 'SBI',
     'ICICIB': 'ICICI Bank',
+    'ICICIC': 'ICICI Card',
     'AXISBK': 'Axis Bank',
+    'AXISBC': 'Axis Card',
     'KOTAKB': 'Kotak Bank',
     'INDUSB': 'IndusInd Bank',
     'IDFCFB': 'IDFC FIRST Bank',
     'PNBSMS': 'PNB',
     'PAYTMB': 'Paytm Payments Bank',
+    'SCBLTD': 'Standard Chartered Bank',
+    'SCBBNK': 'Standard Chartered Bank',
+    'HSBCIN': 'HSBC India',
+    'HSBCBK': 'HSBC India',
+    'DBSBNK': 'DBS Bank',
   };
+
+  /// Extracts the clean bank name from a TRAI DLT SMS header (e.g. "VM-SBIINB" -> "SBI", "AD-HDFCBK" -> "HDFC Bank")
+  static String? getBankFromHeader(String header) {
+    var clean = header.trim().toUpperCase();
+    final m = RegExp(r'^(?:[A-Z]{2}-)?([A-Z]{6})$').firstMatch(clean);
+    if (m != null && m.groupCount >= 1) {
+      clean = m.group(1)!;
+    }
+    return smsSenderBankMap[clean];
+  }
+
+  // TRAI Telecom Gateway Suffix Matcher
+  static final RegExp traiHeaderRegex = RegExp(
+    r'^(?:[A-Za-z]{2}-)?([A-Za-z]{6})$',
+    caseSensitive: false,
+  );
+
+  // Failure & Declined Status Regex (Handles insufficient balance, wrong PIN, declined txns)
+  static final RegExp failureStatusRegex = RegExp(
+    r'\b(declined|failed|insufficient\s+balance|insufficient|unsuccessful|incorrect\s+upi\s+pin|incorrect\s+pin)\b',
+    caseSensitive: false,
+  );
+
+  // Pre-Auth Hold & Surcharge Regex (Fuel pump / hotel holds)
+  static final RegExp preAuthHoldRegex = RegExp(
+    r'\b(?:hold\s+of|pre[\s\-]auth|placed\s+a\s+hold|hold\s+placed)\b',
+    caseSensitive: false,
+  );
+
+  // Hold Released / Removed Regex
+  static final RegExp holdReleasedRegex = RegExp(
+    r'\b(?:hold\s+(?:of\s+.*?\s+)?removed|hold\s+released|hold\s+reversed)\b',
+    caseSensitive: false,
+  );
+
+  // Reversal & Refund Trigger Regex (Logical Inversion)
+  static final RegExp reversalRegex = RegExp(
+    r'\b(?:reversal\s+of|auto[\s\-]reversed|reversed\s+to|refund\s+of|refunded|refund)\b',
+    caseSensitive: false,
+  );
+
+  // Automated Mandate Regex (NACH, EMI, SIP, AutoPay)
+  static final RegExp autoMandateRegex = RegExp(
+    r'\b(?:autopay|mandate|via\s+nach|nach|standing\s+instruction|sip\s+of|emi\s+of)\b',
+    caseSensitive: false,
+  );
+
+  // FASTag Toll Regex
+  static final RegExp fastagRegex = RegExp(
+    r'\b(?:fastag|toll\s+plaza|toll\s+tax)\b',
+    caseSensitive: false,
+  );
+
+  // Bank Fees / Charges / AMC Regex
+  static final RegExp bankFeeRegex = RegExp(
+    r'\b(?:sms\s+alert\s+charges|annual\s+debit\s+card\s+fee|debit\s+card\s+fee|card\s+fee|amc\s+fee|service\s+charge|bank\s+charges|minimum\s+balance|maintenance\s+charge|penalty)\b',
+    caseSensitive: false,
+  );
+
+  // Universal Account Snippet Extractor (handles "A/c **8910", "XX5678", "ending 4321", "Card ending 7890", "FASTag XX3456")
+  static final RegExp universalAccountRegex = RegExp(
+    r'(?:\bA\/c|\bAcct|\bCard|\bFASTag|\bending)\s*(?:no\.?)?\s*[:\s]*[a-zA-Z]*[\*X]*(\d{3,4})\b',
+    caseSensitive: false,
+  );
+
+  // RBI Mandated Dispute Helpline Extractor (1800/1860 toll-free, 1930 Cybercrime)
+  static final RegExp disputeHelplineRegex = RegExp(
+    r'(?:call|helpline|report\s+fraud|report|contact|dial|at)[:\s]*(\+?91[\d\s\-]{8,12}|1800[\d\s\-]{6,10}|1860[\d\s\-]{6,10}|1930)',
+    caseSensitive: false,
+  );
+
+  // RBI Mandated SMS Card Blocking Syntax Extractor (e.g. "SMS BLOCK CC 7890 to 5676712")
+  static final RegExp smsBlockRegex = RegExp(
+    r'(?:sms\s+block[A-Za-z0-9\s]+to\s+\d+|forward\s+this\s+sms\s+to\s+\d+)',
+    caseSensitive: false,
+  );
 
   // STRICT SECURITY SHIELD: Unconditional OTP and Authentication Filter
   static final RegExp otpBlocklistRegex = RegExp(
@@ -79,40 +167,40 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "₹1,24,500.00", "₹ 200"
+  // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "INR 5000.00", "₹1,24,500.00", "EMI of Rs 15,400", "Refund of Rs.1,500", "Hold of INR 2,500"
   static final RegExp amountRegex = RegExp(
-    r'(?:Rs\.?|INR|₹)\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:INR|Rs\.?|₹|EMI\s+of(?:\s+(?:INR|Rs\.?|₹))?|Refund\s+of(?:\s+(?:INR|Rs\.?|₹))?|Hold\s+of(?:\s+(?:INR|Rs\.?|₹))?)\s*([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   // Fallback Amount Regex: Matches cases like "paid 450.00" or "for 500.00"
   static final RegExp fallbackAmountRegex = RegExp(
-    r'(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|sent|transferred|transfer\s+of)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|sent|transferred|transfer\s+of|deducted\s+for|levied\s+on)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
-  // 2. Available Balance Regex
+  // 2. Available Balance & Credit/Wallet Limit Regex (includes Avl Bal, Avail Limit, Avl Lmt, Wallet Bal, Total Balance)
   static final RegExp balanceRegex = RegExp(
-    r'(?:Bal|Avl\s*Bal|Avl\s*Balance|Balance|Avail\s*Bal|Available\s*Balance|Total\s*Avail\.?\s*Bal|A\/c\s*Bal)[:\s]*(?:is\s+)?(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:Bal|Avl\s*Bal|Avl\s*Balance|Balance|Avail\s*Bal|Available\s*Balance|Total\s*Avail\.?\s*Bal|Total\s*Balance|Total\s*Bal|A\/c\s*Bal|Avl\s*Lmt|Avail\s*Limit|Limit|Wallet\s*Bal)[:\s]*(?:is\s+)?(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   // 3. Action Triggers
   static final RegExp expenseTriggerRegex = RegExp(
     r'\b('
-    r'debited|spent|paid|withdrawn|charged|deducted|payment\s+of|payment\s+to|'
-    r'nach\s+debit|debit\b(?!\s+card)|'
+    r'debited|spent|paid|withdrawn|withdrawal|cash\s+withdrawal|charged|deducted|levied|levied\s+on|payment\s+of|payment\s+to|'
+    r'nach\s+debit|via\s+nach|debit\b(?!\s+card)|'
     r'sent\b(?!\s+you\b)|'
     r'transferred\b(?!\s+from\b)|'
     r'transfer\s+(?:of\s+.*?\s+)?to|'
-    r'trf\s+to'
+    r'trf\s+to|hold\s+of'
     r')\b',
     caseSensitive: false,
   );
 
   static final RegExp incomeTriggerRegex = RegExp(
     r'\b('
-    r'credited|received|added|deposited|refunded|refund|cashback|salary|'
+    r'credited|received|added|deposited|refunded|refund|reversed|reversal|removed|cashback|salary|'
     r'credited\s+with|'
     r'transferred\s+from|transfer\s+from|'
     r'sent\s+you|received\s+from|'
@@ -121,9 +209,9 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // 4. Reference Number Regex for Cross-Message Deduplication
+  // 4. Reference Number Regex for Cross-Message Deduplication (6 to 24 characters)
   static final RegExp referenceNumberRegex = RegExp(
-    r'(?:UPI\s*Ref(?:\s*[:\-]|(?:\s*No\.?[:\s]*))|Ref(?:\s*No\.?|Num\.?)?[:\s]*|RRN[:\s]*|Txn\s*(?:Id|ID|no\.?)?[:\s]*|IMPS\s*(?:Ref)?[:\s]*)\s*([A-Za-z0-9]{8,24})',
+    r'(?:UPI\s*Ref(?:\s*[:\-]|(?:\s*No\.?[:\s]*))|Ref(?:\s*No\.?|Num\.?)?[:\s]*|RRN[:\s]*|Txn\s*(?:Id|ID|no\.?)?[:\s]*|IMPS\s*(?:Ref)?[:\s]*)\s*([A-Za-z0-9]{6,24})',
     caseSensitive: false,
   );
 
@@ -278,6 +366,20 @@ class IndianBankingConstants {
       'salary', 'payroll', 'stipend', 'bonus', 'salary credit',
       'infosys', 'tcs', 'wipro', 'hcl', 'cognizant', 'accenture', 'tech mahindra',
       'capgemini'
+    ],
+    'FASTag': [
+      'fastag', 'toll plaza', 'toll', 'toll tax', 'nhai', 'ihmcl', 'kherki daula'
+    ],
+    'Bank Fees': [
+      'sms alert charges', 'annual debit card fee', 'card fee', 'amc fee',
+      'service charge', 'bank charges', 'minimum balance', 'penalty', 'gst'
+    ],
+    'Loan & EMI': [
+      'emi', 'nach', 'bajaj fin', 'home loan', 'personal loan', 'auto loan',
+      'car loan', 'loan', 'hdfc loan', 'sbi loan', 'axis finance'
+    ],
+    'Refund': [
+      'refund', 'reversal', 'auto-reversed', 'reversed'
     ],
   };
 

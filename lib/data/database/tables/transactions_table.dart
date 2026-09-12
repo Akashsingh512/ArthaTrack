@@ -13,6 +13,9 @@ class TransactionsTable {
   static const String colEngine = 'engine'; // 'AI', 'REGEX'
   static const String colReferenceNumber = 'reference_number';
   static const String colPaymentSource = 'payment_source';
+  static const String colStatus = 'status';
+  static const String colFailureReason = 'failure_reason';
+  static const String colSupportRecourse = 'support_recourse';
 
   static const String createTableQuery = '''
     CREATE TABLE $tableName (
@@ -28,6 +31,9 @@ class TransactionsTable {
       $colEngine TEXT NOT NULL DEFAULT 'REGEX',
       $colReferenceNumber TEXT,
       $colPaymentSource TEXT,
+      $colStatus TEXT NOT NULL DEFAULT 'SUCCESS',
+      $colFailureReason TEXT,
+      $colSupportRecourse TEXT,
       FOREIGN KEY ($colAccountId) REFERENCES accounts (id) ON DELETE CASCADE
     )
   ''';
