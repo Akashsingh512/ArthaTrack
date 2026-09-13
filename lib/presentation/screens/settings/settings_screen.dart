@@ -1107,6 +1107,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _handleExport(
+    BuildContext context,
+    SettingsController settings, {
+    required bool includeRawMessage,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(includeRawMessage
+            ? 'Generating audit CSV with raw SMS text...'
+            : 'Generating standard CSV export...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    final path = await settings.exportTransactionsCsv(includeRawMessage: includeRawMessage);
+    if (path != null && context.mounted) {
+      AppHaptics.medium();
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle, color: AppColors.emerald),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  includeRawMessage ? 'Audit CSV Saved!' : 'Standard CSV Saved!',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                includeRawMessage
+                    ? 'Your full audit CSV (including raw SMS messages) is saved directly in your phone\'s public Downloads folder:'
+                    : 'Your CSV transaction spreadsheet is saved directly in your phone\'s public Downloads folder:',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.folder_open, color: AppColors.emerald, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        path,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                includeRawMessage
+                    ? '💡 You can share this CSV file to check whether all SMS were captured and sorted properly.'
+                    : '💡 Open your phone\'s Files or Downloads app to open it in Google Sheets, Excel, or share it.',
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.emerald,
+                    side: const BorderSide(color: AppColors.emerald),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () async {
+                    AppHaptics.light();
+                    final csv = await settings.getTransactionsCsvString(includeRawMessage: includeRawMessage);
+                    await Clipboard.setData(ClipboardData(text: csv));
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(includeRawMessage
+                              ? 'All audit CSV data (with SMS text) copied to clipboard!'
+                              : 'All CSV transaction data copied to clipboard!'),
+                          backgroundColor: AppColors.emerald,
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.copy_all, size: 16),
+                  label: const Text(
+                    'Copy All CSV to Clipboard',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                AppHaptics.light();
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    } else if (context.mounted) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Failed to export transactions. Please try again.'),
+          backgroundColor: AppColors.ruby,
+        ),
+      );
+    }
+  }
+
   Widget _buildDataManagementSection(BuildContext context, SettingsController settings) {
     return Card(
       elevation: 0,
@@ -1132,147 +1266,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Export all local transactions, merchant categories, and account records to a standard CSV spreadsheet for Excel, Google Sheets, or personal backups.',
+              'Export your transaction history to your device\'s public Downloads folder in standard CSV format or as a full audit log including the original SMS messages.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.surfaceElevated,
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: settings.isExporting
-                    ? null
-                    : () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Generating CSV export...'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                        final path = await settings.exportTransactionsCsv();
-                        if (path != null && context.mounted) {
-                          AppHaptics.medium();
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              backgroundColor: AppColors.surfaceElevated,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              title: const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: AppColors.emerald),
-                                  SizedBox(width: 8),
-                                  Text('Saved to Downloads!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Your CSV file is ready and saved to your phone\'s public Downloads folder:',
-                                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: const Color(0xFF334155)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.folder_open, color: AppColors.emerald, size: 20),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            path,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontFamily: 'monospace',
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    '💡 Open your phone\'s Files or Downloads app to open it in Google Sheets, Excel, or share it.',
-                                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.emerald,
-                                        side: const BorderSide(color: AppColors.emerald),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        padding: const EdgeInsets.symmetric(vertical: 10),
-                                      ),
-                                      onPressed: () async {
-                                        AppHaptics.light();
-                                        final csv = await settings.getTransactionsCsvString();
-                                        await Clipboard.setData(ClipboardData(text: csv));
-                                        if (ctx.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('All CSV transaction data copied to clipboard!'),
-                                              backgroundColor: AppColors.emerald,
-                                            ),
-                                          );
-                                        }
-                                      },
-                                      icon: const Icon(Icons.copy_all, size: 16),
-                                      label: const Text(
-                                        'Copy All CSV to Clipboard',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    AppHaptics.light();
-                                    Navigator.of(ctx).pop();
-                                  },
-                                  child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else if (context.mounted) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to export transactions. Please try again.'),
-                              backgroundColor: AppColors.ruby,
-                            ),
-                          );
-                        }
-                      },
-                icon: settings.isExporting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                      )
-                    : const Icon(Icons.download, size: 18),
-                label: Text(
-                  settings.isExporting ? 'Exporting CSV...' : 'Export Transactions to CSV',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
+            const SizedBox(height: 16),
+
+            // Option 1: Standard Clean CSV
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.receipt_long, color: AppColors.primary, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Standard CSV Export',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Clean spreadsheet with Date, Type, Amount, Category, Merchant, Account, and Reference. Ideal for Excel & Google Sheets.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.surfaceElevated,
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onPressed: settings.isExporting
+                          ? null
+                          : () => _handleExport(context, settings, includeRawMessage: false),
+                      icon: settings.isExporting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            )
+                          : const Icon(Icons.file_download_outlined, size: 16),
+                      label: const Text(
+                        'Export Standard CSV',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Option 2: Export with Raw SMS Text
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.royalBlue.withOpacity(0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.mark_chat_read_outlined, color: AppColors.royalBlue, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Export with Raw SMS (Audit & Verification)',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Includes all parsed columns PLUS original unparsed SMS text (Raw Message). Share this to verify if all SMS are sorted properly.',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.royalBlue.withOpacity(0.15),
+                        foregroundColor: AppColors.royalBlue,
+                        side: const BorderSide(color: AppColors.royalBlue),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onPressed: settings.isExporting
+                          ? null
+                          : () => _handleExport(context, settings, includeRawMessage: true),
+                      icon: settings.isExporting
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.royalBlue),
+                            )
+                          : const Icon(Icons.sms_outlined, size: 16),
+                      label: const Text(
+                        'Export with Raw SMS (Audit)',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

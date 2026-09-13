@@ -248,7 +248,7 @@ class SettingsController extends ChangeNotifier {
     }
   }
 
-  Future<String?> exportTransactionsCsv() async {
+  Future<String?> exportTransactionsCsv({bool includeRawMessage = false}) async {
     _isExporting = true;
     notifyListeners();
 
@@ -257,22 +257,49 @@ class SettingsController extends ChangeNotifier {
       final transactions = await txRepo.getAllTransactions();
 
       final buffer = StringBuffer();
-      // CSV Header
-      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+      final fileName = includeRawMessage
+          ? 'arthatrack_transactions_with_sms.csv'
+          : 'arthatrack_transactions.csv';
 
-      for (final tx in transactions) {
-        final row = [
-          tx.id?.toString() ?? '',
-          _escapeCsv(tx.date),
-          _escapeCsv(tx.type),
-          tx.amount.toStringAsFixed(2),
-          _escapeCsv(tx.category),
-          _escapeCsv(tx.merchant),
-          _escapeCsv(tx.displayPaymentSource),
-          _escapeCsv(tx.referenceNumber ?? ''),
-          _escapeCsv(tx.source),
-        ];
-        buffer.writeln(row.join(','));
+      if (includeRawMessage) {
+        // Full CSV Header including Raw SMS for debugging and verification
+        buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message');
+        for (final tx in transactions) {
+          final row = [
+            tx.id?.toString() ?? '',
+            _escapeCsv(tx.date),
+            _escapeCsv(tx.type),
+            tx.amount.toStringAsFixed(2),
+            _escapeCsv(tx.category),
+            _escapeCsv(tx.merchant),
+            _escapeCsv(tx.displayPaymentSource),
+            _escapeCsv(tx.paymentSource ?? ''),
+            _escapeCsv(tx.referenceNumber ?? ''),
+            _escapeCsv(tx.source),
+            _escapeCsv(tx.engine),
+            _escapeCsv(tx.status),
+            _escapeCsv(tx.failureReason ?? ''),
+            _escapeCsv(tx.rawText),
+          ];
+          buffer.writeln(row.join(','));
+        }
+      } else {
+        // Standard clean CSV Header
+        buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+        for (final tx in transactions) {
+          final row = [
+            tx.id?.toString() ?? '',
+            _escapeCsv(tx.date),
+            _escapeCsv(tx.type),
+            tx.amount.toStringAsFixed(2),
+            _escapeCsv(tx.category),
+            _escapeCsv(tx.merchant),
+            _escapeCsv(tx.displayPaymentSource),
+            _escapeCsv(tx.referenceNumber ?? ''),
+            _escapeCsv(tx.source),
+          ];
+          buffer.writeln(row.join(','));
+        }
       }
 
       final csvContent = buffer.toString();
@@ -282,7 +309,7 @@ class SettingsController extends ChangeNotifier {
       try {
         const platform = MethodChannel('com.arthatrack.app/sms_reader');
         savedPath = await platform.invokeMethod<String>('saveFileToDownloads', {
-          'fileName': 'arthatrack_transactions.csv',
+          'fileName': fileName,
           'content': csvContent,
         });
       } catch (e) {
@@ -294,7 +321,7 @@ class SettingsController extends ChangeNotifier {
         try {
           final publicDownloadDir = Directory('/storage/emulated/0/Download');
           if (await publicDownloadDir.exists()) {
-            final pubFile = File('${publicDownloadDir.path}/arthatrack_transactions.csv');
+            final pubFile = File('${publicDownloadDir.path}/$fileName');
             await pubFile.writeAsString(csvContent);
             savedPath = pubFile.path;
           }
@@ -306,7 +333,7 @@ class SettingsController extends ChangeNotifier {
       // 3. Guaranteed Internal Backup: Always write to app documents directory
       try {
         final dir = await getApplicationDocumentsDirectory();
-        final internalFile = File('${dir.path}/arthatrack_transactions.csv');
+        final internalFile = File('${dir.path}/$fileName');
         await internalFile.writeAsString(csvContent);
         savedPath ??= internalFile.path;
       } catch (e) {
@@ -324,26 +351,48 @@ class SettingsController extends ChangeNotifier {
   }
 
   /// Returns the full CSV text string so user can copy to clipboard
-  Future<String> getTransactionsCsvString() async {
+  Future<String> getTransactionsCsvString({bool includeRawMessage = false}) async {
     final txRepo = TransactionRepository();
     final transactions = await txRepo.getAllTransactions();
 
     final buffer = StringBuffer();
-    buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
-
-    for (final tx in transactions) {
-      final row = [
-        tx.id?.toString() ?? '',
-        _escapeCsv(tx.date),
-        _escapeCsv(tx.type),
-        tx.amount.toStringAsFixed(2),
-        _escapeCsv(tx.category),
-        _escapeCsv(tx.merchant),
-        _escapeCsv(tx.displayPaymentSource),
-        _escapeCsv(tx.referenceNumber ?? ''),
-        _escapeCsv(tx.source),
-      ];
-      buffer.writeln(row.join(','));
+    if (includeRawMessage) {
+      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message');
+      for (final tx in transactions) {
+        final row = [
+          tx.id?.toString() ?? '',
+          _escapeCsv(tx.date),
+          _escapeCsv(tx.type),
+          tx.amount.toStringAsFixed(2),
+          _escapeCsv(tx.category),
+          _escapeCsv(tx.merchant),
+          _escapeCsv(tx.displayPaymentSource),
+          _escapeCsv(tx.paymentSource ?? ''),
+          _escapeCsv(tx.referenceNumber ?? ''),
+          _escapeCsv(tx.source),
+          _escapeCsv(tx.engine),
+          _escapeCsv(tx.status),
+          _escapeCsv(tx.failureReason ?? ''),
+          _escapeCsv(tx.rawText),
+        ];
+        buffer.writeln(row.join(','));
+      }
+    } else {
+      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+      for (final tx in transactions) {
+        final row = [
+          tx.id?.toString() ?? '',
+          _escapeCsv(tx.date),
+          _escapeCsv(tx.type),
+          tx.amount.toStringAsFixed(2),
+          _escapeCsv(tx.category),
+          _escapeCsv(tx.merchant),
+          _escapeCsv(tx.displayPaymentSource),
+          _escapeCsv(tx.referenceNumber ?? ''),
+          _escapeCsv(tx.source),
+        ];
+        buffer.writeln(row.join(','));
+      }
     }
     return buffer.toString();
   }

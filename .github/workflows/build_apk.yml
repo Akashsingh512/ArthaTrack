@@ -69,14 +69,15 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta4
-          name: "ArthaTrack Beta v1.1.0 (Build 4)"
+          tag_name: v1.1.0-beta5
+          name: "ArthaTrack Beta v1.1.0 (Build 5)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 4)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 5)
             
             #### 🌟 Highlights & Features Included:
-            - **📂 Public Downloads CSV Export**: Transactions export directly to your phone's public `/storage/emulated/0/Download/arthatrack_transactions.csv` folder via native Android MediaStore API.
-            - **📋 1-Tap Copy All CSV**: Easily copy the full CSV dataset directly to your clipboard for instant pasting into Google Sheets, Excel, or messaging apps.
+            - **📑 Dual Export Options**: Choose between **Standard CSV Export** (clean financial ledger) and **Export with Raw SMS** (audit log with unparsed SMS messages) to inspect and verify how all messages are sorted.
+            - **📂 Public Downloads Saving**: Both export types save directly to your phone's public `/storage/emulated/0/Download/` folder (`arthatrack_transactions.csv` & `arthatrack_transactions_with_sms.csv`) via Android MediaStore API.
+            - **📋 1-Tap Copy All CSV**: Easily copy all CSV data (standard or with SMS text) to clipboard for instant sharing.
             - **Multi-Select Bulk Categorization**: Select multiple transactions and update categories simultaneously, or create new custom categories on-the-fly.
             - **AES-256 Encrypted Auto-Backup & Migration**: Zero-dependency Pure-Dart encrypted backups to Google Drive (`appDataFolder`) and WebDAV (Nextcloud/NAS) with PBKDF2/HMAC-SHA256 passphrase security.
             - **Subtle Micro-Haptic Feedback**: Centralized tactile response system across all buttons, chips, tabs, and bottom sheets.
@@ -85,7 +86,7 @@ jobs:
 
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
-            *(Application ID: `com.arthatrack.beta` — installs side-by-side with your existing production app)*
+            *(Application ID: `com.arthatrack.beta` — installs smoothly on your phone)*
           files: build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
