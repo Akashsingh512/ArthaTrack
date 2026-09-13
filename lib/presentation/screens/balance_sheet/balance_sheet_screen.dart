@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../controllers/balance_sheet_controller.dart';
 import '../../controllers/dashboard_controller.dart';
@@ -22,6 +23,11 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        AppHaptics.selection();
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
     });
@@ -176,7 +182,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add),
         label: const Text('Add Account', style: TextStyle(fontWeight: FontWeight.w700)),
-        onPressed: () => _showAddAccountDialog(context, controller),
+        onPressed: () {
+          AppHaptics.medium();
+          _showAddAccountDialog(context, controller);
+        },
       ),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -203,7 +212,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               ),
               title: Text(acc.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(acc.type, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              onTap: () => _showEditAccountDialog(context, controller, acc),
+              onTap: () {
+                AppHaptics.light();
+                _showEditAccountDialog(context, controller, acc);
+              },
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -234,6 +246,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         icon: const Icon(Icons.add),
         label: const Text('Add Asset', style: TextStyle(fontWeight: FontWeight.w700)),
         onPressed: () {
+          AppHaptics.medium();
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
@@ -316,6 +329,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         icon: const Icon(Icons.add),
         label: const Text('Add Liability', style: TextStyle(fontWeight: FontWeight.w700)),
         onPressed: () {
+          AppHaptics.medium();
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
@@ -501,6 +515,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
           ),
           ElevatedButton(
             onPressed: () async {
+              AppHaptics.medium();
               final val = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
               final target = acc.isCreditCard && val > 0 ? -val : val;
               await controller.updateAccountBalance(acc.id!, target);

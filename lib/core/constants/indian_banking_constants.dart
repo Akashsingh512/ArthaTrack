@@ -121,6 +121,29 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
+  // STRICT MANDATE PRE-DEBIT & REGISTRATION SHIELD:
+  // RBI-mandated prior notifications ("will be debited on...", "will be presented...", "mandate registered")
+  // These are strictly informational notices where NO money has moved.
+  static final RegExp mandateNoticeBlocklistRegex = RegExp(
+    r'\b('
+    r'will\s+be\s+(?:debited|presented|processed|deducted|executed)|'
+    r'to\s+be\s+debited|about\s+to\s+be\s+debited|'
+    r'(?:is|has\s+been)\s+scheduled\s+(?:for|on)|'
+    r'scheduled\s+(?:for\s+debit|to\s+be\s+debited|on|date)|'
+    r'(?:has\s+been\s+|is\s+)?initiated|'
+    r'in\s+process|under\s+process|being\s+processed|'
+    r'debit\s+request|request\s+for\s+debit|autopay\s+request|mandate\s+request|'
+    r'due\s+for\s+presentation|presentation\s+date|presented\s+to\s+your\s+bank|'
+    r'due\s+(?:on|date|tomorrow)|'
+    r'(?:e[\s\-]?)?mandate\s+(?:registered|created|approved|set\s*up|activated|received)|'
+    r'autopay\s+(?:registered|set\s*up|activated|scheduled|received)|'
+    r'standing\s+instruction\s+(?:registered|set\s*up)|'
+    r'(?:ensure|maintain|keep)\s+(?:sufficient|adequate)?\s*balance|'
+    r'pre[\s\-]debit\s+notification'
+    r')\b',
+    caseSensitive: false,
+  );
+
   // STRICT PROMOTIONAL, NON-TRANSACTIONAL & RECEIPT SHIELD: Filter out EMI offers, pre-approved loans, bill due reminders, and payment receipts
   static final RegExp promotionalBlocklistRegex = RegExp(
     r'\b('

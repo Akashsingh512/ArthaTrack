@@ -81,7 +81,7 @@ class RecentTransactionsList extends StatelessWidget {
               separatorBuilder: (_, __) => Divider(color: colors.borderSubtle, height: 16),
               itemBuilder: (context, index) {
                 final tx = transactions[index];
-                final isIncome = tx.isIncome;
+                final isCredit = tx.isCredit;
                 final catColor = AppColors.categoryColors[tx.category] ?? colors.textMuted;
 
                 return InkWell(
@@ -117,9 +117,9 @@ class RecentTransactionsList extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -176,7 +176,7 @@ class RecentTransactionsList extends StatelessWidget {
                             Text(
                               tx.isFailed
                                   ? IndianCurrencyFormatter.format(tx.amount)
-                                  : '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                                  : '${isCredit ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -185,7 +185,7 @@ class RecentTransactionsList extends StatelessWidget {
                                     ? colors.ruby
                                     : (tx.isPendingHold
                                         ? colors.amber
-                                        : (isIncome ? colors.income : colors.expense)),
+                                        : (isCredit ? colors.income : colors.expense)),
                               ),
                             ),
                             if (tx.isFailed || tx.isRefund || tx.isPendingHold) ...[
@@ -292,11 +292,11 @@ class RecentTransactionsList extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '${tx.isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                '${tx.isCredit ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: tx.isIncome ? AppColors.income : AppColors.expense,
+                  color: tx.isCredit ? AppColors.income : AppColors.expense,
                 ),
               ),
               const SizedBox(height: 16),

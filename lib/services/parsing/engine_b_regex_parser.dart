@@ -15,12 +15,18 @@ class EngineBRegexParser {
       return null;
     }
 
+    // 0.0 MANDATE PRE-DEBIT & REGISTRATION GUARD:
+    // Drop RBI-mandated advance notices ("will be debited on...", "will be presented...", "mandate registered")
+    // These are informational reminders; no money has moved!
+    if (IndianBankingConstants.mandateNoticeBlocklistRegex.hasMatch(text)) {
+      return null;
+    }
+
     // 0.1 PROMOTIONAL & NON-TRANSACTIONAL GUARD: Drop EMI offers, loan pitches, and bill due reminders
     // Ensure we do NOT drop valid bank fees (towards SMS Alert Charges) or actual EMIs (via NACH)
     final isActualTxn = lower.contains('towards sms alert') ||
         lower.contains('via nach') ||
         lower.contains('emi of') ||
-        lower.contains('autopay') ||
         lower.contains('fastag');
     if (!isActualTxn && IndianBankingConstants.promotionalBlocklistRegex.hasMatch(text)) {
       return null;
@@ -260,9 +266,12 @@ class EngineBRegexParser {
       category = 'Bank Fees';
     } else if (isReversalOrRefund || isHoldReleased) {
       category = 'Refund';
-    } else if (lower.contains('via nach') || lower.contains('emi of') || lower.contains('bajaj fin')) {
+    } else if (lower.contains('via nach') ||
+        lower.contains('nach debit') ||
+        (lower.contains('nach') && (lower.contains('bajaj') || lower.contains('loan') || lower.contains('emi') || lower.contains('finance') || lower.contains('fin'))) ||
+        lower.contains('emi of')) {
       category = 'Loan & EMI';
-    } else if (lower.contains('sip of') || lower.contains('mutualfund')) {
+    } else if (lower.contains('sip of') || lower.contains('mutualfund') || (lower.contains('nach') && (lower.contains('mutual') || lower.contains('sip')))) {
       category = 'Investment';
     }
 
@@ -354,9 +363,20 @@ class EngineBRegexParser {
     }
 
     // 0.2 NACH / EMI / AutoPay Mandates
-    final nachMatch = RegExp(r'via\s+nach\s+for\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:on|for|with|avl|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+    final nachMatch = RegExp(
+      r'(?:via\s+nach\s+for|nach\s+(?:debit\s+)?(?:for|towards)|towards\s+nach[\s\-:]*)\s*([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:on|for|with|avl|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (nachMatch != null && nachMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(nachMatch.group(1));
+      if (candidate != null) return _capitalizeWords(candidate);
+    }
+    final autoPayMatch = RegExp(
+      r'(?:towards\s+autopay|autopay\s+for|for\s+autopay|autopay[\s\-:]+)\s*([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:on|for|with|avl|mandate|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
+    if (autoPayMatch != null && autoPayMatch.groupCount >= 1) {
+      final candidate = _cleanMerchantString(autoPayMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
     }
     final mandateMatch = RegExp(r'for\s+([A-Za-z0-9\s\.\*\-\@]+?)\s+mandate\b', caseSensitive: false).firstMatch(cleanedText);

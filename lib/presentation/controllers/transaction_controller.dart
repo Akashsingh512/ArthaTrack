@@ -16,7 +16,10 @@ class TransactionController extends ChangeNotifier {
   String? _selectedType; // 'ALL', 'EXPENSE', 'INCOME'
   String? _selectedCategory;
   String _searchQuery = '';
-  DateTime? _selectedMonth; // null = All Time
+  DateTime? _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+
+  bool _isMultiSelectMode = false;
+  final Set<int> _selectedTransactionIds = {};
 
   TransactionController({
     TransactionRepository? transactionRepo,
@@ -31,15 +34,19 @@ class TransactionController extends ChangeNotifier {
   String? get selectedCategory => _selectedCategory;
   DateTime? get selectedMonth => _selectedMonth;
 
+  bool get isMultiSelectMode => _isMultiSelectMode;
+  Set<int> get selectedTransactionIds => _selectedTransactionIds;
+  int get selectedCount => _selectedTransactionIds.length;
+
   bool get hasFailedTransactions => _allTransactions.any((t) => t.isFailed);
   int get failedCount => _allTransactions.where((t) => t.isFailed).length;
 
   double get filteredIncome => _filteredTransactions
-      .where((t) => t.isIncome)
+      .where((t) => t.isCredit && !t.isFailed)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double get filteredExpense => _filteredTransactions
-      .where((t) => t.isExpense)
+      .where((t) => t.isExpense && !t.isFailed)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   /// Returns distinct months present in all loaded transactions, newest first
@@ -116,7 +123,7 @@ class TransactionController extends ChangeNotifier {
         } else if (_selectedType == 'EXPENSE') {
           if (!tx.isExpense || tx.isFailed) return false;
         } else if (_selectedType == 'INCOME') {
-          if (!tx.isIncome || tx.isFailed) return false;
+          if (!tx.isCredit || tx.isFailed) return false;
         } else if (tx.type != _selectedType) {
           return false;
         }
@@ -176,5 +183,55 @@ class TransactionController extends ChangeNotifier {
   Future<void> deleteTransaction(int id) async {
     await _transactionRepo.deleteTransaction(id);
     await loadTransactions();
+  }
+
+  // --- Multi-Select Bulk Actions ---
+
+  void enterMultiSelectMode([int? initialId]) {
+    _isMultiSelectMode = true;
+    _selectedTransactionIds.clear();
+    if (initialId != null) {
+      _selectedTransactionIds.add(initialId);
+    }
+    notifyListeners();
+  }
+
+  void exitMultiSelectMode() {
+    _isMultiSelectMode = false;
+    _selectedTransactionIds.clear();
+    notifyListeners();
+  }
+
+  void toggleTransactionSelection(int id) {
+    if (_selectedTransactionIds.contains(id)) {
+      _selectedTransactionIds.remove(id);
+      if (_selectedTransactionIds.isEmpty) {
+        _isMultiSelectMode = false;
+      }
+    } else {
+      _selectedTransactionIds.add(id);
+    }
+    notifyListeners();
+  }
+
+  void selectAllFiltered() {
+    for (final t in _filteredTransactions) {
+      if (t.id != null) _selectedTransactionIds.add(t.id!);
+    }
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectedTransactionIds.clear();
+    notifyListeners();
+  }
+
+  Future<int> bulkCategorize(String newCategory) async {
+    if (_selectedTransactionIds.isEmpty) return 0;
+    final ids = _selectedTransactionIds.toList();
+    final count = await _transactionRepo.bulkUpdateCategory(ids, newCategory);
+    exitMultiSelectMode();
+    await loadTransactions();
+    return count;
   }
 }

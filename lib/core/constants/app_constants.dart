@@ -12,6 +12,14 @@ class AppConstants {
   static const String secureKeyBedrockRegion = 'byok_bedrock_region';
   static const String secureKeyActiveModel = 'byok_active_model';
   static const String secureKeyThemeMode = 'app_theme_mode';
+  static const String secureKeyBackupPassphrase = 'backup_passphrase';
+  static const String secureKeyBackupDestination = 'backup_destination'; // 'google_drive', 'webdav', 'local'
+  static const String secureKeyBackupWebDavUrl = 'backup_webdav_url';
+  static const String secureKeyBackupWebDavUser = 'backup_webdav_user';
+  static const String secureKeyBackupWebDavPassword = 'backup_webdav_password';
+  static const String secureKeyBackupAutoInterval = 'backup_auto_interval'; // 'daily', 'weekly', 'disabled'
+  static const String secureKeyBackupLastSyncTime = 'backup_last_sync_time';
+  static const String secureKeyBackupLastStatus = 'backup_last_status';
 
   // AI Providers
   static const String providerGemini = 'Gemini';

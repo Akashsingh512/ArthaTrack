@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/budget_model.dart';
 import '../../../controllers/category_controller.dart';
@@ -45,6 +46,7 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
   }
 
   Future<void> _saveBudget() async {
+    AppHaptics.medium();
     if (!_formKey.currentState!.validate()) return;
 
     final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
@@ -74,6 +76,7 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
 
   Future<void> _deleteBudget() async {
     if (widget.existingBudget == null) return;
+    AppHaptics.heavy();
 
     final controller = context.read<DashboardController>();
     await controller.deleteBudget(widget.existingBudget!.category);

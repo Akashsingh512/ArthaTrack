@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -34,8 +36,39 @@ jobs:
       - name: Build Android Release APK
         run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
+      - name: Prepare Named APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: arthatrack-release-apk
           path: build/app/outputs/flutter-apk/*.apk
+
+      - name: Create or Update Beta Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        with:
+          tag_name: v1.1.0-beta3
+          name: "ArthaTrack Beta v1.1.0 (Build 3)"
+          body: |
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 3)
+            
+            #### 🌟 Highlights & Features Included:
+            - **Multi-Select Bulk Categorization**: Select multiple transactions and update categories simultaneously, or create new custom categories on-the-fly.
+            - **AES-256 Encrypted Auto-Backup & Migration**: Zero-dependency Pure-Dart encrypted backups to Google Drive (`appDataFolder`) and WebDAV (Nextcloud/NAS) with PBKDF2/HMAC-SHA256 passphrase security.
+            - **Subtle Micro-Haptic Feedback**: Centralized tactile response system across all buttons, chips, tabs, and bottom sheets.
+            - **Motion & Animated Transition Curves**: Polished animated curves on category and filter chips.
+            - **Indian Banking Engine V3.0 Edge Case Polish**:
+              - Automated NACH and AutoPay pre-debit notice shield (discards informational advance notices until settled account debit).
+              - Accurate Refund Income calculation & emerald badge presentation.
+            - **Quiet Ledger & Financial Health**: Net worth breakdown, budget monitoring, zero cloud trackers, offline-first privacy.
+
+            #### 📲 Download & Install:
+            Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
+            *(Application ID: `com.arthatrack.beta` — installs side-by-side with your existing production app)*
+          files: build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../controllers/transaction_controller.dart';
 import '../../../../data/database/tables/categories_table.dart';
@@ -37,6 +38,7 @@ class _ManageCategoriesSheetState extends State<ManageCategoriesSheet> {
   }
 
   Future<void> _addNewCategory(CategoryController catController) async {
+    AppHaptics.medium();
     if (!_formKey.currentState!.validate()) return;
 
     final name = _categoryTextController.text.trim();
@@ -70,6 +72,7 @@ class _ManageCategoriesSheetState extends State<ManageCategoriesSheet> {
     CategoryController catController,
     String categoryName,
   ) async {
+    AppHaptics.heavy();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

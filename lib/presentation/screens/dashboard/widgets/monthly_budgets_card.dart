@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/budget_model.dart';
 import 'set_budget_sheet.dart';
@@ -13,6 +14,7 @@ class MonthlyBudgetsCard extends StatelessWidget {
   });
 
   void _openSetBudget(BuildContext context, {BudgetModel? existingBudget}) {
+    AppHaptics.medium();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

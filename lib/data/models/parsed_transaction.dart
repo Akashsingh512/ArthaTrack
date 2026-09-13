@@ -48,6 +48,7 @@ class ParsedTransaction {
   bool get isExpense => type == TransactionType.EXPENSE;
   bool get isIncome => type == TransactionType.INCOME;
   bool get isRefund => type == TransactionType.REFUND;
+  bool get isCredit => isIncome || isRefund;
   bool get isFailed => status == 'FAILED';
   bool get isPendingHold => status == 'PENDING_HOLD';
 

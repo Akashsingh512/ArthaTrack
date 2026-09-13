@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../data/models/account_model.dart';
 import '../../../../data/models/transaction_model.dart';
 import '../../../../data/repositories/account_repository.dart';
@@ -202,10 +203,13 @@ class _CardDisambiguationSheetState extends State<CardDisambiguationSheet> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: InkWell(
                         onTap: () {
+                          AppHaptics.selection();
                           setState(() => _selectedCandidateId = candidate.id);
                         },
                         borderRadius: BorderRadius.circular(10),
-                        child: Container(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeOutCubic,
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
@@ -216,6 +220,15 @@ class _CardDisambiguationSheetState extends State<CardDisambiguationSheet> {
                               color: isSelected ? AppColors.emerald : const Color(0xFF26334D),
                               width: isSelected ? 1.5 : 1,
                             ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.emerald.withOpacity(0.12),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Row(
                             children: [
@@ -226,13 +239,15 @@ class _CardDisambiguationSheetState extends State<CardDisambiguationSheet> {
                               ),
                               const SizedBox(width: 10),
                               Expanded(
-                                child: Text(
-                                  candidate.name,
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeOutCubic,
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                     color: isSelected ? AppColors.emerald : AppColors.textPrimary,
                                   ),
+                                  child: Text(candidate.name),
                                 ),
                               ),
                               ElevatedButton(
@@ -241,7 +256,10 @@ class _CardDisambiguationSheetState extends State<CardDisambiguationSheet> {
                                   minimumSize: Size.zero,
                                   backgroundColor: isSelected ? AppColors.emerald : const Color(0xFF26334D),
                                 ),
-                                onPressed: () => _mergeAllIntoCandidate(context, candidate.id!),
+                                onPressed: () {
+                                  AppHaptics.medium();
+                                  _mergeAllIntoCandidate(context, candidate.id!);
+                                },
                                 child: const Text(
                                   'Merge All',
                                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),

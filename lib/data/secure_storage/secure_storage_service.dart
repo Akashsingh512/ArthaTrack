@@ -107,6 +107,73 @@ class SecureStorageService {
     await _storage.write(key: AppConstants.secureKeyThemeMode, value: mode);
   }
 
+  // Backup & Restore Settings
+  Future<String?> getBackupPassphrase() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupPassphrase);
+  }
+
+  Future<void> setBackupPassphrase(String passphrase) async {
+    await _storage.write(key: AppConstants.secureKeyBackupPassphrase, value: passphrase.trim());
+  }
+
+  Future<String> getBackupDestination() async {
+    final dest = await _storage.read(key: AppConstants.secureKeyBackupDestination);
+    return dest ?? 'google_drive'; // 'google_drive', 'webdav', 'local'
+  }
+
+  Future<void> setBackupDestination(String destination) async {
+    await _storage.write(key: AppConstants.secureKeyBackupDestination, value: destination);
+  }
+
+  Future<String?> getBackupWebDavUrl() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupWebDavUrl);
+  }
+
+  Future<void> setBackupWebDavUrl(String url) async {
+    await _storage.write(key: AppConstants.secureKeyBackupWebDavUrl, value: url.trim());
+  }
+
+  Future<String?> getBackupWebDavUser() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupWebDavUser);
+  }
+
+  Future<void> setBackupWebDavUser(String user) async {
+    await _storage.write(key: AppConstants.secureKeyBackupWebDavUser, value: user.trim());
+  }
+
+  Future<String?> getBackupWebDavPassword() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupWebDavPassword);
+  }
+
+  Future<void> setBackupWebDavPassword(String pass) async {
+    await _storage.write(key: AppConstants.secureKeyBackupWebDavPassword, value: pass);
+  }
+
+  Future<String> getBackupAutoInterval() async {
+    final interval = await _storage.read(key: AppConstants.secureKeyBackupAutoInterval);
+    return interval ?? 'daily'; // 'daily', 'weekly', 'disabled'
+  }
+
+  Future<void> setBackupAutoInterval(String interval) async {
+    await _storage.write(key: AppConstants.secureKeyBackupAutoInterval, value: interval);
+  }
+
+  Future<String?> getBackupLastSyncTime() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupLastSyncTime);
+  }
+
+  Future<void> setBackupLastSyncTime(String timeIso) async {
+    await _storage.write(key: AppConstants.secureKeyBackupLastSyncTime, value: timeIso);
+  }
+
+  Future<String?> getBackupLastStatus() async {
+    return await _storage.read(key: AppConstants.secureKeyBackupLastStatus);
+  }
+
+  Future<void> setBackupLastStatus(String status) async {
+    await _storage.write(key: AppConstants.secureKeyBackupLastStatus, value: status);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

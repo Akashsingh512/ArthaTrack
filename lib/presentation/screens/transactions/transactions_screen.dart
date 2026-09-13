@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/account_model.dart';
@@ -10,6 +11,7 @@ import '../../controllers/dashboard_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../widgets/engine_badge.dart';
 import 'widgets/add_cash_transaction_sheet.dart';
+import 'widgets/bulk_categorize_sheet.dart';
 import 'widgets/card_disambiguation_sheet.dart';
 import 'widgets/edit_transaction_sheet.dart';
 
@@ -78,40 +80,119 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return Consumer<TransactionController>(
       builder: (context, controller, child) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'Transactions',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: colors.textPrimary,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.refresh, color: colors.textPrimary),
-                onPressed: () => controller.loadTransactions(),
-              ),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: colors.emerald,
-            foregroundColor: colors.isDark ? Colors.black : Colors.white,
-            elevation: 2,
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: colors.surface,
-                builder: (context) => const AddCashTransactionSheet(),
-              ).then((_) {
-                controller.loadTransactions();
-                Provider.of<DashboardController>(context, listen: false).loadDashboardData();
-              });
-            },
-            child: const Icon(Icons.add),
-          ),
+          appBar: controller.isMultiSelectMode
+              ? AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      AppHaptics.light();
+                      controller.exitMultiSelectMode();
+                    },
+                  ),
+                  title: Text(
+                    '${controller.selectedCount} Selected',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        AppHaptics.selection();
+                        if (controller.selectedCount == controller.transactions.length) {
+                          controller.clearSelection();
+                        } else {
+                          controller.selectAllFiltered();
+                        }
+                      },
+                      child: Text(
+                        controller.selectedCount == controller.transactions.length
+                            ? 'Deselect All'
+                            : 'Select All',
+                        style: const TextStyle(
+                          color: AppColors.emerald,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.label_outline, color: AppColors.emerald),
+                      tooltip: 'Categorize Selected',
+                      onPressed: controller.selectedCount == 0
+                          ? null
+                          : () {
+                              AppHaptics.medium();
+                              BulkCategorizeSheet.show(context, count: controller.selectedCount);
+                            },
+                    ),
+                  ],
+                )
+              : AppBar(
+                  title: Text(
+                    'Transactions',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.checklist_rtl, color: colors.textPrimary),
+                      tooltip: 'Multi-Select',
+                      onPressed: () {
+                        AppHaptics.medium();
+                        controller.enterMultiSelectMode();
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.refresh, color: colors.textPrimary),
+                      onPressed: () {
+                        AppHaptics.light();
+                        controller.loadTransactions();
+                      },
+                    ),
+                  ],
+                ),
+          floatingActionButton: controller.isMultiSelectMode
+              ? (controller.selectedCount > 0
+                  ? FloatingActionButton.extended(
+                      backgroundColor: colors.emerald,
+                      foregroundColor: colors.isDark ? Colors.black : Colors.white,
+                      elevation: 3,
+                      onPressed: () {
+                        AppHaptics.medium();
+                        BulkCategorizeSheet.show(context, count: controller.selectedCount);
+                      },
+                      icon: const Icon(Icons.label, size: 18),
+                      label: Text(
+                        'Categorize (${controller.selectedCount})',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    )
+                  : null)
+              : FloatingActionButton(
+                  backgroundColor: colors.emerald,
+                  foregroundColor: colors.isDark ? Colors.black : Colors.white,
+                  elevation: 2,
+                  onPressed: () {
+                    AppHaptics.medium();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: colors.surface,
+                      builder: (context) => const AddCashTransactionSheet(),
+                    ).then((_) {
+                      controller.loadTransactions();
+                      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                    });
+                  },
+                  child: const Icon(Icons.add),
+                ),
           body: Column(
             children: [
               // Search Input
@@ -126,6 +207,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         ? IconButton(
                             icon: Icon(Icons.clear, size: 18, color: colors.textMuted),
                             onPressed: () {
+                              AppHaptics.light();
                               _searchController.clear();
                               controller.setSearchQuery('');
                             },
@@ -222,23 +304,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
               // Month Filter Horizontal List
               SizedBox(
-                height: 38,
+                height: 36,
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
                   children: [
-                    ChoiceChip(
-                      label: const Text('All Time', style: TextStyle(fontSize: 11)),
-                      selected: controller.selectedMonth == null,
-                      selectedColor: colors.emerald,
-                      backgroundColor: colors.surfaceElevated,
-                      labelStyle: TextStyle(
-                        color: controller.selectedMonth == null
-                            ? (colors.isDark ? Colors.black : Colors.white)
-                            : colors.textSecondary,
-                        fontWeight: controller.selectedMonth == null ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                      onSelected: (_) => controller.setMonthFilter(null),
+                    _buildAnimatedFilterChip(
+                      label: 'All Time',
+                      isSelected: controller.selectedMonth == null,
+                      onSelected: () => controller.setMonthFilter(null),
                     ),
                     const SizedBox(width: 6),
                     ...controller.availableMonths.map((m) {
@@ -249,25 +323,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text(label, style: const TextStyle(fontSize: 11)),
-                          selected: isSelected,
-                          selectedColor: colors.emerald,
-                          backgroundColor: colors.surfaceElevated,
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? (colors.isDark ? Colors.black : Colors.white)
-                                : colors.textSecondary,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          ),
-                          onSelected: (_) => controller.setMonthFilter(m),
+                        child: _buildAnimatedFilterChip(
+                          label: label,
+                          isSelected: isSelected,
+                          onSelected: () => controller.setMonthFilter(m),
                         ),
                       );
                     }),
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
 
               // Filter Chips Row (Type: All, Expense, Income)
               Padding(
@@ -305,9 +371,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
               // Category Filter Horizontal List
               SizedBox(
-                height: 44,
+                height: 38,
                 child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   scrollDirection: Axis.horizontal,
                   itemCount: filterCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 6),
@@ -316,19 +382,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     final isSelected = (cat == 'ALL' && controller.selectedCategory == null) ||
                         (controller.selectedCategory == cat);
 
-                    return ChoiceChip(
-                      label: Text(
-                        cat,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? (colors.isDark ? Colors.black : Colors.white) : colors.textSecondary,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedColor: colors.emerald,
-                      backgroundColor: colors.surfaceElevated,
-                      onSelected: (_) => controller.setCategoryFilter(cat),
+                    return _buildAnimatedFilterChip(
+                      label: cat,
+                      isSelected: isSelected,
+                      onSelected: () => controller.setCategoryFilter(cat),
                     );
                   },
                 ),
@@ -352,13 +409,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 Divider(color: colors.borderSubtle, height: 1),
                             itemBuilder: (context, index) {
                               final tx = controller.transactions[index];
-                              final isIncome = tx.isIncome;
+                              final isCredit = tx.isCredit;
                               final catColor =
                                   AppColors.categoryColors[tx.category] ?? colors.textMuted;
+                              final isSelected = tx.id != null && controller.isTransactionSelected(tx.id!);
 
                               return Dismissible(
                                 key: ValueKey(tx.id),
-                                direction: DismissDirection.endToStart,
+                                direction: controller.isMultiSelectMode
+                                    ? DismissDirection.none
+                                    : DismissDirection.endToStart,
                                 background: Container(
                                   alignment: Alignment.centerRight,
                                   padding: const EdgeInsets.only(right: 20),
@@ -366,151 +426,202 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                   child: const Icon(Icons.delete, color: Colors.white),
                                 ),
                                 onDismissed: (_) {
+                                  AppHaptics.heavy();
                                   controller.deleteTransaction(tx.id!);
                                   Provider.of<DashboardController>(context, listen: false)
                                       .loadDashboardData();
                                 },
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 4),
-                                  onTap: () => _openEditSheet(context, tx),
-                                  leading: Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: catColor.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      _getCategoryIcon(tx.category),
-                                      color: catColor,
-                                      size: 20,
-                                    ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  curve: Curves.easeOutCubic,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? colors.emerald.withOpacity(colors.isDark ? 0.16 : 0.08)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: isSelected
+                                        ? Border.all(color: colors.emerald.withOpacity(0.4), width: 1.2)
+                                        : null,
                                   ),
-                                  title: Text(
-                                    tx.merchant,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 2),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            DateFormatter.formatShort(
-                                                DateFormatter.parse(tx.date)),
-                                            style: TextStyle(
-                                                fontSize: 11, color: colors.textMuted),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text('•',
-                                              style: TextStyle(
-                                                  color: colors.textMuted, fontSize: 10)),
-                                          const SizedBox(width: 5),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: catColor.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(4),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    onTap: () {
+                                      if (controller.isMultiSelectMode) {
+                                        AppHaptics.selection();
+                                        controller.toggleTransactionSelection(tx.id!);
+                                      } else {
+                                        AppHaptics.light();
+                                        _openEditSheet(context, tx);
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      AppHaptics.medium();
+                                      if (!controller.isMultiSelectMode) {
+                                        controller.enterMultiSelectMode(tx.id);
+                                      } else {
+                                        controller.toggleTransactionSelection(tx.id!);
+                                      }
+                                    },
+                                    leading: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (controller.isMultiSelectMode) ...[
+                                          AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 180),
+                                            child: Icon(
+                                              isSelected
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.radio_button_unchecked_rounded,
+                                              key: ValueKey(isSelected),
+                                              color: isSelected ? colors.emerald : colors.textMuted,
+                                              size: 22,
                                             ),
-                                            child: Text(
-                                              tx.category,
+                                          ),
+                                          const SizedBox(width: 8),
+                                        ],
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            color: catColor.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Icon(
+                                            _getCategoryIcon(tx.category),
+                                            color: catColor,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    title: Text(
+                                      tx.merchant,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              DateFormatter.formatShort(
+                                                  DateFormatter.parse(tx.date)),
                                               style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                                color: catColor,
+                                                  fontSize: 11, color: colors.textMuted),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text('•',
+                                                style: TextStyle(
+                                                    color: colors.textMuted, fontSize: 10)),
+                                            const SizedBox(width: 5),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: catColor.withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                tx.category,
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: catColor,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                           if (tx.displayPaymentSource.isNotEmpty) ...[
-                                             const SizedBox(width: 5),
-                                             Text('•',
-                                                 style: TextStyle(
-                                                     color: colors.textMuted, fontSize: 10)),
-                                             const SizedBox(width: 5),
-                                             Flexible(
-                                               child: Text(
-                                                 tx.displayPaymentSource,
-                                                 maxLines: 1,
-                                                 overflow: TextOverflow.ellipsis,
-                                                 style: TextStyle(
-                                                   fontSize: 10,
-                                                   fontWeight: FontWeight.w600,
-                                                   color: colors.textSecondary,
+                                             if (tx.displayPaymentSource.isNotEmpty) ...[
+                                               const SizedBox(width: 5),
+                                               Text('•',
+                                                   style: TextStyle(
+                                                       color: colors.textMuted, fontSize: 10)),
+                                               const SizedBox(width: 5),
+                                               Flexible(
+                                                 child: Text(
+                                                   tx.displayPaymentSource,
+                                                   maxLines: 1,
+                                                   overflow: TextOverflow.ellipsis,
+                                                   style: TextStyle(
+                                                     fontSize: 10,
+                                                     fontWeight: FontWeight.w600,
+                                                     color: colors.textSecondary,
+                                                   ),
                                                  ),
                                                ),
-                                             ),
-                                           ],
+                                             ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              tx.isFailed
+                                                  ? IndianCurrencyFormatter.format(tx.amount)
+                                                  : '${isCredit ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                decoration: tx.isFailed ? TextDecoration.lineThrough : null,
+                                                color: tx.isFailed
+                                                    ? colors.ruby
+                                                    : (tx.isPendingHold
+                                                        ? colors.amber
+                                                        : (isCredit
+                                                            ? colors.income
+                                                            : colors.expense)),
+                                              ),
+                                            ),
+                                            if (tx.isFailed || tx.isRefund || tx.isPendingHold) ...[
+                                              const SizedBox(height: 2),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: tx.isFailed
+                                                      ? AppColors.ruby.withOpacity(0.15)
+                                                      : (tx.isPendingHold
+                                                          ? const Color(0xFFF59E0B).withOpacity(0.15)
+                                                          : AppColors.emerald.withOpacity(0.15)),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  tx.isFailed
+                                                      ? 'DECLINED'
+                                                      : (tx.isPendingHold ? 'ON HOLD' : 'REFUND'),
+                                                  style: TextStyle(
+                                                    fontSize: 8.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: 0.3,
+                                                    color: tx.isFailed
+                                                        ? AppColors.ruby
+                                                        : (tx.isPendingHold
+                                                            ? const Color(0xFFF59E0B)
+                                                            : AppColors.emerald),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        if (!controller.isMultiSelectMode) ...[
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.edit_outlined, size: 14, color: AppColors.textMuted),
                                         ],
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                   trailing: Row(
-                                     mainAxisSize: MainAxisSize.min,
-                                     children: [
-                                       Column(
-                                         crossAxisAlignment: CrossAxisAlignment.end,
-                                         mainAxisAlignment: MainAxisAlignment.center,
-                                         children: [
-                                           Text(
-                                             tx.isFailed
-                                                 ? IndianCurrencyFormatter.format(tx.amount)
-                                                 : '${isIncome ? '+' : '-'}${IndianCurrencyFormatter.format(tx.amount)}',
-                                             style: TextStyle(
-                                               fontSize: 14,
-                                               fontWeight: FontWeight.w700,
-                                               decoration: tx.isFailed ? TextDecoration.lineThrough : null,
-                                               color: tx.isFailed
-                                                   ? colors.ruby
-                                                   : (tx.isPendingHold
-                                                       ? colors.amber
-                                                       : (isIncome
-                                                           ? colors.income
-                                                           : colors.expense)),
-                                             ),
-                                           ),
-                                           if (tx.isFailed || tx.isRefund || tx.isPendingHold) ...[
-                                             const SizedBox(height: 2),
-                                             Container(
-                                               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                               decoration: BoxDecoration(
-                                                 color: tx.isFailed
-                                                     ? AppColors.ruby.withOpacity(0.15)
-                                                     : (tx.isPendingHold
-                                                         ? const Color(0xFFF59E0B).withOpacity(0.15)
-                                                         : AppColors.emerald.withOpacity(0.15)),
-                                                 borderRadius: BorderRadius.circular(4),
-                                               ),
-                                               child: Text(
-                                                 tx.isFailed
-                                                     ? 'DECLINED'
-                                                     : (tx.isPendingHold ? 'ON HOLD' : 'REFUND'),
-                                                 style: TextStyle(
-                                                   fontSize: 8.5,
-                                                   fontWeight: FontWeight.w800,
-                                                   letterSpacing: 0.3,
-                                                   color: tx.isFailed
-                                                       ? AppColors.ruby
-                                                       : (tx.isPendingHold
-                                                           ? const Color(0xFFF59E0B)
-                                                           : AppColors.emerald),
-                                                 ),
-                                               ),
-                                             ),
-                                           ],
-                                         ],
-                                       ),
-                                       const SizedBox(width: 4),
-                                       const Icon(Icons.edit_outlined, size: 14, color: AppColors.textMuted),
-                                     ],
-                                   ),
-                                 ),
-                               );
+                                ),
+                              );
                             },
                           ),
               ),
@@ -521,28 +632,103 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
-  Widget _buildTypeChip(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildAnimatedFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onSelected,
+    EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+  }) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colors.emerald.withOpacity(colors.isDark ? 0.2 : 0.12)
-              : colors.surfaceElevated,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? colors.emerald : colors.border,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          AppHaptics.selection();
+          onSelected();
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colors.emerald
+                : colors.surfaceElevated,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? colors.emerald : colors.border,
+              width: 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: colors.emerald.withOpacity(colors.isDark ? 0.35 : 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? (colors.isDark ? Colors.black : Colors.white)
+                  : colors.textSecondary,
+            ),
+            child: Text(label),
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: isSelected ? colors.emerald : colors.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildTypeChip(String label, bool isSelected, VoidCallback onTap) {
+    final colors = context.colors;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          AppHaptics.selection();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colors.emerald.withOpacity(colors.isDark ? 0.22 : 0.14)
+                : colors.surfaceElevated,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? colors.emerald : colors.border,
+              width: isSelected ? 1.4 : 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: colors.emerald.withOpacity(colors.isDark ? 0.25 : 0.12),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isSelected ? colors.emerald : colors.textSecondary,
+            ),
+            child: Text(label),
           ),
         ),
       ),
@@ -551,35 +737,54 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Widget _buildDeclinedBadgeChip(int count, bool isSelected, VoidCallback onTap) {
     final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colors.ruby.withOpacity(colors.isDark ? 0.25 : 0.15)
-              : colors.ruby.withOpacity(colors.isDark ? 0.12 : 0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? colors.ruby : colors.ruby.withOpacity(0.35),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.warning_amber_rounded, size: 13, color: colors.ruby),
-            const SizedBox(width: 4),
-            Text(
-              'Declined ($count)',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: colors.ruby,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          AppHaptics.selection();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colors.ruby.withOpacity(colors.isDark ? 0.28 : 0.18)
+                : colors.ruby.withOpacity(colors.isDark ? 0.12 : 0.06),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? colors.ruby : colors.ruby.withOpacity(0.35),
+              width: isSelected ? 1.5 : 1.0,
             ),
-          ],
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: colors.ruby.withOpacity(0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning_amber_rounded, size: 13, color: colors.ruby),
+              const SizedBox(width: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: colors.ruby,
+                ),
+                child: Text('Declined ($count)'),
+              ),
+            ],
+          ),
         ),
       ),
     );

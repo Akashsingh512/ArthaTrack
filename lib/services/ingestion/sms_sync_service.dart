@@ -75,7 +75,7 @@ class SmsSyncService {
   }
 
   /// Scans recent bank and UPI SMS messages from inbox and imports valid financial transactions
-  Future<SmsSyncResult> syncInbox({int limit = 5000}) async {
+  Future<SmsSyncResult> syncInbox({int limit = 100}) async {
     if (_isSyncing) {
       return const SmsSyncResult(
         status: SmsSyncStatus.error,
@@ -135,6 +135,11 @@ class SmsSyncService {
 
         // 3. STRICT SECURITY SHIELD: Drop any OTP or verification code messages unconditionally
         if (IndianBankingConstants.otpBlocklistRegex.hasMatch(body)) {
+          continue;
+        }
+
+        // 3.05 MANDATE PRE-DEBIT & REGISTRATION SHIELD: Drop informational mandate notices (0 money moved)
+        if (IndianBankingConstants.mandateNoticeBlocklistRegex.hasMatch(body)) {
           continue;
         }
 

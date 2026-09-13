@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/transaction_model.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
@@ -51,10 +52,11 @@ class DashboardScreen extends StatelessWidget {
           color: colors.emerald,
           backgroundColor: colors.surfaceElevated,
           onRefresh: () async {
+            AppHaptics.light();
             try {
               final smsService = SmsSyncService();
               if (await smsService.isPermissionGranted()) {
-                await smsService.syncInbox(limit: 5000);
+                await smsService.syncInbox(limit: 100);
               }
             } catch (_) {}
             await controller.loadDashboardData();
@@ -103,7 +105,10 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     IconButton(
                       icon: Icon(Icons.settings_outlined, color: colors.textPrimary, size: 22),
-                      onPressed: onNavigateToSettings,
+                      onPressed: () {
+                        AppHaptics.light();
+                        onNavigateToSettings();
+                      },
                     ),
                   ],
                 ),
@@ -200,6 +205,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   void _openAddCashSheet(BuildContext context) {
+    AppHaptics.medium();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -212,6 +218,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   void _openAllocateSavingsSheet(BuildContext context, double netSavings) {
+    AppHaptics.medium();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -224,6 +231,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Future<void> _syncSms(BuildContext context) async {
+    AppHaptics.medium();
     final settings = Provider.of<SettingsController>(context, listen: false);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
     final txController = Provider.of<TransactionController>(context, listen: false);
@@ -284,6 +292,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Future<void> _syncGmail(BuildContext context) async {
+    AppHaptics.medium();
     final settings = Provider.of<SettingsController>(context, listen: false);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
     final scaffold = ScaffoldMessenger.of(context);
@@ -333,6 +342,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   void _openEditSheet(BuildContext context, TransactionModel tx) {
+    AppHaptics.light();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../data/models/balance_sheet_item_model.dart';
 import '../../../controllers/balance_sheet_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
@@ -161,6 +162,7 @@ class _AddEditDebtSheetState extends State<AddEditDebtSheet> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.debt),
                   onPressed: () async {
+                    AppHaptics.medium();
                     if (_formKey.currentState?.validate() ?? false) {
                       final name = _nameController.text.trim();
                       final amount = double.parse(_amountController.text.replaceAll(',', '').trim());

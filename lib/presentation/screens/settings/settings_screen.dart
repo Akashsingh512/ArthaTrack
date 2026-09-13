@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
+import 'widgets/backup_settings_sheet.dart';
 import 'widgets/manage_categories_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -85,6 +87,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Gmail Integration Section
                 _buildGmailSection(context, settings),
+                const SizedBox(height: 20),
+
+                // Encrypted Auto-Backup & Phone Migration Section
+                _buildEncryptedBackupSection(context),
                 const SizedBox(height: 20),
 
                 // Data Management & Export Section
@@ -1026,6 +1032,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
 
+  Widget _buildEncryptedBackupSection(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF334155)),
+      ),
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.emerald.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.cloud_sync, color: AppColors.emerald, size: 20),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Encrypted Auto-Backup & Migration',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Google Drive, WebDAV & Offline Phone Transfer',
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Zero-knowledge client-side encryption using AES-256 and PBKDF2. Automatically synchronizes your accounts, transactions, and budgets to Google Drive (private appDataFolder) or your personal WebDAV NAS.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.surfaceElevated,
+                  foregroundColor: AppColors.emerald,
+                  side: const BorderSide(color: AppColors.emerald, width: 1.2),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  AppHaptics.medium();
+                  BackupSettingsSheet.show(context);
+                },
+                icon: const Icon(Icons.settings_suggest, size: 18),
+                label: const Text(
+                  'Configure Backup & Migration',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDataManagementSection(BuildContext context, SettingsController settings) {
     return Card(
       elevation: 0,
@@ -1360,9 +1441,14 @@ class _ThemeOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return InkWell(
-      onTap: onTap,
+      onTap: () {
+        AppHaptics.selection();
+        onTap();
+      },
       borderRadius: BorderRadius.circular(12),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
@@ -1373,6 +1459,15 @@ class _ThemeOptionTile extends StatelessWidget {
             color: isSelected ? colors.emerald : colors.border,
             width: isSelected ? 1.5 : 1.0,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: colors.emerald.withOpacity(0.15),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           children: [
@@ -1382,13 +1477,15 @@ class _ThemeOptionTile extends StatelessWidget {
               color: isSelected ? colors.emerald : colors.textSecondary,
             ),
             const SizedBox(height: 6),
-            Text(
-              title,
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? colors.emerald : colors.textSecondary,
               ),
+              child: Text(title),
             ),
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../services/net_worth/net_worth_calculator.dart';
 import 'account_balances_sheet.dart';
@@ -110,7 +111,10 @@ class NetWorthCard extends StatelessWidget {
 
           // Main Net Worth Display in INR (Hero Typography)
           InkWell(
-            onTap: () => AccountBalancesSheet.show(context),
+            onTap: () {
+              AppHaptics.light();
+              AccountBalancesSheet.show(context);
+            },
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
@@ -164,7 +168,10 @@ class NetWorthCard extends StatelessWidget {
                     amount: snapshot.liquidBalances,
                     color: colors.liquid,
                     icon: Icons.account_balance,
-                    onTap: () => AccountBalancesSheet.show(context),
+                    onTap: () {
+                      AppHaptics.light();
+                      AccountBalancesSheet.show(context);
+                    },
                   ),
                 ),
                 Container(height: 32, width: 1, color: colors.border),

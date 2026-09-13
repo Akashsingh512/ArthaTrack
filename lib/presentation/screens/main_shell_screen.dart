@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
+import '../../services/backup/backup_service.dart';
 import '../../services/ingestion/notification_listener_channel.dart';
 import '../../services/ingestion/sms_sync_service.dart';
 import '../controllers/balance_sheet_controller.dart';
@@ -58,6 +60,9 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
 
       // Automatically detect and sync recent SMS without user needing to click sync
       _autoDetectAndSyncRecentSms();
+
+      // Check periodic encrypted auto-backup in the background
+      _checkAutoBackup();
     });
   }
 
@@ -66,6 +71,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
     if (state == AppLifecycleState.resumed) {
       // Whenever user returns to the app, automatically scan for new messages
       _autoDetectAndSyncRecentSms();
+      _checkAutoBackup();
     }
   }
 
@@ -75,7 +81,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       final hasPermission = await _smsSyncService.isPermissionGranted();
       if (!hasPermission) return;
 
-      final result = await _smsSyncService.syncInbox(limit: 5000);
+      final result = await _smsSyncService.syncInbox(limit: 50);
       if (result.importedCount > 0 && mounted) {
         Provider.of<DashboardController>(context, listen: false).loadDashboardData();
         Provider.of<TransactionController>(context, listen: false).loadTransactions();
@@ -91,6 +97,13 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
           ),
         );
       }
+    } catch (_) {}
+  }
+
+  /// Silently verifies if periodic auto-backup to Google Drive or WebDAV is due and triggers it
+  Future<void> _checkAutoBackup() async {
+    try {
+      await BackupService().checkAndTriggerAutoBackup();
     } catch (_) {}
   }
 
@@ -132,7 +145,10 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+          onTap: (i) {
+            AppHaptics.selection();
+            setState(() => _currentIndex = i);
+          },
           backgroundColor: colors.surface,
           selectedItemColor: colors.emerald,
           unselectedItemColor: colors.textMuted,

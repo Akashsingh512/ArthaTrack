@@ -195,8 +195,10 @@ class TransactionModel {
   bool get isExpense => type.toUpperCase() == 'EXPENSE';
   bool get isIncome => type.toUpperCase() == 'INCOME';
   bool get isRefund => type.toUpperCase() == 'REFUND';
+  bool get isCredit => isIncome || isRefund;
   bool get isFailed => status.toUpperCase() == 'FAILED';
   bool get isPendingHold => status.toUpperCase() == 'PENDING_HOLD';
+  bool get isMandate => IndianBankingConstants.autoMandateRegex.hasMatch(rawText);
 
   /// Clean payment source label for UI display with automatic inference fallback
   String get displayPaymentSource {

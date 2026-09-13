@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/account_model.dart';
 import '../../../../data/models/balance_sheet_item_model.dart';
@@ -169,8 +170,13 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                         // Option 1: Keep in Liquid Bank
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedOption = 1),
-                            child: Container(
+                            onTap: () {
+                              AppHaptics.selection();
+                              setState(() => _selectedOption = 1);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
                                 color: _selectedOption == 1
@@ -178,12 +184,22 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                                 border: _selectedOption == 1
-                                    ? Border.all(color: AppColors.emerald.withOpacity(0.5))
+                                    ? Border.all(color: AppColors.emerald.withOpacity(0.5), width: 1.5)
+                                    : null,
+                                boxShadow: _selectedOption == 1
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.emerald.withOpacity(0.15),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
                                     : null,
                               ),
                               child: Center(
-                                child: Text(
-                                  'Keep in Bank',
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeOutCubic,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -191,6 +207,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                                         ? AppColors.emerald
                                         : AppColors.textMuted,
                                   ),
+                                  child: const Text('Keep in Bank'),
                                 ),
                               ),
                             ),
@@ -199,8 +216,13 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                         // Option 2: Move to Asset / Goal
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedOption = 2),
-                            child: Container(
+                            onTap: () {
+                              AppHaptics.selection();
+                              setState(() => _selectedOption = 2);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
                                 color: _selectedOption == 2
@@ -208,12 +230,22 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                                 border: _selectedOption == 2
-                                    ? Border.all(color: AppColors.emerald.withOpacity(0.5))
+                                    ? Border.all(color: AppColors.emerald.withOpacity(0.5), width: 1.5)
+                                    : null,
+                                boxShadow: _selectedOption == 2
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.emerald.withOpacity(0.15),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
                                     : null,
                               ),
                               child: Center(
-                                child: Text(
-                                  'Move to Asset / Goal',
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeOutCubic,
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -221,6 +253,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                                         ? AppColors.emerald
                                         : AppColors.textMuted,
                                   ),
+                                  child: const Text('Move to Asset / Goal'),
                                 ),
                               ),
                             ),
@@ -285,37 +318,62 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
                       runSpacing: 8,
                       children: _goalPresets.map((preset) {
                         final isSelected = _selectedGoalPreset == preset['name'];
-                        return ChoiceChip(
-                          avatar: Icon(
-                            preset['icon'] as IconData,
-                            size: 14,
-                            color: isSelected ? AppColors.emerald : AppColors.textSecondary,
-                          ),
-                          label: Text(preset['name'] as String),
-                          selected: isSelected,
-                          selectedColor: AppColors.emerald.withOpacity(0.2),
-                          backgroundColor: AppColors.surfaceElevated,
-                          labelStyle: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? AppColors.emerald : AppColors.textSecondary,
-                          ),
-                          side: BorderSide(
-                            color: isSelected ? AppColors.emerald : const Color(0xFF26334D),
-                          ),
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() {
-                                _selectedGoalPreset = preset['name']!;
-                                _selectedGoalCategory = preset['category']!;
-                                if (preset['name'] != 'Custom Goal') {
-                                  _customGoalController.text = preset['name']!;
-                                } else {
-                                  _customGoalController.text = '';
-                                }
-                              });
-                            }
+                        return GestureDetector(
+                          onTap: () {
+                            AppHaptics.selection();
+                            setState(() {
+                              _selectedGoalPreset = preset['name']!;
+                              _selectedGoalCategory = preset['category']!;
+                              if (preset['name'] != 'Custom Goal') {
+                                _customGoalController.text = preset['name']!;
+                              } else {
+                                _customGoalController.text = '';
+                              }
+                            });
                           },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.emerald.withOpacity(0.2) : AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected ? AppColors.emerald : const Color(0xFF26334D),
+                                width: isSelected ? 1.5 : 1.0,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.emerald.withOpacity(0.2),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  preset['icon'] as IconData,
+                                  size: 14,
+                                  color: isSelected ? AppColors.emerald : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 240),
+                                  curve: Curves.easeOutCubic,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                    color: isSelected ? AppColors.emerald : AppColors.textSecondary,
+                                  ),
+                                  child: Text(preset['name'] as String),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       }).toList(),
                     ),
@@ -508,24 +566,41 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
     final isSelected = (_allocatedAmount == (widget.netSavings * percent));
     return Expanded(
       child: GestureDetector(
-        onTap: () => _setPercentage(percent),
-        child: Container(
+        onTap: () {
+          AppHaptics.selection();
+          _setPercentage(percent);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.emerald.withOpacity(0.2) : AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isSelected ? AppColors.emerald : const Color(0xFF26334D),
+              width: isSelected ? 1.5 : 1.0,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.emerald.withOpacity(0.15),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
           ),
           child: Center(
-            child: Text(
-              label,
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: isSelected ? AppColors.emerald : AppColors.textSecondary,
               ),
+              child: Text(label),
             ),
           ),
         ),
@@ -534,6 +609,7 @@ class _AllocateSavingsSheetState extends State<AllocateSavingsSheet> {
   }
 
   Future<void> _confirmAllocation(BuildContext context) async {
+    AppHaptics.medium();
     final dashboardController = Provider.of<DashboardController>(context, listen: false);
 
     if (_selectedOption == 1) {

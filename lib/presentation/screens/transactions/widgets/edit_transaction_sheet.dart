@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/account_model.dart';
@@ -135,8 +136,13 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         GestureDetector(
-                          onTap: () => setState(() => _type = 'EXPENSE'),
-                          child: Container(
+                          onTap: () {
+                            AppHaptics.selection();
+                            setState(() => _type = 'EXPENSE');
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: _type == 'EXPENSE'
@@ -144,19 +150,26 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              'EXPENSE',
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: _type == 'EXPENSE' ? AppColors.ruby : AppColors.textMuted,
                               ),
+                              child: const Text('EXPENSE'),
                             ),
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _type = 'INCOME'),
-                          child: Container(
+                          onTap: () {
+                            AppHaptics.selection();
+                            setState(() => _type = 'INCOME');
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: _type == 'INCOME'
@@ -164,13 +177,15 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              'INCOME',
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: _type == 'INCOME' ? AppColors.emerald : AppColors.textMuted,
                               ),
+                              child: const Text('INCOME'),
                             ),
                           ),
                         ),
@@ -356,25 +371,65 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: availableCategories.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     final cat = availableCategories[index];
                     final isSelected = _category == cat;
                     final catColor = AppColors.categoryColors[cat] ?? AppColors.primary;
 
-                    return ChoiceChip(
-                      label: Text(cat, style: const TextStyle(fontSize: 12)),
-                      selected: isSelected,
-                      selectedColor: catColor.withOpacity(0.25),
-                      backgroundColor: AppColors.surfaceElevated,
-                      side: BorderSide(
-                        color: isSelected ? catColor : const Color(0xFF334155),
+                    return GestureDetector(
+                      onTap: () {
+                        AppHaptics.selection();
+                        setState(() => _category = cat);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? catColor.withOpacity(0.2) : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? catColor : const Color(0xFF334155),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: catColor.withOpacity(0.25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: catColor,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 240),
+                              curve: Curves.easeOutCubic,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isSelected ? catColor : AppColors.textSecondary,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                              child: Text(cat),
+                            ),
+                          ],
+                        ),
                       ),
-                      labelStyle: TextStyle(
-                        color: isSelected ? catColor : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                      onSelected: (_) => setState(() => _category = cat),
                     );
                   },
                 ),
@@ -659,6 +714,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
     );
 
     if (confirmed == true && widget.transaction.id != null) {
+      AppHaptics.heavy();
       final txController = Provider.of<TransactionController>(context, listen: false);
       final dashboardController = Provider.of<DashboardController>(context, listen: false);
 
@@ -679,6 +735,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
 
   Future<void> _saveChanges(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
+    AppHaptics.medium();
 
     final txController = Provider.of<TransactionController>(context, listen: false);
     final dashboardController = Provider.of<DashboardController>(context, listen: false);

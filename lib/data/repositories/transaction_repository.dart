@@ -237,6 +237,7 @@ class TransactionRepository {
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
       WHERE UPPER(${TransactionsTable.colType}) = 'EXPENSE'
+        AND (${TransactionsTable.colStatus} IS NULL OR UPPER(${TransactionsTable.colStatus}) != 'FAILED')
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
     ''', [start, end]);
@@ -245,7 +246,7 @@ class TransactionRepository {
     return total?.toDouble() ?? 0.0;
   }
 
-  /// Returns total income for the given month
+  /// Returns total income for the given month (includes refunds and excludes failed)
   Future<double> getTotalMonthlyIncome({DateTime? forMonth}) async {
     final targetMonth = forMonth ?? DateTime.now();
     final start = DateTime(targetMonth.year, targetMonth.month, 1).toIso8601String();
@@ -255,7 +256,8 @@ class TransactionRepository {
     final result = await db.rawQuery('''
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
-      WHERE UPPER(${TransactionsTable.colType}) = 'INCOME'
+      WHERE UPPER(${TransactionsTable.colType}) IN ('INCOME', 'REFUND')
+        AND (${TransactionsTable.colStatus} IS NULL OR UPPER(${TransactionsTable.colStatus}) != 'FAILED')
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
     ''', [start, end]);
@@ -276,6 +278,7 @@ class TransactionRepository {
              SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
       WHERE UPPER(${TransactionsTable.colType}) = 'EXPENSE'
+        AND (${TransactionsTable.colStatus} IS NULL OR UPPER(${TransactionsTable.colStatus}) != 'FAILED')
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
       GROUP BY ${TransactionsTable.colCategory}
@@ -310,5 +313,19 @@ class TransactionRepository {
       return maps.first[TransactionsTable.colCategory] as String?;
     }
     return null;
+  }
+
+  /// Bulk updates category for multiple transactions in an atomic SQLite transaction
+  Future<int> bulkUpdateCategory(List<int> transactionIds, String newCategory) async {
+    if (transactionIds.isEmpty) return 0;
+    final db = await _dbProvider.database;
+    return await db.transaction((txn) async {
+      final placeholders = List.filled(transactionIds.length, '?').join(',');
+      return await txn.rawUpdate('''
+        UPDATE ${TransactionsTable.tableName}
+        SET ${TransactionsTable.colCategory} = ?
+        WHERE ${TransactionsTable.colId} IN ($placeholders)
+      ''', [newCategory, ...transactionIds]);
+    });
   }
 }

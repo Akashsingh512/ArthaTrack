@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../controllers/transaction_controller.dart';
 
@@ -89,9 +90,14 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () => setState(() => _type = 'EXPENSE'),
+                      onTap: () {
+                        AppHaptics.selection();
+                        setState(() => _type = 'EXPENSE');
+                      },
                       borderRadius: BorderRadius.circular(10),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           color: _type == 'EXPENSE'
@@ -102,11 +108,13 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                             color: _type == 'EXPENSE'
                                 ? AppColors.expense
                                 : const Color(0xFF334155),
+                            width: _type == 'EXPENSE' ? 1.5 : 1.0,
                           ),
                         ),
                         child: Center(
-                          child: Text(
-                            'EXPENSE',
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
@@ -114,6 +122,7 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                                   ? AppColors.expense
                                   : AppColors.textSecondary,
                             ),
+                            child: const Text('EXPENSE'),
                           ),
                         ),
                       ),
@@ -122,9 +131,14 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
-                      onTap: () => setState(() => _type = 'INCOME'),
+                      onTap: () {
+                        AppHaptics.selection();
+                        setState(() => _type = 'INCOME');
+                      },
                       borderRadius: BorderRadius.circular(10),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           color: _type == 'INCOME'
@@ -135,11 +149,13 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                             color: _type == 'INCOME'
                                 ? AppColors.income
                                 : const Color(0xFF334155),
+                            width: _type == 'INCOME' ? 1.5 : 1.0,
                           ),
                         ),
                         child: Center(
-                          child: Text(
-                            'INCOME',
+                          child: AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
@@ -147,6 +163,7 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                                   ? AppColors.income
                                   : AppColors.textSecondary,
                             ),
+                            child: const Text('INCOME'),
                           ),
                         ),
                       ),
@@ -249,6 +266,7 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
+                    AppHaptics.medium();
                     if (_formKey.currentState?.validate() ?? false) {
                       final amount = double.parse(_amountController.text.replaceAll(',', '').trim());
                       final merchant = _merchantController.text.trim();

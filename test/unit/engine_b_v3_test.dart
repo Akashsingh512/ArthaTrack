@@ -305,5 +305,63 @@ void main() {
       expect(res.accountSnippet, equals('9012'));
       expect(res.updatedBalance, equals(12300.50));
     });
+
+    test('23. RBI Pre-Debit Mandate Notification (Dropped - zero money moved)', () {
+      const text =
+          'Dear Customer, Mandate for Rs. 599.00 for NETFLIX will be debited from A/c XX5678 on 15-Sep-26. Please ensure sufficient balance.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNull, reason: 'Informational pre-debit alerts must never create fake ledger transactions');
+    });
+
+    test('24. AutoPay Scheduled Alert (Dropped - zero money moved)', () {
+      const text =
+          'AutoPay alert: debit request for Rs 1,299.00 from Spotify has been scheduled for 20-Sep-26. Maintain balance in A/c 4321.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNull, reason: 'Scheduled AutoPay notices must never create premature debit transactions');
+    });
+
+    test('25. Mandate Setup / Registration Notice (Dropped - authorization limit, zero debit)', () {
+      const text =
+          'Dear Customer, NACH mandate registered successfully for Rs 15000 towards Bajaj Finance on A/c **8910.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNull, reason: 'Mandate registration/setup SMS must never be parsed as actual spending');
+    });
+
+    test('26. Actual NACH Debit with towards NACH', () {
+      const text =
+          'A/c **8910 debited by Rs 3,500.00 on 10-Sep-26 towards NACH - BAJAJ FINANCE. Avl Bal: Rs 12,000.00.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNotNull);
+      expect(res!.amount, equals(3500.00));
+      expect(res.merchant.toLowerCase(), contains('bajaj finance'));
+      expect(res.category, equals('Loan & EMI'));
+      expect(res.isRecurringMandate, isTrue);
+      expect(res.updatedBalance, equals(12000.00));
+    });
+
+    test('27. Merchant Refund is marked as isCredit', () {
+      const text =
+          'Refund of Rs.1,500.00 credited to HDFC Bank A/c **8910 on 12-SEP-26. Ref: 625619874521. Avl Bal: Rs. 14,150.20.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNotNull);
+      expect(res!.type, equals(TransactionType.REFUND));
+      expect(res.isRefund, isTrue);
+      expect(res.isCredit, isTrue);
+      expect(res.isExpense, isFalse);
+      expect(res.amount, equals(1500.00));
+    });
+
+    test('28. NACH Debit Initiated / In-Process Notice (Dropped - actual money not cut yet)', () {
+      const text =
+          'Dear Customer, NACH debit of Rs 3,500.00 towards BAJAJ FINANCE is in process on your account.';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNull, reason: 'Pending or in-process NACH messages must never be added until money is actually cut');
+    });
   });
 }

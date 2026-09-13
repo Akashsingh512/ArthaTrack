@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/account_model.dart';
 import '../../../../data/repositories/account_repository.dart';
@@ -48,6 +49,7 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
   }
 
   void _showEditBalanceDialog(AccountModel acc) {
+    AppHaptics.light();
     final balCtrl = TextEditingController(
       text: acc.balance == 0.0 ? '' : acc.balance.toStringAsFixed(2),
     );
@@ -89,6 +91,7 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
           ),
           ElevatedButton(
             onPressed: () async {
+              AppHaptics.medium();
               final newBal = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
               final targetBal = acc.isCreditCard && newBal > 0 ? -newBal : newBal;
               await _accountRepo.updateBalance(acc.id!, targetBal);
