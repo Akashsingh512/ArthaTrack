@@ -34,7 +34,26 @@ jobs:
         run: flutter pub get
 
       - name: Build Android Release APK
-        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
+        run: |
+          set +e
+          flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation > build_log.txt 2>&1
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "=== FLUTTER BUILD FAILED ==="
+            tail -n 80 build_log.txt
+          fi
+          exit $EXIT_CODE
+
+      - name: Report Failure Log
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: build-failure-debug
+          name: "Build Failure Log"
+          body_path: build_log.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare Named APK
         run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
