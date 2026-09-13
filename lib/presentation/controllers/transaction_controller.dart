@@ -37,6 +37,7 @@ class TransactionController extends ChangeNotifier {
   bool get isMultiSelectMode => _isMultiSelectMode;
   Set<int> get selectedTransactionIds => _selectedTransactionIds;
   int get selectedCount => _selectedTransactionIds.length;
+  bool isTransactionSelected(int id) => _selectedTransactionIds.contains(id);
 
   bool get hasFailedTransactions => _allTransactions.any((t) => t.isFailed);
   int get failedCount => _allTransactions.where((t) => t.isFailed).length;
