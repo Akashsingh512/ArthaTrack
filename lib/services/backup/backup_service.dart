@@ -1,6 +1,5 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
@@ -14,19 +13,6 @@ import '../../data/database/tables/categories_table.dart';
 import '../../data/database/tables/merchant_categories_table.dart';
 import '../../data/models/backup_model.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
-
-class DriveHttpClient extends http.BaseClient {
-  final Map<String, String> _headers;
-  final http.Client _client = http.Client();
-
-  DriveHttpClient(this._headers);
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers.addAll(_headers);
-    return _client.send(request);
-  }
-}
 
 class BackupService {
   static const String backupFilename = 'arthatrack_encrypted_backup.enc';
@@ -172,36 +158,64 @@ class BackupService {
     }
 
     final authHeaders = await account.authHeaders;
-    final client = DriveHttpClient(authHeaders);
-    final driveApi = drive.DriveApi(client);
 
-    final fileList = await driveApi.files.list(
-      spaces: 'appDataFolder',
-      q: "name = '$backupFilename' and trashed = false",
+    // Check if backup file already exists in appDataFolder
+    final listUri = Uri.parse(
+      'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name+%3D+%27$backupFilename%27+and+trashed+%3D+false',
     );
+    final listRes = await _httpClient.get(listUri, headers: authHeaders);
+    if (listRes.statusCode < 200 || listRes.statusCode >= 300) {
+      throw Exception('Google Drive search failed (${listRes.statusCode}): ${listRes.body}');
+    }
 
-    final bytes = utf8.encode(encryptedData);
-    final media = drive.Media(
-      Stream.value(bytes),
-      bytes.length,
-      contentType: 'application/octet-stream',
-    );
+    final listData = jsonDecode(listRes.body) as Map<String, dynamic>;
+    final files = listData['files'] as List<dynamic>?;
 
-    if (fileList.files != null && fileList.files!.isNotEmpty) {
-      final existingFileId = fileList.files!.first.id!;
-      await driveApi.files.update(
-        drive.File(),
-        existingFileId,
-        uploadMedia: media,
+    if (files != null && files.isNotEmpty) {
+      final existingFileId = files.first['id'] as String;
+      final updateUri = Uri.parse(
+        'https://www.googleapis.com/upload/drive/v3/files/$existingFileId?uploadType=media',
       );
+      final updateRes = await _httpClient.patch(
+        updateUri,
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: utf8.encode(encryptedData),
+      );
+      if (updateRes.statusCode < 200 || updateRes.statusCode >= 300) {
+        throw Exception('Google Drive update failed (${updateRes.statusCode}): ${updateRes.body}');
+      }
     } else {
-      final newFile = drive.File()
-        ..name = backupFilename
-        ..parents = ['appDataFolder'];
-      await driveApi.files.create(
-        newFile,
-        uploadMedia: media,
+      // Create new file in appDataFolder using standard multipart upload
+      final boundary = '----ArthaTrackBoundary${DateTime.now().millisecondsSinceEpoch}';
+      final createUri = Uri.parse(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
       );
+      final metadataJson = jsonEncode({
+        'name': backupFilename,
+        'parents': ['appDataFolder'],
+      });
+      final body = '--$boundary\r\n'
+          'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+          '$metadataJson\r\n'
+          '--$boundary\r\n'
+          'Content-Type: application/octet-stream\r\n\r\n'
+          '$encryptedData\r\n'
+          '--$boundary--';
+
+      final createRes = await _httpClient.post(
+        createUri,
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'multipart/related; boundary=$boundary',
+        },
+        body: utf8.encode(body),
+      );
+      if (createRes.statusCode < 200 || createRes.statusCode >= 300) {
+        throw Exception('Google Drive upload failed (${createRes.statusCode}): ${createRes.body}');
+      }
     }
   }
 
@@ -216,30 +230,30 @@ class BackupService {
     }
 
     final authHeaders = await account.authHeaders;
-    final client = DriveHttpClient(authHeaders);
-    final driveApi = drive.DriveApi(client);
-
-    final fileList = await driveApi.files.list(
-      spaces: 'appDataFolder',
-      q: "name = '$backupFilename' and trashed = false",
+    final listUri = Uri.parse(
+      'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name+%3D+%27$backupFilename%27+and+trashed+%3D+false',
     );
+    final listRes = await _httpClient.get(listUri, headers: authHeaders);
+    if (listRes.statusCode < 200 || listRes.statusCode >= 300) {
+      throw Exception('Google Drive search failed (${listRes.statusCode}): ${listRes.body}');
+    }
 
-    if (fileList.files == null || fileList.files!.isEmpty) {
+    final listData = jsonDecode(listRes.body) as Map<String, dynamic>;
+    final files = listData['files'] as List<dynamic>?;
+    if (files == null || files.isEmpty) {
       throw Exception('No ArthaTrack backup found in Google Drive');
     }
 
-    final fileId = fileList.files!.first.id!;
-    final media = await driveApi.files.get(
-      fileId,
-      downloadOptions: drive.DownloadOptions.fullMedia,
-    ) as drive.Media;
-
-    final bytes = <int>[];
-    await for (final chunk in media.stream) {
-      bytes.addAll(chunk);
+    final fileId = files.first['id'] as String;
+    final downloadUri = Uri.parse(
+      'https://www.googleapis.com/drive/v3/files/$fileId?alt=media',
+    );
+    final downloadRes = await _httpClient.get(downloadUri, headers: authHeaders);
+    if (downloadRes.statusCode < 200 || downloadRes.statusCode >= 300) {
+      throw Exception('Google Drive download failed (${downloadRes.statusCode}): ${downloadRes.body}');
     }
 
-    return utf8.decode(bytes);
+    return downloadRes.body;
   }
 
   // ==========================================
