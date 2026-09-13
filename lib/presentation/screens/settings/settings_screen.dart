@@ -1157,15 +1157,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         );
                         final path = await settings.exportTransactionsCsv();
                         if (path != null && context.mounted) {
+                          AppHaptics.medium();
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
                               backgroundColor: AppColors.surfaceElevated,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               title: const Row(
                                 children: [
                                   Icon(Icons.check_circle, color: AppColors.emerald),
                                   SizedBox(width: 8),
-                                  Text('Export Successful', style: TextStyle(fontSize: 18)),
+                                  Text('Saved to Downloads!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               content: Column(
@@ -1173,22 +1175,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'Your transactions have been exported to CSV:',
-                                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                    'Your CSV file is ready and saved to your phone\'s public Downloads folder:',
+                                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 10),
                                   Container(
-                                    padding: const EdgeInsets.all(10),
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFF334155)),
                                     ),
-                                    child: SelectableText(
-                                      path,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontFamily: 'monospace',
-                                        color: AppColors.primary,
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.folder_open, color: AppColors.emerald, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            path,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontFamily: 'monospace',
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    '💡 Open your phone\'s Files or Downloads app to open it in Google Sheets, Excel, or share it.',
+                                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.emerald,
+                                        side: const BorderSide(color: AppColors.emerald),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                      ),
+                                      onPressed: () async {
+                                        AppHaptics.light();
+                                        final csv = await settings.getTransactionsCsvString();
+                                        await Clipboard.setData(ClipboardData(text: csv));
+                                        if (ctx.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('All CSV transaction data copied to clipboard!'),
+                                              backgroundColor: AppColors.emerald,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      icon: const Icon(Icons.copy_all, size: 16),
+                                      label: const Text(
+                                        'Copy All CSV to Clipboard',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                   ),
@@ -1196,8 +1244,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                  child: const Text('OK'),
+                                  onPressed: () {
+                                    AppHaptics.light();
+                                    Navigator.of(ctx).pop();
+                                  },
+                                  child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
                                 ),
                               ],
                             ),

@@ -5,11 +5,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -19,6 +22,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val EVENT_CHANNEL = "com.arthatrack.app/notifications"
@@ -116,10 +120,46 @@ class MainActivity : FlutterActivity() {
                         result.error("SMS_READ_ERROR", e.message, null)
                     }
                 }
+                "saveFileToDownloads" -> {
+                    val fileName = call.argument<String>("fileName") ?: "arthatrack_transactions.csv"
+                    val content = call.argument<String>("content") ?: ""
+                    try {
+                        val savedPath = saveToDownloads(fileName, content)
+                        result.success(savedPath)
+                    } catch (e: Exception) {
+                        result.error("SAVE_FAILED", e.message, null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
             }
+        }
+    }
+
+    private fun saveToDownloads(fileName: String, content: String): String {
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                ?: throw Exception("Failed to allocate MediaStore entry in Downloads")
+            contentResolver.openOutputStream(uri)?.use { os ->
+                os.write(bytes)
+                os.flush()
+            }
+            return "/storage/emulated/0/Download/$fileName"
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadsDir.exists()) {
+                downloadsDir.mkdirs()
+            }
+            val targetFile = File(downloadsDir, fileName)
+            targetFile.writeBytes(bytes)
+            return targetFile.absolutePath
         }
     }
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/repositories/transaction_repository.dart';
@@ -274,10 +275,45 @@ class SettingsController extends ChangeNotifier {
         buffer.writeln(row.join(','));
       }
 
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/arthatrack_transactions.csv');
-      await file.writeAsString(buffer.toString());
-      return file.path;
+      final csvContent = buffer.toString();
+      String? savedPath;
+
+      // 1. Primary: Save directly to Android Public Downloads via native MediaStore API
+      try {
+        const platform = MethodChannel('com.arthatrack.app/sms_reader');
+        savedPath = await platform.invokeMethod<String>('saveFileToDownloads', {
+          'fileName': 'arthatrack_transactions.csv',
+          'content': csvContent,
+        });
+      } catch (e) {
+        print('Native MediaStore save error: $e');
+      }
+
+      // 2. Secondary fallback: Direct file write to /storage/emulated/0/Download/
+      if (savedPath == null || savedPath.isEmpty) {
+        try {
+          final publicDownloadDir = Directory('/storage/emulated/0/Download');
+          if (await publicDownloadDir.exists()) {
+            final pubFile = File('${publicDownloadDir.path}/arthatrack_transactions.csv');
+            await pubFile.writeAsString(csvContent);
+            savedPath = pubFile.path;
+          }
+        } catch (e) {
+          print('Direct download folder write error: $e');
+        }
+      }
+
+      // 3. Guaranteed Internal Backup: Always write to app documents directory
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final internalFile = File('${dir.path}/arthatrack_transactions.csv');
+        await internalFile.writeAsString(csvContent);
+        savedPath ??= internalFile.path;
+      } catch (e) {
+        print('Internal doc write error: $e');
+      }
+
+      return savedPath;
     } catch (e) {
       print('CSV Export error: $e');
       return null;
@@ -285,6 +321,31 @@ class SettingsController extends ChangeNotifier {
       _isExporting = false;
       notifyListeners();
     }
+  }
+
+  /// Returns the full CSV text string so user can copy to clipboard
+  Future<String> getTransactionsCsvString() async {
+    final txRepo = TransactionRepository();
+    final transactions = await txRepo.getAllTransactions();
+
+    final buffer = StringBuffer();
+    buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+
+    for (final tx in transactions) {
+      final row = [
+        tx.id?.toString() ?? '',
+        _escapeCsv(tx.date),
+        _escapeCsv(tx.type),
+        tx.amount.toStringAsFixed(2),
+        _escapeCsv(tx.category),
+        _escapeCsv(tx.merchant),
+        _escapeCsv(tx.displayPaymentSource),
+        _escapeCsv(tx.referenceNumber ?? ''),
+        _escapeCsv(tx.source),
+      ];
+      buffer.writeln(row.join(','));
+    }
+    return buffer.toString();
   }
 
   String _escapeCsv(String val) {
