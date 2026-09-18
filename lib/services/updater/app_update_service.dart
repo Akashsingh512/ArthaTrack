@@ -181,7 +181,6 @@ class AppUpdateService {
     bool Function()? isCancelled,
   }) async {
     HttpClient? client;
-    IOSink? sink;
     File? targetFile;
 
     try {
@@ -217,28 +216,33 @@ class AppUpdateService {
 
       final totalBytes = response.contentLength;
       int receivedBytes = 0;
-      sink = targetFile.openWrite();
+      final fileSink = targetFile.openWrite();
 
-      await for (final chunk in response) {
-        if (isCancelled != null && isCancelled()) {
-          await sink.close();
-          sink = null;
-          if (await targetFile.exists()) {
-            await targetFile.delete();
+      try {
+        await for (final chunk in response) {
+          if (isCancelled != null && isCancelled()) {
+            await fileSink.close();
+            if (await targetFile.exists()) {
+              await targetFile.delete();
+            }
+            return null;
           }
-          return null;
+
+          fileSink.add(chunk);
+          receivedBytes += chunk.length;
+
+          final progress = totalBytes > 0 ? (receivedBytes / totalBytes) : 0.0;
+          onProgress(progress.clamp(0.0, 1.0), receivedBytes, totalBytes);
         }
 
-        sink.add(chunk);
-        receivedBytes += chunk.length;
-
-        final progress = totalBytes > 0 ? (receivedBytes / totalBytes) : 0.0;
-        onProgress(progress.clamp(0.0, 1.0), receivedBytes, totalBytes);
+        await fileSink.flush();
+        await fileSink.close();
+      } catch (streamError) {
+        try {
+          await fileSink.close();
+        } catch (_) {}
+        rethrow;
       }
-
-      await sink.flush();
-      await sink.close();
-      sink = null;
 
       if (await targetFile.exists() && await targetFile.length() > 0) {
         return targetFile.path;
@@ -246,11 +250,6 @@ class AppUpdateService {
       return null;
     } catch (e) {
       debugPrint('[AppUpdateService] Download error: $e');
-      if (sink != null) {
-        try {
-          await sink.close();
-        } catch (_) {}
-      }
       if (targetFile != null && await targetFile.exists()) {
         try {
           await targetFile.delete();
