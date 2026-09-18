@@ -389,74 +389,124 @@ class MainActivity : FlutterActivity() {
 
     private fun readSmsMessages(limit: Int, startDate: Long? = null, endDate: Long? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
+        val seenIds = mutableSetOf<Long>()
         val projection = arrayOf("_id", "address", "body", "date")
-        val sortOrder = "date DESC"
+        // Batch page size — smaller batches work around OEM ContentProvider limits (Samsung, Xiaomi, etc.)
+        val PAGE_SIZE = 200
 
-        val whereClauses = mutableListOf<String>()
-        val whereArgs = mutableListOf<String>()
+        val dateWhereClauses = mutableListOf<String>()
+        val dateWhereArgs = mutableListOf<String>()
 
         if (startDate != null && startDate > 0) {
-            whereClauses.add("date >= ?")
-            whereArgs.add(startDate.toString())
+            dateWhereClauses.add("date >= ?")
+            dateWhereArgs.add(startDate.toString())
         }
         if (endDate != null && endDate > 0) {
-            whereClauses.add("date <= ?")
-            whereArgs.add(endDate.toString())
+            dateWhereClauses.add("date <= ?")
+            dateWhereArgs.add(endDate.toString())
         }
 
-        val baseSelection = if (whereClauses.isNotEmpty()) whereClauses.joinToString(" AND ") else null
-        val baseSelectionArgs = if (whereArgs.isNotEmpty()) whereArgs.toTypedArray() else null
+        // Read messages in pages using date-based cursor pagination
+        // Each page fetches the next PAGE_SIZE messages older than the last seen date
+        fun readAllFromUri(baseUri: Uri, typeFilter: String? = null): Boolean {
+            var lastDate: Long? = null
+            var pagesFetched = 0
+            var gotAny = false
 
-        fun queryUri(uri: Uri, extraWhere: String? = null) {
-            val querySelection = if (extraWhere != null) {
-                if (baseSelection != null) "$baseSelection AND $extraWhere" else extraWhere
-            } else {
-                baseSelection
-            }
+            while (true) {
+                if (limit > 0 && list.size >= limit) break
 
-            var cursor: Cursor? = null
-            try {
-                cursor = contentResolver.query(
-                    uri,
-                    projection,
-                    querySelection,
-                    baseSelectionArgs,
-                    sortOrder
-                )
-            } catch (_: Exception) {}
+                val whereParts = mutableListOf<String>()
+                val whereArgsList = mutableListOf<String>()
 
-            cursor?.use {
-                val addressIdx = it.getColumnIndex("address")
-                val bodyIdx = it.getColumnIndex("body")
-                val dateIdx = it.getColumnIndex("date")
+                // Date range filters
+                whereParts.addAll(dateWhereClauses)
+                whereArgsList.addAll(dateWhereArgs)
 
-                while (it.moveToNext()) {
-                    if (limit > 0 && list.size >= limit) {
-                        break
-                    }
-                    val address = if (addressIdx >= 0) it.getString(addressIdx) ?: "" else ""
-                    val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
-                    val date = if (dateIdx >= 0) it.getLong(dateIdx) else System.currentTimeMillis()
-
-                    if (body.isNotBlank()) {
-                        list.add(
-                            mapOf(
-                                "sender" to address,
-                                "body" to body,
-                                "date" to date
-                            )
-                        )
-                    }
+                // OEM type filter (for content://sms fallback)
+                if (typeFilter != null) {
+                    whereParts.add(typeFilter)
                 }
+
+                // Cursor pagination: fetch next page older than last fetched date
+                if (lastDate != null) {
+                    whereParts.add("date < ?")
+                    whereArgsList.add(lastDate.toString())
+                }
+
+                // Per-page LIMIT via sortOrder — use URI param or LIMIT in sort depending on ROM
+                val pageSortOrder = "date DESC"
+                val pageUri = try {
+                    // Many Android devices support limit/offset via URI query parameters
+                    baseUri.buildUpon()
+                        .appendQueryParameter("limit", PAGE_SIZE.toString())
+                        .appendQueryParameter("offset", "0")
+                        .build()
+                } catch (_: Exception) {
+                    baseUri
+                }
+
+                val selection = if (whereParts.isNotEmpty()) whereParts.joinToString(" AND ") else null
+                val selectionArgs = if (whereArgsList.isNotEmpty()) whereArgsList.toTypedArray() else null
+
+                var cursor: Cursor? = null
+                try {
+                    cursor = contentResolver.query(pageUri, projection, selection, selectionArgs, pageSortOrder)
+                } catch (_: Exception) {
+                    try {
+                        // Fallback: plain URI without query params
+                        cursor = contentResolver.query(baseUri, projection, selection, selectionArgs, pageSortOrder)
+                    } catch (_: Exception) {}
+                }
+
+                var pageCount = 0
+                var pageDone = false
+
+                cursor?.use {
+                    val idIdx = it.getColumnIndex("_id")
+                    val addressIdx = it.getColumnIndex("address")
+                    val bodyIdx = it.getColumnIndex("body")
+                    val dateIdx = it.getColumnIndex("date")
+
+                    while (it.moveToNext()) {
+                        if (limit > 0 && list.size >= limit) { pageDone = true; break }
+                        if (pageCount >= PAGE_SIZE) { pageDone = false; break }
+
+                        val id = if (idIdx >= 0) it.getLong(idIdx) else -1L
+                        val address = if (addressIdx >= 0) it.getString(addressIdx) ?: "" else ""
+                        val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
+                        val date = if (dateIdx >= 0) it.getLong(dateIdx) else System.currentTimeMillis()
+
+                        lastDate = date
+
+                        if (id >= 0 && seenIds.contains(id)) { pageCount++; continue }
+                        if (id >= 0) seenIds.add(id)
+                        pageCount++
+
+                        if (body.isNotBlank()) {
+                            gotAny = true
+                            list.add(mapOf("sender" to address, "body" to body, "date" to date))
+                        }
+                    }
+                    pageDone = pageDone || (it.count < PAGE_SIZE)
+                }
+
+                pagesFetched++
+
+                // Stop if we got fewer results than page size (no more data) or hit limit
+                if (pageDone || pageCount < PAGE_SIZE || (limit > 0 && list.size >= limit)) break
+                // Safety: max 500 pages = up to 100,000 messages
+                if (pagesFetched >= 500) break
             }
+            return gotAny
         }
 
-        // 1. Primary query to content://sms/inbox
-        queryUri(Uri.parse("content://sms/inbox"))
+        // 1. Primary: content://sms/inbox (paginated)
+        val primaryGotData = readAllFromUri(Uri.parse("content://sms/inbox"))
 
-        // 2. Secondary fallback to content://sms (type = 1 inbox) if primary returned nothing
-        if (list.isEmpty()) {
-            queryUri(Uri.parse("content://sms"), "type = 1")
+        // 2. Fallback: content://sms with type=1 (inbox) if primary returned nothing
+        if (!primaryGotData) {
+            readAllFromUri(Uri.parse("content://sms"), "type = 1")
         }
 
         return list

@@ -69,22 +69,20 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta11
-          name: "ArthaTrack Beta v1.1.0 (Build 11)"
+          tag_name: v1.1.0-beta12
+          name: "ArthaTrack Beta v1.1.0 (Build 12)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 11)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 12)
             
-            #### 🌟 Highlights & What's New in Build 11:
-            - **🔓 100% Uncapped All-Time SMS Historical Sync**:
-              - Completely removed any remaining message limits or query caps.
-              - Selecting **All Time** now queries your entire phone SMS history without restriction, importing all historical transactions across every month and year.
-            - **🛡️ Android OEM Query Resilience (Samsung / Xiaomi / Vivo / Oppo / Pixel)**:
-              - Eliminated SQL `LIMIT` keyword inside `sortOrder` to prevent Android `SQLiteQueryBuilder` crashes on modern OEM ROMs.
-              - Added secondary fallback to `content://sms` (`type = 1`) if `content://sms/inbox` is restricted or empty.
-            - **⏱️ Extended Channel Timeout**:
-              - MethodChannel IPC timeout increased to 3 minutes, reliably handling inboxes with tens of thousands of messages without timing out.
-            - **⚡ Fixed In-App Updater & Browser Fallback**:
-              - In-app update downloads stream directly via native `HttpClient` with zero connection leaks, plus a 1-tap Chrome/browser download fallback.
+            #### 🌟 Highlights & What's New in Build 12:
+            - **📱 Paginated SMS Reading — Bypasses Android OEM ContentProvider Limits**:
+              - Some Android devices (Samsung OneUI, Xiaomi HyperOS, Vivo FuntouchOS) restrict single ContentProvider queries to ~50 results.
+              - Build 12 implements **200-message page batching** with date-cursor pagination, reading your entire SMS history in chunks of 200, then automatically fetching the next batch until all historical messages are retrieved.
+              - Supports up to 100,000 messages (500 pages × 200 per page) across all months and years.
+            - **🔓 Zero Caps, Full History**:
+              - Selecting **All Time** now reliably scans 100% of your inbox regardless of device restrictions.
+            - **⚡ In-App Updater & Browser Fallback** (from Build 10/11):
+              - Reliable download via Chrome fallback button.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
