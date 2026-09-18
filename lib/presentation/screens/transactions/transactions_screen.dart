@@ -513,7 +513,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                 ? DismissDirection.none
                                 : DismissDirection.endToStart,
                             confirmDismiss: (direction) async {
-                              AppHaptics.warning();
+                              AppHaptics.medium();
                               return await showDialog<bool>(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
