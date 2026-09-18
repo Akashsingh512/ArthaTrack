@@ -5,7 +5,11 @@ import 'category_finder.dart';
 
 class EngineBRegexParser {
   /// Parses raw transaction text into structured ParsedTransaction using Indian banking regex heuristics (V3.0)
-  static ParsedTransaction? parse(String rawText, {String? packageName, String? senderHeader}) {
+  static ParsedTransaction? parse(
+    String rawText, {
+    String? packageName,
+    String? senderHeader,
+  }) {
     if (rawText.trim().isEmpty) return null;
 
     final text = rawText.trim();
@@ -25,11 +29,13 @@ class EngineBRegexParser {
 
     // 0.1 PROMOTIONAL & NON-TRANSACTIONAL GUARD: Drop EMI offers, loan pitches, and bill due reminders
     // Ensure we do NOT drop valid bank fees (towards SMS Alert Charges) or actual EMIs (via NACH)
-    final isActualTxn = lower.contains('towards sms alert') ||
+    final isActualTxn =
+        lower.contains('towards sms alert') ||
         lower.contains('via nach') ||
         lower.contains('emi of') ||
         lower.contains('fastag');
-    if (!isActualTxn && IndianBankingConstants.promotionalBlocklistRegex.hasMatch(text)) {
+    if (!isActualTxn &&
+        IndianBankingConstants.promotionalBlocklistRegex.hasMatch(text)) {
       return null;
     }
 
@@ -44,9 +50,13 @@ class EngineBRegexParser {
       headerBank = IndianBankingConstants.getBankFromHeader(senderHeader);
     }
     if (headerBank == null) {
-      final headerMatch = RegExp(r'^(?:\[)?([A-Za-z]{2}-[A-Za-z]{6})(?:\])?[:\s]').firstMatch(text);
+      final headerMatch = RegExp(
+        r'^(?:\[)?([A-Za-z]{2}-[A-Za-z]{6})(?:\])?[:\s]',
+      ).firstMatch(text);
       if (headerMatch != null && headerMatch.groupCount >= 1) {
-        headerBank = IndianBankingConstants.getBankFromHeader(headerMatch.group(1)!);
+        headerBank = IndianBankingConstants.getBankFromHeader(
+          headerMatch.group(1)!,
+        );
       }
     }
 
@@ -54,12 +64,22 @@ class EngineBRegexParser {
     // Guard: Failed transaction notices with refund promises ("failed. If any amount was deducted, it will be refunded")
     // are FAILED transactions, NOT refund credits!
     final isFailure = IndianBankingConstants.failureStatusRegex.hasMatch(lower);
-    final isConditionalRefundFailure = isFailure &&
-        RegExp(r'(?:if\s+(?:any\s+)?amount.*?refunded|will\s+be\s+refunded|refunded\s+in\s+\d+[\-\s]*\d*\s*days)', caseSensitive: false).hasMatch(lower);
+    final isConditionalRefundFailure =
+        isFailure &&
+        RegExp(
+          r'(?:if\s+(?:any\s+)?amount.*?refunded|will\s+be\s+refunded|refunded\s+in\s+\d+[\-\s]*\d*\s*days)',
+          caseSensitive: false,
+        ).hasMatch(lower);
 
-    final isReversalOrRefund = !isConditionalRefundFailure && IndianBankingConstants.reversalRegex.hasMatch(lower);
-    final isHoldReleased = IndianBankingConstants.holdReleasedRegex.hasMatch(lower);
-    final isPreAuthHold = IndianBankingConstants.preAuthHoldRegex.hasMatch(lower) && !isHoldReleased;
+    final isReversalOrRefund =
+        !isConditionalRefundFailure &&
+        IndianBankingConstants.reversalRegex.hasMatch(lower);
+    final isHoldReleased = IndianBankingConstants.holdReleasedRegex.hasMatch(
+      lower,
+    );
+    final isPreAuthHold =
+        IndianBankingConstants.preAuthHoldRegex.hasMatch(lower) &&
+        !isHoldReleased;
 
     // 2. FAILED & DECLINED STATUS GUARD
     if (isFailure && !isReversalOrRefund && !isHoldReleased) {
@@ -67,7 +87,9 @@ class EngineBRegexParser {
       String reason = 'FAILED';
       if (lower.contains('insufficient')) {
         reason = 'INSUFFICIENT_FUNDS';
-      } else if (lower.contains('incorrect upi pin') || lower.contains('incorrect pin') || lower.contains('wrong pin')) {
+      } else if (lower.contains('incorrect upi pin') ||
+          lower.contains('incorrect pin') ||
+          lower.contains('wrong pin')) {
         reason = 'INCORRECT_PIN';
       } else if (lower.contains('declined')) {
         reason = 'DECLINED';
@@ -83,7 +105,8 @@ class EngineBRegexParser {
 
       // Universal account extraction
       String? acctTail;
-      final uAcctMatch = IndianBankingConstants.universalAccountRegex.firstMatch(text);
+      final uAcctMatch = IndianBankingConstants.universalAccountRegex
+          .firstMatch(text);
       if (uAcctMatch != null && uAcctMatch.groupCount >= 1) {
         acctTail = uAcctMatch.group(1);
       }
@@ -119,8 +142,12 @@ class EngineBRegexParser {
     if (isReversalOrRefund || isHoldReleased) {
       type = TransactionType.REFUND;
     } else {
-      final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(lower);
-      final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(lower);
+      final hasIncome = IndianBankingConstants.incomeTriggerRegex.hasMatch(
+        lower,
+      );
+      final hasExpense = IndianBankingConstants.expenseTriggerRegex.hasMatch(
+        lower,
+      );
 
       if (!hasIncome && !hasExpense) {
         return null;
@@ -129,8 +156,10 @@ class EngineBRegexParser {
       if (hasIncome && !hasExpense) {
         type = TransactionType.INCOME;
       } else if (hasIncome && hasExpense) {
-        final incomeMatch = IndianBankingConstants.incomeTriggerRegex.firstMatch(lower);
-        final expenseMatch = IndianBankingConstants.expenseTriggerRegex.firstMatch(lower);
+        final incomeMatch = IndianBankingConstants.incomeTriggerRegex
+            .firstMatch(lower);
+        final expenseMatch = IndianBankingConstants.expenseTriggerRegex
+            .firstMatch(lower);
         if (incomeMatch != null && expenseMatch != null) {
           type = (incomeMatch.start < expenseMatch.start)
               ? TransactionType.INCOME
@@ -157,9 +186,22 @@ class EngineBRegexParser {
             lower.contains('simpl bill') ||
             lower.contains('employer verification') ||
             (lower.contains('received') && lower.contains('application')) ||
-            (lower.contains('payment of') && (lower.contains('card') || lower.contains('bill') || lower.contains('bbps') || lower.contains('airtel') || lower.contains('jio'))) ||
-            (lower.contains('towards') && (lower.contains('card') || lower.contains('bill') || lower.contains('loan') || lower.contains('emi'))) ||
-            (lower.contains('credited to your') && (lower.contains('card') || lower.contains('airtel') || lower.contains('jio') || lower.contains('account within')))) {
+            (lower.contains('payment of') &&
+                (lower.contains('card') ||
+                    lower.contains('bill') ||
+                    lower.contains('bbps') ||
+                    lower.contains('airtel') ||
+                    lower.contains('jio'))) ||
+            (lower.contains('towards') &&
+                (lower.contains('card') ||
+                    lower.contains('bill') ||
+                    lower.contains('loan') ||
+                    lower.contains('emi'))) ||
+            (lower.contains('credited to your') &&
+                (lower.contains('card') ||
+                    lower.contains('airtel') ||
+                    lower.contains('jio') ||
+                    lower.contains('account within')))) {
           return null;
         }
       }
@@ -170,13 +212,20 @@ class EngineBRegexParser {
     double? updatedBalance;
 
     // Special handling for EPFO / EPF Passbook balance vs monthly contribution:
-    final isEpfo = lower.contains('passbook balance') && lower.contains('contribution of');
+    final isEpfo =
+        lower.contains('passbook balance') && lower.contains('contribution of');
     if (isEpfo) {
-      final epfoContribMatch = RegExp(r'Contribution\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false).firstMatch(text);
+      final epfoContribMatch = RegExp(
+        r'Contribution\s+of\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+        caseSensitive: false,
+      ).firstMatch(text);
       if (epfoContribMatch != null && epfoContribMatch.groupCount >= 1) {
         amount = IndianCurrencyFormatter.parse(epfoContribMatch.group(1)!);
       }
-      final epfoBalMatch = RegExp(r'passbook\s+balance\s+(?:against\s+.*?\s+)?is\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false).firstMatch(text);
+      final epfoBalMatch = RegExp(
+        r'passbook\s+balance\s+(?:against\s+.*?\s+)?is\s+(?:Rs\.?|INR|₹)?\s*([\d,]+(?:\.\d{1,2})?)',
+        caseSensitive: false,
+      ).firstMatch(text);
       if (epfoBalMatch != null && epfoBalMatch.groupCount >= 1) {
         updatedBalance = IndianCurrencyFormatter.parse(epfoBalMatch.group(1)!);
       }
@@ -191,7 +240,8 @@ class EngineBRegexParser {
     }
 
     if (amount <= 0.0) {
-      final fallbackMatch = IndianBankingConstants.fallbackAmountRegex.firstMatch(text);
+      final fallbackMatch = IndianBankingConstants.fallbackAmountRegex
+          .firstMatch(text);
       if (fallbackMatch != null && fallbackMatch.groupCount >= 1) {
         final rawStr = fallbackMatch.group(1);
         if (rawStr != null) {
@@ -222,15 +272,21 @@ class EngineBRegexParser {
       accountSnippet = uAcct.group(1);
     }
     if (accountSnippet == null) {
-      final acctMatch = IndianBankingConstants.accountSnippetRegex.firstMatch(text);
+      final acctMatch = IndianBankingConstants.accountSnippetRegex.firstMatch(
+        text,
+      );
       if (acctMatch != null && acctMatch.groupCount >= 1) {
-        accountSnippet = acctMatch.group(1)?.replaceAll(RegExp(r'^[xX\*]+'), '');
+        accountSnippet = acctMatch
+            .group(1)
+            ?.replaceAll(RegExp(r'^[xX\*]+'), '');
       }
     }
 
     // 7. Extract Reference / UPI RRN / UTR for Deduplication
     String? referenceNumber;
-    final refMatch = IndianBankingConstants.referenceNumberRegex.firstMatch(text);
+    final refMatch = IndianBankingConstants.referenceNumberRegex.firstMatch(
+      text,
+    );
     if (refMatch != null && refMatch.groupCount >= 1) {
       referenceNumber = refMatch.group(1)?.trim();
     }
@@ -242,12 +298,20 @@ class EngineBRegexParser {
     }
 
     // Check if this transaction was made via a Bank Credit / Debit Card
-    final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(text);
-    final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(text);
+    final isCard = RegExp(
+      r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b',
+      caseSensitive: false,
+    ).hasMatch(text);
+    final cardNumMatch = RegExp(
+      r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})',
+      caseSensitive: false,
+    ).firstMatch(text);
     String? cardSnippet;
     if (cardNumMatch != null && cardNumMatch.groupCount >= 1) {
       cardSnippet = cardNumMatch.group(1)?.trim().toUpperCase();
-      if (cardSnippet != null && !cardSnippet.startsWith('XX') && !cardSnippet.startsWith('*')) {
+      if (cardSnippet != null &&
+          !cardSnippet.startsWith('XX') &&
+          !cardSnippet.startsWith('*')) {
         cardSnippet = 'XX$cardSnippet';
       }
     }
@@ -266,7 +330,8 @@ class EngineBRegexParser {
 
     // 9. Extract VPA handle if present
     String? vpaHandle;
-    final vpaM = RegExp(r'[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}').firstMatch(text);
+    final vpaM = RegExp(r'[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}')
+        .firstMatch(text);
     if (vpaM != null) {
       vpaHandle = vpaM.group(0);
     }
@@ -275,8 +340,11 @@ class EngineBRegexParser {
     final supportRecourse = _extractSupportRecourse(text);
 
     // 11. Edge Case Flags
-    final isFastag = IndianBankingConstants.fastagRegex.hasMatch(lower) || lower.contains('fastag');
-    final isRecurringMandate = IndianBankingConstants.autoMandateRegex.hasMatch(lower) ||
+    final isFastag =
+        IndianBankingConstants.fastagRegex.hasMatch(lower) ||
+        lower.contains('fastag');
+    final isRecurringMandate =
+        IndianBankingConstants.autoMandateRegex.hasMatch(lower) ||
         lower.contains('autopay') ||
         lower.contains('nach') ||
         lower.contains('mandate');
@@ -288,32 +356,63 @@ class EngineBRegexParser {
     // Override category for specific edge cases
     if (isFastag) {
       category = 'FASTag';
-    } else if (IndianBankingConstants.bankFeeRegex.hasMatch(lower) || lower.contains('sms alert') || lower.contains('card fee')) {
+    } else if (IndianBankingConstants.bankFeeRegex.hasMatch(lower) ||
+        lower.contains('sms alert') ||
+        lower.contains('card fee')) {
       category = 'Bank Fees';
     } else if (isReversalOrRefund || isHoldReleased) {
-      if (category == 'Other' || category.isEmpty || merchant == 'Cashback / Refund' || merchant == 'Unknown Merchant') {
+      if (category == 'Other' ||
+          category.isEmpty ||
+          merchant == 'Cashback / Refund' ||
+          merchant == 'Unknown Merchant') {
         category = 'Refund';
       }
     } else if (lower.contains('via nach') ||
         lower.contains('nach debit') ||
-        (lower.contains('nach') && (lower.contains('bajaj') || lower.contains('loan') || lower.contains('emi') || lower.contains('finance') || lower.contains('fin'))) ||
+        (lower.contains('nach') &&
+            (lower.contains('bajaj') ||
+                lower.contains('loan') ||
+                lower.contains('emi') ||
+                lower.contains('finance') ||
+                lower.contains('fin'))) ||
         lower.contains('emi of')) {
       category = 'Loan & EMI';
-    } else if (lower.contains('sip of') || lower.contains('mutualfund') || (lower.contains('nach') && (lower.contains('mutual') || lower.contains('sip')))) {
+    } else if (lower.contains('sip of') ||
+        lower.contains('mutualfund') ||
+        (lower.contains('nach') &&
+            (lower.contains('mutual') || lower.contains('sip')))) {
       category = 'Investment';
     }
 
     // If income or refund and no merchant was determined
-    if ((type == TransactionType.INCOME || type == TransactionType.REFUND) && (merchant == 'Unknown' || merchant.isEmpty || merchant == 'Unknown Merchant')) {
-      if (lower.contains('salary') || lower.contains('payroll')) {
+    if ((type == TransactionType.INCOME || type == TransactionType.REFUND) &&
+        (merchant == 'Unknown' ||
+            merchant.isEmpty ||
+            merchant == 'Unknown Merchant')) {
+      final cdpMatch = RegExp(
+        r'Info\s*[-:]\s*(?:[A-Z0-9]+\/)*CDP\/(?:[A-Z0-9]+\/)*([A-Za-z0-9\s]+?)(?:\.|\s+Chk|\s+Bal|$)',
+        caseSensitive: false,
+      ).firstMatch(text);
+
+      if (cdpMatch != null) {
+        final employer = cdpMatch.group(1)?.trim();
+        merchant = (employer != null && employer.isNotEmpty)
+            ? '$employer (Salary)'
+            : 'Employer Payroll';
+        category = 'Salary';
+      } else if (lower.contains('salary') ||
+          lower.contains('payroll') ||
+          lower.contains('stipend')) {
         merchant = 'Employer Payroll';
         category = 'Salary';
-      } else if (lower.contains('refund') || lower.contains('cashback') || lower.contains('reversal')) {
+      } else if (lower.contains('refund') ||
+          lower.contains('cashback') ||
+          lower.contains('reversal')) {
         merchant = 'Cashback / Refund';
         category = 'Refund';
       } else {
         merchant = 'Bank Credit';
-        category = 'Transfer';
+        category = 'Income';
       }
     }
 
@@ -342,24 +441,37 @@ class EngineBRegexParser {
   }
 
   static String? _extractBankOrSource(String text, String? packageName) {
-    if (packageName != null && IndianBankingConstants.packageBankMap.containsKey(packageName)) {
+    if (packageName != null &&
+        IndianBankingConstants.packageBankMap.containsKey(packageName)) {
       final mapped = IndianBankingConstants.packageBankMap[packageName];
-      if (mapped != null && !mapped.contains('Google') && !mapped.contains('PhonePe') && !mapped.contains('Paytm') && !mapped.contains('CRED')) {
+      if (mapped != null &&
+          !mapped.contains('Google') &&
+          !mapped.contains('PhonePe') &&
+          !mapped.contains('Paytm') &&
+          !mapped.contains('CRED')) {
         return mapped;
       }
     }
 
     // 1. Priority: Check trailing bank signature / footer (e.g. "- IndusInd bank", "- Axis Bank", "- JPBL", "- Kotak")
-    final footerMatch = RegExp(r'(?:[\-\–]\s*|today\s*[\-\–]\s*)(IndusInd\s*Bank|Axis\s*Bank|Kotak\s*Bank|Kotak|SBI|HDFC\s*Bank|ICICI\s*Bank|JPBL|Jio\s*Payments\s*Bank)\b', caseSensitive: false).firstMatch(text);
+    final footerMatch = RegExp(
+      r'(?:[\-\–]\s*|today\s*[\-\–]\s*)(IndusInd\s*Bank|Axis\s*Bank|Kotak\s*Bank|Kotak|SBI|HDFC\s*Bank|ICICI\s*Bank|JPBL|Jio\s*Payments\s*Bank)\b',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (footerMatch != null && footerMatch.groupCount >= 1) {
       return IndianBankingConstants.normalizeBankName(footerMatch.group(1)!);
     }
 
     // 2. Remove all VPA handles (@hdfcbank, @paytm, etc.) from text so payee handles never trick bank detection
-    final textWithoutVpas = text.replaceAll(RegExp(r'@[a-zA-Z0-9.\-_]{2,64}\b', caseSensitive: false), '@vpa');
+    final textWithoutVpas = text.replaceAll(
+      RegExp(r'@[a-zA-Z0-9.\-_]{2,64}\b', caseSensitive: false),
+      '@vpa',
+    );
 
     // 3. Match explicit account holder statements (e.g. "from your Kotak Bank A/c", "Axis Bank A/c", "in your Kotak811 a/c", "A/C *XX5684 ... IndusInd")
-    final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(textWithoutVpas);
+    final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(
+      textWithoutVpas,
+    );
     if (bankMatch != null && bankMatch.groupCount >= 1) {
       final rawBank = bankMatch.group(1);
       if (rawBank != null) {
@@ -371,7 +483,8 @@ class EngineBRegexParser {
 
   static String? _extractSupportRecourse(String text) {
     final blockMatch = IndianBankingConstants.smsBlockRegex.firstMatch(text);
-    final helplineMatch = IndianBankingConstants.disputeHelplineRegex.firstMatch(text);
+    final helplineMatch = IndianBankingConstants.disputeHelplineRegex
+        .firstMatch(text);
     if (blockMatch != null && helplineMatch != null) {
       return '${blockMatch.group(0)?.trim()} • ${helplineMatch.group(0)?.trim()}';
     }
@@ -388,19 +501,32 @@ class EngineBRegexParser {
     return res;
   }
 
-  static String _extractMerchant(String originalText, String lower, String? packageName, TransactionType type) {
+  static String _extractMerchant(
+    String originalText,
+    String lower,
+    String? packageName,
+    TransactionType type,
+  ) {
     // 0. Remove dispute / fraud / card block footer so numbers like 919951860002 are never treated as payees
-    final cleanedText = originalText.replaceAll(IndianBankingConstants.disputeFooterRegex, '').trim();
+    final cleanedText = originalText
+        .replaceAll(IndianBankingConstants.disputeFooterRegex, '')
+        .trim();
 
     // 0.05 Card Reversal / Refund explicit merchant check (e.g. "Txn reversal of INR 52.5 at UBER INDIA was successful")
-    final reversalMatch = RegExp(r'(?:reversal\s+(?:of\s+.*?\s+)?at|refund\s+(?:of\s+.*?\s+)?(?:from|by|at))\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:was|is|on|ref|avl|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+    final reversalMatch = RegExp(
+      r'(?:reversal\s+(?:of\s+.*?\s+)?at|refund\s+(?:of\s+.*?\s+)?(?:from|by|at))\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:was|is|on|ref|avl|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (reversalMatch != null && reversalMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(reversalMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
     }
 
     // 0.06 Jio Payments Bank (JPBL) Info: UPI/DR/... pattern
-    final jpblMatch = RegExp(r'Info:\s*UPI\/(?:DR|CR)\/(?:\d+\/)?([A-Za-z0-9\s\.\*\-\@]+?)(?:\s*(?:Not\s+you|Call|\/|\.|\,)|$)', caseSensitive: false).firstMatch(cleanedText);
+    final jpblMatch = RegExp(
+      r'Info:\s*UPI\/(?:DR|CR)\/(?:\d+\/)?([A-Za-z0-9\s\.\*\-\@]+?)(?:\s*(?:Not\s+you|Call|\/|\.|\,)|$)',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (jpblMatch != null && jpblMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(jpblMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
@@ -412,22 +538,33 @@ class EngineBRegexParser {
     }
 
     // 0.08 Credit Card Bill Payment from Bank Account (e.g. "CreditCard Payment XX 6472", "CRD-PMNT-530562****7876")
-    final ccPmntMatch = RegExp(r'(?:CreditCard\s+Payment|CRD[\s\-]PMNT.*?)\s*(?:XX\s*|\*+)?(\d{4})', caseSensitive: false).firstMatch(cleanedText);
+    final ccPmntMatch = RegExp(
+      r'(?:CreditCard\s+Payment|CRD[\s\-]PMNT.*?)\s*(?:XX\s*|\*+)?(\d{4})',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (ccPmntMatch != null && ccPmntMatch.groupCount >= 1) {
       return 'Credit Card Payment (XX${ccPmntMatch.group(1)})';
     }
 
     // 0.09 Kotak / Bank Debit Card at Merchant (e.g. "spent via Kotak Debit Card XX9727 at WWW FACEBOOK COM ADSMANAG on...")
-    final cardAtMatch = RegExp(r'(?:spent\s+(?:via|thru).*?Card.*?at|spent\s+at)\s+([A-Za-z0-9\s\.\*\-\@\_]+?)(?:\s+(?:on|for|avl|bal|ref|not|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+    final cardAtMatch = RegExp(
+      r'(?:spent\s+(?:via|thru).*?Card.*?at|spent\s+at)\s+([A-Za-z0-9\s\.\*\-\@\_]+?)(?:\s+(?:on|for|avl|bal|ref|not|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (cardAtMatch != null && cardAtMatch.groupCount >= 1) {
       var cand = cardAtMatch.group(1)!.trim();
-      cand = cand.replaceFirst(RegExp(r'^www[\.\s]+', caseSensitive: false), '').trim();
+      cand = cand
+          .replaceFirst(RegExp(r'^www[\.\s]+', caseSensitive: false), '')
+          .trim();
       final candidate = _cleanMerchantString(cand);
       if (candidate != null) return _capitalizeWords(candidate);
     }
 
     // 0.10 Axis Bank ATM Cash Withdrawal Location (e.g. "on +BANGALORE 24-07-2026")
-    final atmLocMatch = RegExp(r'on\s+\+([A-Za-z0-9\s]+?)\s+\d{2}[\-\/]\d{2}[\-\/]\d{4}', caseSensitive: false).firstMatch(cleanedText);
+    final atmLocMatch = RegExp(
+      r'on\s+\+([A-Za-z0-9\s]+?)\s+\d{2}[\-\/]\d{2}[\-\/]\d{4}',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (atmLocMatch != null && atmLocMatch.groupCount >= 1) {
       final loc = _capitalizeWords(atmLocMatch.group(1)!.trim().toLowerCase());
       return 'ATM Cash Withdrawal ($loc)';
@@ -435,7 +572,10 @@ class EngineBRegexParser {
 
     // 0.1 FASTag Toll Plaza check
     if (cleanedText.toLowerCase().contains('fastag')) {
-      final tollMatch = RegExp(r'\bat\s+([A-Za-z0-9\s\.\*\-\@]+?toll\s+plaza[A-Za-z0-9\s]*?)(?:\s+(?:on|ref|wallet|avl|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+      final tollMatch = RegExp(
+        r'\bat\s+([A-Za-z0-9\s\.\*\-\@]+?toll\s+plaza[A-Za-z0-9\s]*?)(?:\s+(?:on|ref|wallet|avl|\.|\,|$))',
+        caseSensitive: false,
+      ).firstMatch(cleanedText);
       if (tollMatch != null && tollMatch.groupCount >= 1) {
         final candidate = _cleanMerchantString(tollMatch.group(1));
         if (candidate != null) return _capitalizeWords(candidate);
@@ -459,12 +599,16 @@ class EngineBRegexParser {
       final candidate = _cleanMerchantString(autoPayMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
     }
-    final mandateMatch = RegExp(r'for\s+([A-Za-z0-9\s\.\*\-\@]+?)\s+mandate\b', caseSensitive: false).firstMatch(cleanedText);
+    final mandateMatch = RegExp(
+      r'for\s+([A-Za-z0-9\s\.\*\-\@]+?)\s+mandate\b',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (mandateMatch != null && mandateMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(mandateMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
     }
-    if (cleanedText.toLowerCase().contains('sip of') && cleanedText.toLowerCase().contains('mutualfund')) {
+    if (cleanedText.toLowerCase().contains('sip of') &&
+        cleanedText.toLowerCase().contains('mutualfund')) {
       return 'Mutual Fund SIP';
     }
 
@@ -472,10 +616,14 @@ class EngineBRegexParser {
     if (cleanedText.toLowerCase().contains('sms alert charges')) {
       return 'SMS Alert Charges';
     }
-    if (cleanedText.toLowerCase().contains('annual debit card fee') || cleanedText.toLowerCase().contains('debit card fee')) {
+    if (cleanedText.toLowerCase().contains('annual debit card fee') ||
+        cleanedText.toLowerCase().contains('debit card fee')) {
       return 'Annual Debit Card Fee';
     }
-    final towardsMatch = RegExp(r'towards\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:for|on|avl|bal|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+    final towardsMatch = RegExp(
+      r'towards\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:for|on|avl|bal|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (towardsMatch != null && towardsMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(towardsMatch.group(1));
       if (candidate != null && !candidate.toLowerCase().contains('your')) {
@@ -485,7 +633,10 @@ class EngineBRegexParser {
 
     // 0.4 ATM Cash Withdrawal
     if (cleanedText.toLowerCase().contains('cash withdrawal')) {
-      final atmMatch = RegExp(r'at\s+(ATM\s+[A-Za-z0-9\s]+?)(?:\s+on|\.|\,|$)', caseSensitive: false).firstMatch(cleanedText);
+      final atmMatch = RegExp(
+        r'at\s+(ATM\s+[A-Za-z0-9\s]+?)(?:\s+on|\.|\,|$)',
+        caseSensitive: false,
+      ).firstMatch(cleanedText);
       if (atmMatch != null && atmMatch.groupCount >= 1) {
         final candidate = _cleanMerchantString(atmMatch.group(1));
         if (candidate != null) return _capitalizeWords(candidate);
@@ -494,7 +645,10 @@ class EngineBRegexParser {
     }
 
     // 0.5 For transaction at [Merchant] (e.g. HSBC: for transaction at FLIPKART INDIA)
-    final txnAtMatch = RegExp(r'for\s+transaction\s+at\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:on|ref|avl|bal|\.|\,|$))', caseSensitive: false).firstMatch(cleanedText);
+    final txnAtMatch = RegExp(
+      r'for\s+transaction\s+at\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:on|ref|avl|bal|\.|\,|$))',
+      caseSensitive: false,
+    ).firstMatch(cleanedText);
     if (txnAtMatch != null && txnAtMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(txnAtMatch.group(1));
       if (candidate != null) return _capitalizeWords(candidate);
@@ -502,11 +656,17 @@ class EngineBRegexParser {
 
     // 1. Multi-line Card SMS check (e.g. Axis Bank card SMS with standalone merchant line)
     if (cleanedText.contains('\n')) {
-      final lines = cleanedText.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+      final lines = cleanedText
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
       for (final line in lines) {
         final lLow = line.toLowerCase();
         // Skip spent/amount lines
-        if (RegExp(r'\b(?:spent|debited|credited|paid|withdrawn|transaction|charged|deducted)\b').hasMatch(lLow) ||
+        if (RegExp(
+              r'\b(?:spent|debited|credited|paid|withdrawn|transaction|charged|deducted)\b',
+            ).hasMatch(lLow) ||
             RegExp(r'(?:inr|rs|₹)\s?[\d,]+').hasMatch(lLow)) {
           continue;
         }
@@ -515,7 +675,9 @@ class EngineBRegexParser {
           continue;
         }
         // Skip timestamp / date lines
-        if (RegExp(r'\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b').hasMatch(lLow)) {
+        if (RegExp(
+          r'\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b|\b\d{1,2}:\d{2}(?::\d{2})?\b',
+        ).hasMatch(lLow)) {
           continue;
         }
         // Skip balance / limit lines
@@ -523,7 +685,9 @@ class EngineBRegexParser {
           continue;
         }
         // Skip security / dispute / helpdesk lines
-        if (RegExp(r'\b(?:not\s+you|dispute|block|call|report|forward|helpdesk)\b').hasMatch(lLow)) {
+        if (RegExp(
+          r'\b(?:not\s+you|dispute|block|call|report|forward|helpdesk)\b',
+        ).hasMatch(lLow)) {
           continue;
         }
         final candidate = _cleanMerchantString(line);
@@ -546,7 +710,9 @@ class EngineBRegexParser {
     }
 
     // 3. Fallback to general vpaOrMerchantRegex if primary regex didn't match a valid payee
-    for (final match in IndianBankingConstants.vpaOrMerchantRegex.allMatches(cleanedText)) {
+    for (final match in IndianBankingConstants.vpaOrMerchantRegex.allMatches(
+      cleanedText,
+    )) {
       final candidate = _cleanMerchantMatch(match);
       if (candidate != null) {
         return _capitalizeWords(candidate);
@@ -554,7 +720,9 @@ class EngineBRegexParser {
     }
 
     // 4. Inline Card SMS pattern (e.g. "17:34:28 IST SRI VENKATE Avl Limit: ...")
-    final cardMatch = IndianBankingConstants.cardMerchantRegex.firstMatch(cleanedText);
+    final cardMatch = IndianBankingConstants.cardMerchantRegex.firstMatch(
+      cleanedText,
+    );
     if (cardMatch != null && cardMatch.groupCount >= 1) {
       final candidate = _cleanMerchantString(cardMatch.group(1));
       if (candidate != null) {
@@ -565,7 +733,10 @@ class EngineBRegexParser {
     // 5. Check known popular Indian merchants using WHOLE-WORD boundaries (\b)
     for (final entry in IndianBankingConstants.categoryKeywords.entries) {
       for (final keyword in entry.value) {
-        final regex = RegExp(r'\b' + RegExp.escape(keyword) + r'\b', caseSensitive: false);
+        final regex = RegExp(
+          r'\b' + RegExp.escape(keyword) + r'\b',
+          caseSensitive: false,
+        );
         if (regex.hasMatch(lower)) {
           return _capitalizeWords(keyword);
         }
@@ -581,16 +752,30 @@ class EngineBRegexParser {
     if (candidate.isEmpty) return null;
 
     // Strip technical UPI / IMPS routing prefixes (e.g. "UPI/P2M/625018174515/Panipuri Gayatri Te" -> "Panipuri Gayatri Te")
-    candidate = candidate.replaceFirst(RegExp(r'^(?:UPI|IMPS)\/(?:P2M|P2A)\/(?:\d+\/)?', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceFirst(
+          RegExp(
+            r'^(?:UPI|IMPS)\/(?:P2M|P2A)\/(?:\d+\/)?',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
 
     // Strip ACH-DR- prefix (e.g. "ACH-DR-GROWW INVEST TECH P" -> "GROWW INVEST TECH P")
-    candidate = candidate.replaceFirst(RegExp(r'^ACH[\s\-]DR[\s\-]+', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceFirst(RegExp(r'^ACH[\s\-]DR[\s\-]+', caseSensitive: false), '')
+        .trim();
 
     // Strip "VPA " prefix if captured (e.g. "to VPA food@swiggy" -> "food@swiggy")
-    candidate = candidate.replaceFirst(RegExp(r'^vpa\s+', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceFirst(RegExp(r'^vpa\s+', caseSensitive: false), '')
+        .trim();
 
     // Strip leading "towards " or "from " if captured
-    candidate = candidate.replaceFirst(RegExp(r'^(?:towards|from)\s+', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceFirst(RegExp(r'^(?:towards|from)\s+', caseSensitive: false), '')
+        .trim();
 
     // Normalize OCR / character encoding corruption (e.g. "¡" in SMS gateway for "@")
     candidate = candidate.replaceAll('¡', '@');
@@ -600,24 +785,44 @@ class EngineBRegexParser {
       final parts = candidate.split('@');
       final prefix = parts[0].trim();
       final suffix = parts[1].trim().toLowerCase();
-      const knownBrands = ['swiggy', 'zomato', 'zepto', 'blinkit', 'uber', 'ola', 'amazon', 'flipkart'];
+      const knownBrands = [
+        'swiggy',
+        'zomato',
+        'zepto',
+        'blinkit',
+        'uber',
+        'ola',
+        'amazon',
+        'flipkart',
+      ];
       if (knownBrands.contains(suffix)) {
         candidate = parts[1].trim();
-      } else if (!RegExp(r'^\+?[\d\s\-]+$').hasMatch(prefix) && prefix.length > 2) {
+      } else if (!RegExp(r'^\+?[\d\s\-]+$').hasMatch(prefix) &&
+          prefix.length > 2) {
         candidate = prefix.replaceAll(RegExp(r'[\._\-]'), ' ').trim();
       }
     }
 
     // Strip "www " or "www." prefix if it precedes a brand name like "WWW FACEBOOK COM ADSMANAG"
-    candidate = candidate.replaceFirst(RegExp(r'^www[\.\s]+', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceFirst(RegExp(r'^www[\.\s]+', caseSensitive: false), '')
+        .trim();
 
     // Reject standalone order references (e.g. "order SMOVBRTOT34553" or "order")
-    if (RegExp(r'^(?:your\s+)?order(?:\s+[A-Za-z0-9]+)?$', caseSensitive: false).hasMatch(candidate)) {
+    if (RegExp(
+      r'^(?:your\s+)?order(?:\s+[A-Za-z0-9]+)?$',
+      caseSensitive: false,
+    ).hasMatch(candidate)) {
       return null;
     }
 
     // Strip trailing order ID references (e.g. "Zepto order SMOVBRTOT34553" -> "Zepto")
-    candidate = candidate.replaceAll(RegExp(r'\s+order\s+[A-Za-z0-9]+.*$', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceAll(
+          RegExp(r'\s+order\s+[A-Za-z0-9]+.*$', caseSensitive: false),
+          '',
+        )
+        .trim();
 
     // Reject date or timestamp strings (e.g. "on 12-09-2026", "12-09-2026 14:22:10")
     if (RegExp(r'\b\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}\b').hasMatch(candidate) ||
@@ -645,7 +850,15 @@ class EngineBRegexParser {
       return null;
     }
     // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute", "trxn"
-    candidate = candidate.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
+    candidate = candidate
+        .replaceAll(
+          RegExp(
+            r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
     // Remove trailing punctuation and slashes
     candidate = candidate.replaceAll(RegExp(r'[\.\,\:\-\/\\]+$'), '').trim();
     return (candidate.isNotEmpty && candidate.length > 1) ? candidate : null;
@@ -673,7 +886,10 @@ class EngineBRegexParser {
 
   static bool _isPersonName(String merchant) {
     final trimmed = merchant.trim();
-    if (trimmed.isEmpty || trimmed == 'Unknown' || trimmed == 'Unknown Merchant') return false;
+    if (trimmed.isEmpty ||
+        trimmed == 'Unknown' ||
+        trimmed == 'Unknown Merchant')
+      return false;
     final lower = trimmed.toLowerCase();
 
     // Not a person if it contains commercial/store/utility keywords
@@ -689,9 +905,14 @@ class EngineBRegexParser {
     if (businessWords.hasMatch(lower)) return false;
 
     // Check if it's 2 or 3 words containing only letters/dots (e.g. "Adusumalli Nikhil", "Ramesh Kumar")
-    final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = trimmed
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.length >= 2 && words.length <= 4) {
-      final isAllAlpha = words.every((w) => RegExp(r'^[a-zA-Z\.]+$').hasMatch(w));
+      final isAllAlpha = words.every(
+        (w) => RegExp(r'^[a-zA-Z\.]+$').hasMatch(w),
+      );
       if (isAllAlpha) return true;
     }
 
@@ -700,9 +921,12 @@ class EngineBRegexParser {
 
   static String _capitalizeWords(String str) {
     if (str.isEmpty) return str;
-    return str.split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return str
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 }

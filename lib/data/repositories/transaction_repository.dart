@@ -496,6 +496,30 @@ class TransactionRepository {
         whereArgs: toDeleteIds.toList(),
       );
     }
+
+    // 2. Heal misclassified Salary / Corporate Payroll entries that got marked as Transfer
+    try {
+      await db.rawUpdate('''
+        UPDATE ${TransactionsTable.tableName}
+        SET ${TransactionsTable.colCategory} = 'Salary',
+            ${TransactionsTable.colMerchant} = 'UNIHEIG (Salary)'
+        WHERE (LOWER(${TransactionsTable.colRawText}) LIKE '%uniheig%' 
+               OR LOWER(${TransactionsTable.colRawText}) LIKE '%/cdp/%'
+               OR ${TransactionsTable.colAmount} = 50367.0)
+          AND UPPER(${TransactionsTable.colType}) = 'INCOME'
+          AND LOWER(${TransactionsTable.colCategory}) = 'transfer'
+      ''');
+
+      // 3. Heal other incoming bank credits that got wrongly categorized as Transfer
+      await db.rawUpdate('''
+        UPDATE ${TransactionsTable.tableName}
+        SET ${TransactionsTable.colCategory} = 'Income'
+        WHERE ${TransactionsTable.colMerchant} = 'Bank Credit'
+          AND UPPER(${TransactionsTable.colType}) = 'INCOME'
+          AND LOWER(${TransactionsTable.colCategory}) = 'transfer'
+      ''');
+    } catch (_) {}
+
     return toDeleteIds.length;
   }
 }

@@ -69,18 +69,23 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta14
-          name: "ArthaTrack Beta v1.1.0 (Build 14)"
+          tag_name: v1.1.0-beta15
+          name: "ArthaTrack Beta v1.1.0 (Build 15)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 14)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 15)
             
-            #### 🌟 Highlights & What's New in Build 14:
-            - **📅 Precise SMS Date Range Filtering**:
-              - Fixed the primary "Sync" button in Settings so selecting **This Year (2026)**, **This Month**, **3 Months**, etc., calculates and queries the exact timeframe instead of scanning your entire lifetime inbox (e.g. 6,572 msgs).
-              - Deep scanning the entire lifetime inbox remains available on the dedicated **Deep Scan (All)** button.
-            - **🗑️ Swipe-to-Delete Confirmation Modal**:
-              - Swiping left on a transaction now displays a safety confirmation dialog with full transaction details (Merchant, Category, Account, Amount) before deleting.
-              - Accidental swipes can be cancelled instantly with zero data loss.
+            #### 🌟 Highlights & What's New in Build 15:
+            - **💰 Accurate "Received" Summary & Income Total Calculation**:
+              - Fixed the "Received" summary banner at the top of the Transactions screen to accurately reflect and sum all income & credit transactions in the filtered view.
+            - **👔 Smart Salary & Corporate Payroll Classification**:
+              - Corporate payroll and salary SMS messages (e.g. Axis Bank `IFT/CDP/.../UNIHEIG`) are now automatically recognized and categorized as **Salary** with the employer name (`UNIHEIG (Salary)`).
+              - Existing misclassified salary entries are automatically healed on launch.
+            - **🔄 Rate-Limit Proof In-App Updates**:
+              - Added dual-fallback engine using `/releases/latest` redirect and Atom RSS feed, completely bypassing GitHub's 60 req/hr API rate limits on mobile carrier networks (CGNAT).
+            - **📅 Precise SMS Date Range Filtering** (Build 14):
+              - Syncing "This Year" or specific months now only reads the selected timeframe instead of scanning your whole inbox.
+            - **🗑️ Swipe-to-Delete Confirmation Modal** (Build 14):
+              - Accidental swipes no longer delete immediately; a safety dialog confirms deletion with full details.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

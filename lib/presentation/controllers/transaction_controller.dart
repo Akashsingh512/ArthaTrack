@@ -47,11 +47,11 @@ class TransactionController extends ChangeNotifier {
   int get failedCount => _allTransactions.where((t) => t.isFailed).length;
 
   double get filteredIncome => _filteredTransactions
-      .where((t) => t.isCredit && !t.isFailed && !t.isTransfer)
+      .where((t) => t.isCredit && !t.isFailed)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double get filteredExpense => _filteredTransactions
-      .where((t) => t.isExpense && !t.isFailed && !t.isTransfer)
+      .where((t) => t.isExpense && !t.isFailed)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   /// Returns distinct months present in all loaded transactions, newest first
