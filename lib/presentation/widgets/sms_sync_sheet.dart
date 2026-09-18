@@ -126,12 +126,10 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
       final analytics = Provider.of<AnalyticsController>(context, listen: false);
       final balance = Provider.of<BalanceSheetController>(context, listen: false);
 
-      await Future.wait([
-        dashboard.loadDashboardData(),
-        tx.loadTransactions(),
-        analytics.loadAnalytics(),
-        balance.loadBalanceSheetData(),
-      ]);
+      await dashboard.loadDashboardData();
+      await tx.loadTransactions();
+      await analytics.loadAnalytics();
+      await balance.loadBalanceSheet();
     } else {
       AppHaptics.error();
     }

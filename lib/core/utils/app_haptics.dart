@@ -41,6 +41,11 @@ class AppHaptics {
     _trigger('heavy', () => HapticFeedback.heavyImpact());
   }
 
+  /// Success vibration for completed sync or saved transaction
+  static void success() {
+    _trigger('medium', () => HapticFeedback.mediumImpact());
+  }
+
   /// Error vibration for declined transactions or validation warnings
   static void error() {
     _trigger('error', () => HapticFeedback.vibrate());

@@ -137,6 +137,8 @@ class AppColors {
   static const Color surface = Color(0xFF151D2F);
   static const Color surfaceElevated = Color(0xFF1E293B);
   static const Color surfaceCard = Color(0xFF1A2338);
+  static const Color border = Color(0xFF1E293B);
+  static const Color borderSubtle = Color(0xFF172338);
 
   // Brand Accents
   static const Color emerald = Color(0xFF10B981);
