@@ -69,22 +69,18 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta13
-          name: "ArthaTrack Beta v1.1.0 (Build 13)"
+          tag_name: v1.1.0-beta14
+          name: "ArthaTrack Beta v1.1.0 (Build 14)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 13)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 14)
             
-            #### 🌟 Highlights & What's New in Build 13:
-            - **🔄 Background SMS Sync & Instant Resume**:
-              - Added ongoing system notification with live progress bar so Android does not kill or freeze sync when the app is minimized or backgrounded.
-              - In-memory fast-forwarding resumes interrupted syncs instantly (<0.001 ms per message) without re-parsing from scratch.
-            - **🛡️ Duplicate Transactions Elimination**:
-              - Mutual Fund / SIP Mandate Deduplication: Eliminates duplicate Axis Bank ACH vs. NACH debits appearing for the same mandate.
-              - Auto-heals reference numbers from raw SMS (including UPI P2A/P2M and UMRN mandates).
-              - Automatic database cleanup purges legacy duplicate mandate entries on launch.
-              - Self-transfers between own accounts are properly excluded from income and expense aggregate calculations.
-            - **🎨 Dialog Theme & Contrast Polish**:
-              - Fixed "Set Balance" and "Edit Account" dialogs in Light Theme so text is crisp and clear against themed surface backgrounds.
+            #### 🌟 Highlights & What's New in Build 14:
+            - **📅 Precise SMS Date Range Filtering**:
+              - Fixed the primary "Sync" button in Settings so selecting **This Year (2026)**, **This Month**, **3 Months**, etc., calculates and queries the exact timeframe instead of scanning your entire lifetime inbox (e.g. 6,572 msgs).
+              - Deep scanning the entire lifetime inbox remains available on the dedicated **Deep Scan (All)** button.
+            - **🗑️ Swipe-to-Delete Confirmation Modal**:
+              - Swiping left on a transaction now displays a safety confirmation dialog with full transaction details (Merchant, Category, Account, Amount) before deleting.
+              - Accidental swipes can be cancelled instantly with zero data loss.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

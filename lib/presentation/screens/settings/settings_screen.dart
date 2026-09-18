@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
@@ -169,7 +170,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isAi
                       ? 'Transactions parsed via strict JSON schema prompt with your free-tier key.'
                       : 'Offline heuristic regex active. Zero network calls; parses entirely on-device.',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -219,21 +223,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: AppConstants.providerGemini,
                   child: Text(
                     'Google Gemini (gemini-flash-latest)',
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                   ),
                 ),
                 DropdownMenuItem(
                   value: AppConstants.providerGroq,
                   child: Text(
                     'Groq (llama-3.3-70b-versatile)',
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                   ),
                 ),
                 DropdownMenuItem(
                   value: AppConstants.providerBedrock,
                   child: Text(
                     'AWS Bedrock (qwen.qwen3-coder-next)',
-                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                   ),
                 ),
               ],
@@ -284,14 +294,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               controller: _apiKeyController,
               obscureText: _obscureKey,
               decoration: InputDecoration(
-                labelText: settings.selectedProvider == AppConstants.providerBedrock
+                labelText:
+                    settings.selectedProvider == AppConstants.providerBedrock
                     ? 'Bedrock API Key / Bearer Token'
                     : '${settings.selectedProvider} API Key',
-                hintText: settings.selectedProvider == AppConstants.providerBedrock
+                hintText:
+                    settings.selectedProvider == AppConstants.providerBedrock
                     ? 'Paste your Bedrock API key here...'
                     : 'Paste your secret API key here...',
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureKey ? Icons.visibility : Icons.visibility_off, size: 18),
+                  icon: Icon(
+                    _obscureKey ? Icons.visibility : Icons.visibility_off,
+                    size: 18,
+                  ),
                   onPressed: () => setState(() => _obscureKey = !_obscureKey),
                 ),
               ),
@@ -305,7 +320,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       await settings.saveApiKey(_apiKeyController.text);
-                      if (settings.selectedProvider == AppConstants.providerBedrock) {
+                      if (settings.selectedProvider ==
+                          AppConstants.providerBedrock) {
                         await settings.saveBedrockConfig(
                           model: _bedrockModelController.text,
                           region: _bedrockRegionController.text,
@@ -314,7 +330,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('API Key saved securely in Keystore!'),
+                            content: Text(
+                              'API Key saved securely in Keystore!',
+                            ),
                             backgroundColor: AppColors.emerald,
                           ),
                         );
@@ -334,7 +352,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? null
                         : () async {
                             await settings.saveApiKey(_apiKeyController.text);
-                            if (settings.selectedProvider == AppConstants.providerBedrock) {
+                            if (settings.selectedProvider ==
+                                AppConstants.providerBedrock) {
                               await settings.saveBedrockConfig(
                                 model: _bedrockModelController.text,
                                 region: _bedrockRegionController.text,
@@ -349,8 +368,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ? 'API Key connection test passed!'
                                         : 'API Key test failed. Check key validity and internet connection.',
                                   ),
-                                  backgroundColor:
-                                      success ? AppColors.emerald : AppColors.ruby,
+                                  backgroundColor: success
+                                      ? AppColors.emerald
+                                      : AppColors.ruby,
                                 ),
                               );
                             }
@@ -361,20 +381,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text('Test Key', style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.w600)),
+                        : Text(
+                            'Test Key',
+                            style: TextStyle(
+                              color: context.colors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
                 if (settings.hasActiveKey) ...[
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.ruby),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.ruby,
+                    ),
                     onPressed: () async {
                       await settings.clearApiKey();
                       _apiKeyController.clear();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('API Key cleared. Reverted to Local Regex Engine.'),
+                            content: Text(
+                              'API Key cleared. Reverted to Local Regex Engine.',
+                            ),
                           ),
                         );
                       }
@@ -390,7 +421,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSmsPermissionSection(
-      BuildContext context, SettingsController settings) {
+    BuildContext context,
+    SettingsController settings,
+  ) {
     final granted = settings.isSmsPermissionGranted;
     final isSyncing = settings.isSmsSyncing;
 
@@ -409,14 +442,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SizedBox(width: 8),
                     Text(
                       'Bank SMS Inbox Sync',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: (granted ? AppColors.emerald : AppColors.saffron).withOpacity(0.15),
+                    color: (granted ? AppColors.emerald : AppColors.saffron)
+                        .withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -460,7 +500,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             else ...[
               // Default SMS Sync Period Setting
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: context.colors.surfaceElevated,
                   borderRadius: BorderRadius.circular(14),
@@ -481,7 +524,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: context.colors.emerald.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
@@ -490,16 +536,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             settings.smsDatePreset == 'this_month'
                                 ? 'This Month'
                                 : (settings.smsDatePreset == 'this_week'
-                                    ? 'This Week'
-                                    : (settings.smsDatePreset == 'last_month'
-                                        ? 'Last Month'
-                                        : (settings.smsDatePreset == 'last_3_months'
-                                            ? 'Last 3 Months'
-                                            : (settings.smsDatePreset == 'this_year'
-                                                ? 'This Year (2026)'
-                                                : (settings.smsDatePreset == 'all_time'
-                                                    ? 'All Time'
-                                                    : 'Custom Range'))))),
+                                      ? 'This Week'
+                                      : (settings.smsDatePreset == 'last_month'
+                                            ? 'Last Month'
+                                            : (settings.smsDatePreset ==
+                                                      'last_3_months'
+                                                  ? 'Last 3 Months'
+                                                  : (settings.smsDatePreset ==
+                                                            'this_year'
+                                                        ? 'This Year (2026)'
+                                                        : (settings.smsDatePreset ==
+                                                                  'all_time'
+                                                              ? 'All Time'
+                                                              : 'Custom Range'))))),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -512,54 +561,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'Choose which month or timeframe of messages to scan from your inbox.',
-                      style: TextStyle(fontSize: 11, color: context.colors.textMuted),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: context.colors.textMuted,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [
-                          {'id': 'this_month', 'label': 'This Month'},
-                          {'id': 'this_week', 'label': 'This Week'},
-                          {'id': 'last_month', 'label': 'Last Month'},
-                          {'id': 'last_3_months', 'label': '3 Months'},
-                          {'id': 'this_year', 'label': 'This Year'},
-                          {'id': 'all_time', 'label': 'All Time'},
-                        ].map((preset) {
-                          final isSelected = settings.smsDatePreset == preset['id'];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: ChoiceChip(
-                              label: Text(
-                                preset['label']!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected
-                                      ? (context.colors.isDark ? Colors.black : Colors.white)
-                                      : context.colors.textPrimary,
+                        children:
+                            [
+                              {'id': 'this_month', 'label': 'This Month'},
+                              {'id': 'this_week', 'label': 'This Week'},
+                              {'id': 'last_month', 'label': 'Last Month'},
+                              {'id': 'last_3_months', 'label': '3 Months'},
+                              {'id': 'this_year', 'label': 'This Year'},
+                              {'id': 'all_time', 'label': 'All Time'},
+                            ].map((preset) {
+                              final isSelected =
+                                  settings.smsDatePreset == preset['id'];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    preset['label']!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? (context.colors.isDark
+                                                ? Colors.black
+                                                : Colors.white)
+                                          : context.colors.textPrimary,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  selectedColor: context.colors.emerald,
+                                  backgroundColor: context.colors.surfaceCard,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                      color: isSelected
+                                          ? context.colors.emerald
+                                          : context.colors.border,
+                                    ),
+                                  ),
+                                  onSelected: isSyncing
+                                      ? null
+                                      : (selected) {
+                                          if (selected) {
+                                            AppHaptics.selection();
+                                            settings.setSmsDatePreset(
+                                              preset['id']!,
+                                            );
+                                          }
+                                        },
                                 ),
-                              ),
-                              selected: isSelected,
-                              selectedColor: context.colors.emerald,
-                              backgroundColor: context.colors.surfaceCard,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(
-                                  color: isSelected ? context.colors.emerald : context.colors.border,
-                                ),
-                              ),
-                              onSelected: isSyncing
-                                  ? null
-                                  : (selected) {
-                                      if (selected) {
-                                        AppHaptics.selection();
-                                        settings.setSmsDatePreset(preset['id']!);
-                                      }
-                                    },
-                            ),
-                          );
-                        }).toList(),
+                              );
+                            }).toList(),
                       ),
                     ),
                   ],
@@ -588,7 +650,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: const Icon(Icons.date_range_rounded, size: 18),
                   label: const Text(
                     'Select Specific Months or Range (e.g. Sept - Nov)...',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
                   ),
                 ),
               ),
@@ -602,7 +667,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: context.colors.surfaceCard,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: context.colors.emerald.withOpacity(0.4)),
+                    border: Border.all(
+                      color: context.colors.emerald.withOpacity(0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,20 +702,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: settings.smsSyncTotal > 0 ? settings.smsSyncProgress : null,
+                          value: settings.smsSyncTotal > 0
+                              ? settings.smsSyncProgress
+                              : null,
                           minHeight: 6,
                           backgroundColor: context.colors.surfaceElevated,
-                          valueColor: AlwaysStoppedAnimation<Color>(context.colors.emerald),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            context.colors.emerald,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.auto_awesome, size: 12, color: context.colors.emerald),
+                          Icon(
+                            Icons.auto_awesome,
+                            size: 12,
+                            color: context.colors.emerald,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${settings.smsSyncImportedSoFar} transactions detected so far',
-                            style: TextStyle(fontSize: 11, color: context.colors.textMuted),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: context.colors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -664,31 +742,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: context.colors.emerald,
-                        foregroundColor: context.colors.isDark ? Colors.black : Colors.white,
+                        foregroundColor: context.colors.isDark
+                            ? Colors.black
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: isSyncing
                           ? null
-                          : () => _triggerSmsSync(
+                          : () {
+                              final start = settings.getCalculatedStartDate(
+                                settings.smsDatePreset,
+                              );
+                              final end = settings.getCalculatedEndDate(
+                                settings.smsDatePreset,
+                              );
+                              _triggerSmsSync(
                                 context,
                                 settings,
                                 limit: 50000,
-                                label: 'Scanning messages for ${settings.smsDatePreset == "this_month" ? "This Month" : settings.smsDatePreset}...',
-                              ),
+                                startDate: start,
+                                endDate: end,
+                                label:
+                                    'Scanning messages for ${_getPresetLabel(settings.smsDatePreset)}...',
+                              );
+                            },
                       icon: isSyncing
                           ? SizedBox(
                               width: 14,
                               height: 14,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: context.colors.isDark ? Colors.black : Colors.white,
+                                color: context.colors.isDark
+                                    ? Colors.black
+                                    : Colors.white,
                               ),
                             )
                           : const Icon(Icons.sync, size: 18),
                       label: Text(
                         isSyncing
                             ? 'Syncing...'
-                            : 'Sync (${settings.smsDatePreset == "this_month" ? "This Month" : (settings.smsDatePreset == "all_time" ? "All" : settings.smsDatePreset)})',
+                            : 'Sync (${_getPresetLabel(settings.smsDatePreset)})',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -704,13 +797,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: isSyncing
                           ? null
                           : () => _triggerSmsSync(
-                                context,
-                                settings,
-                                limit: 50000,
-                                startDate: null,
-                                endDate: null,
-                                label: 'Deep scanning entire SMS inbox history (up to 50,000 msgs)...',
-                              ),
+                              context,
+                              settings,
+                              limit: 50000,
+                              isDeepScan: true,
+                              label: 'Deep scanning entire SMS inbox history (up to 50,000 msgs)...',
+                            ),
                       icon: const Icon(Icons.all_inclusive, size: 18),
                       label: const Text(
                         'Deep Scan (All)',
@@ -727,19 +819,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _getPresetLabel(String preset) {
+    switch (preset) {
+      case 'this_month':
+        return 'This Month';
+      case 'this_week':
+        return 'This Week';
+      case 'last_month':
+        return 'Last Month';
+      case 'last_3_months':
+        return '3 Months';
+      case 'last_6_months':
+        return '6 Months';
+      case 'this_year':
+        return 'This Year';
+      case 'all_time':
+        return 'All Time';
+      case 'custom':
+        return 'Custom';
+      default:
+        return 'Inbox';
+    }
+  }
+
   Future<void> _triggerSmsSync(
     BuildContext context,
     SettingsController settings, {
     int? limit,
     DateTime? startDate,
     DateTime? endDate,
+    bool isDeepScan = false,
     String? label,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
-    final txController = Provider.of<TransactionController>(context, listen: false);
+    final txController = Provider.of<TransactionController>(
+      context,
+      listen: false,
+    );
     final analytics = Provider.of<AnalyticsController>(context, listen: false);
     final balance = Provider.of<BalanceSheetController>(context, listen: false);
+
+    final effectiveStart = isDeepScan
+        ? null
+        : (startDate ??
+              settings.getCalculatedStartDate(settings.smsDatePreset));
+    final effectiveEnd = isDeepScan
+        ? null
+        : (endDate ?? settings.getCalculatedEndDate(settings.smsDatePreset));
 
     messenger.showSnackBar(
       SnackBar(
@@ -750,9 +877,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final result = await settings.syncSmsInbox(
       limit: limit ?? 0,
-      startDate: startDate,
-      endDate: endDate,
-      explicitDateFilter: true,
+      startDate: effectiveStart,
+      endDate: effectiveEnd,
+      explicitDateFilter: isDeepScan,
     );
 
     if (!context.mounted) return;
@@ -808,7 +935,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildNotificationPermissionSection(
-      BuildContext context, SettingsController settings) {
+    BuildContext context,
+    SettingsController settings,
+  ) {
     final granted = settings.isNotificationPermissionGranted;
 
     return Card(
@@ -822,18 +951,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.notifications_active, color: AppColors.saffron, size: 20),
+                    Icon(
+                      Icons.notifications_active,
+                      color: AppColors.saffron,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Android Notification Interceptor',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: (granted ? AppColors.emerald : AppColors.saffron).withOpacity(0.15),
+                    color: (granted ? AppColors.emerald : AppColors.saffron)
+                        .withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -857,13 +997,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: granted ? AppColors.surfaceElevated : AppColors.saffron,
-                  foregroundColor: granted ? AppColors.textPrimary : Colors.black,
+                  backgroundColor: granted
+                      ? AppColors.surfaceElevated
+                      : AppColors.saffron,
+                  foregroundColor: granted
+                      ? AppColors.textPrimary
+                      : Colors.black,
                 ),
                 onPressed: () => settings.requestNotificationPermission(),
-                icon: Icon(granted ? Icons.check_circle : Icons.launch, size: 18),
+                icon: Icon(
+                  granted ? Icons.check_circle : Icons.launch,
+                  size: 18,
+                ),
                 label: Text(
-                  granted ? 'Notification Access Enabled' : 'Grant Notification Access',
+                  granted
+                      ? 'Notification Access Enabled'
+                      : 'Grant Notification Access',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -889,15 +1038,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.mail_lock, color: AppColors.royalBlue, size: 20),
+                    const Icon(
+                      Icons.mail_lock,
+                      color: AppColors.royalBlue,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Text(
                       'Gmail Ingestion (Read-Only)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     IconButton(
-                      icon: const Icon(Icons.help_outline, color: AppColors.textMuted, size: 18),
+                      icon: const Icon(
+                        Icons.help_outline,
+                        color: AppColors.textMuted,
+                        size: 18,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       tooltip: 'Google Cloud Setup Guide',
@@ -906,9 +1066,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: (isSignedIn ? AppColors.emerald : AppColors.textMuted).withOpacity(0.15),
+                    color:
+                        (isSignedIn ? AppColors.emerald : AppColors.textMuted)
+                            .withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -916,7 +1081,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: isSignedIn ? AppColors.emerald : AppColors.textMuted,
+                      color: isSignedIn
+                          ? AppColors.emerald
+                          : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -931,7 +1098,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 10),
               Text(
                 'Connected account: ${gmail.currentUser!.email}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.emerald),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.emerald,
+                ),
               ),
             ],
             const SizedBox(height: 14),
@@ -947,12 +1118,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: settings.isGmailSyncing
                           ? null
-                          : () => _triggerGmailSync(context, settings, maxEmails: 100),
+                          : () => _triggerGmailSync(
+                              context,
+                              settings,
+                              maxEmails: 100,
+                            ),
                       icon: settings.isGmailSyncing
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Icon(Icons.sync, size: 18),
                       label: const Text(
@@ -971,7 +1149,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: settings.isGmailSyncing
                           ? null
-                          : () => _triggerGmailSync(context, settings, maxEmails: 500),
+                          : () => _triggerGmailSync(
+                              context,
+                              settings,
+                              maxEmails: 500,
+                            ),
                       icon: const Icon(Icons.all_inclusive, size: 18),
                       label: const Text(
                         'Deep Scan (500)',
@@ -991,7 +1173,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           await gmail.signOut();
                           setState(() {});
                         },
-                  icon: const Icon(Icons.logout, size: 16, color: AppColors.textMuted),
+                  icon: const Icon(
+                    Icons.logout,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
                   label: const Text(
                     'Disconnect Google Account',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13),
@@ -1013,7 +1199,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (account != null && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Connected to Google as ${account.email}'),
+                            content: Text(
+                              'Connected to Google as ${account.email}',
+                            ),
                             backgroundColor: AppColors.emerald,
                           ),
                         );
@@ -1026,7 +1214,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                   },
                   icon: const Icon(Icons.login, size: 18),
-                  label: const Text('Connect Google Account', style: TextStyle(fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Connect Google Account',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
@@ -1043,13 +1234,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
-    final txController = Provider.of<TransactionController>(context, listen: false);
+    final txController = Provider.of<TransactionController>(
+      context,
+      listen: false,
+    );
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(maxEmails >= 500
-            ? 'Deep scanning up to $maxEmails banking emails from Gmail...'
-            : 'Scanning up to $maxEmails recent banking emails from Gmail...'),
+        content: Text(
+          maxEmails >= 500
+              ? 'Deep scanning up to $maxEmails banking emails from Gmail...'
+              : 'Scanning up to $maxEmails recent banking emails from Gmail...',
+        ),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -1081,10 +1277,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _showGoogleCloudSetupDialog(BuildContext context, [String? errorMessage]) {
+  void _showGoogleCloudSetupDialog(
+    BuildContext context, [
+    String? errorMessage,
+  ]) {
     const String packageName = 'com.arthatrack.app';
-    const String sha1 = '1D:F8:96:94:51:9C:8F:7C:78:65:8D:6E:44:A6:F3:06:05:DA:47:D2';
-    const String sha256 = '9F:64:55:F8:E4:AE:52:96:E9:58:05:CA:A7:BF:75:C1:26:7E:52:7E:E1:51:17:30:99:35:F4:82:9C:3C:78:F9';
+    const String sha1 =
+        '1D:F8:96:94:51:9C:8F:7C:78:65:8D:6E:44:A6:F3:06:05:DA:47:D2';
+    const String sha256 =
+        '9F:64:55:F8:E4:AE:52:96:E9:58:05:CA:A7:BF:75:C1:26:7E:52:7E:E1:51:17:30:99:35:F4:82:9C:3C:78:F9';
 
     showDialog(
       context: context,
@@ -1099,7 +1300,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: AppColors.royalBlue.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.cloud_sync, color: AppColors.royalBlue, size: 22),
+              child: const Icon(
+                Icons.cloud_sync,
+                color: AppColors.royalBlue,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             const Expanded(
@@ -1123,17 +1328,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.ruby.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.ruby.withOpacity(0.3)),
+                      border: Border.all(
+                        color: AppColors.ruby.withOpacity(0.3),
+                      ),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.error_outline, color: AppColors.ruby, size: 18),
+                        Icon(
+                          Icons.error_outline,
+                          color: AppColors.ruby,
+                          size: 18,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Google Play Services returned: ApiException 10 (DEVELOPER_ERROR).\nThis occurs when Google Cloud has not authorized your app fingerprint yet.',
-                            style: TextStyle(fontSize: 11, color: AppColors.ruby, height: 1.3),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.ruby,
+                              height: 1.3,
+                            ),
                           ),
                         ),
                       ],
@@ -1143,7 +1358,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
                 const Text(
                   'To connect Gmail, Google requires registering your app in Google Cloud Console:',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -1173,7 +1391,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const Text(
                   '3-Step Setup on Google Cloud:',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _buildStepItem(
@@ -1194,16 +1416,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.emerald.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.emerald.withOpacity(0.3)),
+                    border: Border.all(
+                      color: AppColors.emerald.withOpacity(0.3),
+                    ),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.check_circle_outline, color: AppColors.emerald, size: 18),
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: AppColors.emerald,
+                        size: 18,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Tip: Bank SMS Inbox Sync is already 100% active and works offline with zero Google Cloud setup!',
-                          style: TextStyle(fontSize: 11, color: AppColors.emerald, height: 1.3),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.emerald,
+                            height: 1.3,
+                          ),
                         ),
                       ),
                     ],
@@ -1216,14 +1448,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: AppColors.royalBlue)),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: AppColors.royalBlue),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCopyBox(BuildContext context, {required String title, required String value}) {
+  Widget _buildCopyBox(
+    BuildContext context, {
+    required String title,
+    required String value,
+  }) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -1239,7 +1478,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.5),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.5,
+                ),
               ),
               InkWell(
                 onTap: () {
@@ -1256,7 +1500,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Icon(Icons.copy, size: 13, color: AppColors.royalBlue),
                     SizedBox(width: 4),
-                    Text('Copy', style: TextStyle(fontSize: 11, color: AppColors.royalBlue, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Copy',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.royalBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1265,7 +1516,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 4),
           SelectableText(
             value,
-            style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -1287,17 +1542,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: AppColors.royalBlue.withOpacity(0.5)),
             ),
-            child: Text(step, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.royalBlue)),
+            child: Text(
+              step,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: AppColors.royalBlue,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3)),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                height: 1.3,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-
 
   Widget _buildEncryptedBackupSection(BuildContext context) {
     return Card(
@@ -1320,7 +1588,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.emerald.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.cloud_sync, color: AppColors.emerald, size: 20),
+                  child: const Icon(
+                    Icons.cloud_sync,
+                    color: AppColors.emerald,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -1329,12 +1601,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         'Encrypted Auto-Backup & Migration',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       SizedBox(height: 2),
                       Text(
                         'Google Drive, WebDAV & Offline Phone Transfer',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
@@ -1344,7 +1622,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 10),
             const Text(
               'Zero-knowledge client-side encryption using AES-256 and PBKDF2. Automatically synchronizes your accounts, transactions, and budgets to Google Drive (private appDataFolder) or your personal WebDAV NAS.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 14),
             SizedBox(
@@ -1355,7 +1637,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   foregroundColor: AppColors.emerald,
                   side: const BorderSide(color: AppColors.emerald, width: 1.2),
                   padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () {
                   AppHaptics.medium();
@@ -1382,29 +1666,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(
-        content: Text(includeRawMessage
-            ? 'Generating audit CSV with raw SMS text...'
-            : 'Generating standard CSV export...'),
+        content: Text(
+          includeRawMessage
+              ? 'Generating audit CSV with raw SMS text...'
+              : 'Generating standard CSV export...',
+        ),
         duration: const Duration(seconds: 2),
       ),
     );
 
-    final path = await settings.exportTransactionsCsv(includeRawMessage: includeRawMessage);
+    final path = await settings.exportTransactionsCsv(
+      includeRawMessage: includeRawMessage,
+    );
     if (path != null && context.mounted) {
       AppHaptics.medium();
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.surfaceElevated,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Row(
             children: [
               const Icon(Icons.check_circle, color: AppColors.emerald),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  includeRawMessage ? 'Audit CSV Saved!' : 'Standard CSV Saved!',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  includeRawMessage
+                      ? 'Audit CSV Saved!'
+                      : 'Standard CSV Saved!',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1417,7 +1712,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 includeRawMessage
                     ? 'Your full audit CSV (including raw SMS messages) is saved directly in your phone\'s public Downloads folder:'
                     : 'Your CSV transaction spreadsheet is saved directly in your phone\'s public Downloads folder:',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.3,
+                ),
               ),
               const SizedBox(height: 10),
               Container(
@@ -1430,7 +1729,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.folder_open, color: AppColors.emerald, size: 20),
+                    const Icon(
+                      Icons.folder_open,
+                      color: AppColors.emerald,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1451,7 +1754,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 includeRawMessage
                     ? '💡 You can share this CSV file to check whether all SMS were captured and sorted properly.'
                     : '💡 Open your phone\'s Files or Downloads app to open it in Google Sheets, Excel, or share it.',
-                style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  height: 1.3,
+                ),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1460,19 +1767,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.emerald,
                     side: const BorderSide(color: AppColors.emerald),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   onPressed: () async {
                     AppHaptics.light();
-                    final csv = await settings.getTransactionsCsvString(includeRawMessage: includeRawMessage);
+                    final csv = await settings.getTransactionsCsvString(
+                      includeRawMessage: includeRawMessage,
+                    );
                     await Clipboard.setData(ClipboardData(text: csv));
                     if (ctx.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(includeRawMessage
-                              ? 'All audit CSV data (with SMS text) copied to clipboard!'
-                              : 'All CSV transaction data copied to clipboard!'),
+                          content: Text(
+                            includeRawMessage
+                                ? 'All audit CSV data (with SMS text) copied to clipboard!'
+                                : 'All CSV transaction data copied to clipboard!',
+                          ),
                           backgroundColor: AppColors.emerald,
                         ),
                       );
@@ -1493,7 +1806,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 AppHaptics.light();
                 Navigator.of(ctx).pop();
               },
-              child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Done',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -1508,7 +1824,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildDataManagementSection(BuildContext context, SettingsController settings) {
+  Widget _buildDataManagementSection(
+    BuildContext context,
+    SettingsController settings,
+  ) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -1551,18 +1870,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.receipt_long, color: AppColors.primary, size: 18),
+                      Icon(
+                        Icons.receipt_long,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Standard CSV Export',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Clean spreadsheet with Date, Type, Amount, Category, Merchant, Account, and Reference. Ideal for Excel & Google Sheets.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -1576,17 +1907,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: settings.isExporting
                           ? null
-                          : () => _handleExport(context, settings, includeRawMessage: false),
+                          : () => _handleExport(
+                              context,
+                              settings,
+                              includeRawMessage: false,
+                            ),
                       icon: settings.isExporting
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
                             )
                           : const Icon(Icons.file_download_outlined, size: 16),
                       label: const Text(
                         'Export Standard CSV',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1609,18 +1950,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.mark_chat_read_outlined, color: AppColors.royalBlue, size: 18),
+                      Icon(
+                        Icons.mark_chat_read_outlined,
+                        color: AppColors.royalBlue,
+                        size: 18,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Export with Raw SMS (Audit & Verification)',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Includes all parsed columns PLUS original unparsed SMS text (Raw Message). Share this to verify if all SMS are sorted properly.',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
@@ -1634,17 +1987,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: settings.isExporting
                           ? null
-                          : () => _handleExport(context, settings, includeRawMessage: true),
+                          : () => _handleExport(
+                              context,
+                              settings,
+                              includeRawMessage: true,
+                            ),
                       icon: settings.isExporting
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.royalBlue),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.royalBlue,
+                              ),
                             )
                           : const Icon(Icons.sms_outlined, size: 16),
                       label: const Text(
                         'Export with Raw SMS (Audit)',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -1682,7 +2045,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: AppColors.primary.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.category, color: AppColors.primary, size: 22),
+                    child: const Icon(
+                      Icons.category,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -1701,7 +2068,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.surfaceElevated,
                                 borderRadius: BorderRadius.circular(8),
@@ -1720,12 +2090,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 4),
                         const Text(
                           'Add custom categories (e.g. Fitness, Pets, Rent) for transaction tagging and budgeting.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: AppColors.textMuted,
+                  ),
                 ],
               ),
             ),
@@ -1735,7 +2112,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAppUpdateSection(BuildContext context, SettingsController settings) {
+  Widget _buildAppUpdateSection(
+    BuildContext context,
+    SettingsController settings,
+  ) {
     final colors = context.colors;
     final latest = settings.latestUpdateInfo;
     final hasNewVersion = latest != null && latest.hasUpdate;
@@ -1751,11 +2131,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colors.emerald.withOpacity(colors.isDark ? 0.2 : 0.12),
+                    color: colors.emerald.withOpacity(
+                      colors.isDark ? 0.2 : 0.12,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: colors.emerald.withOpacity(0.3)),
                   ),
-                  child: Icon(Icons.system_update_rounded, color: colors.emerald, size: 22),
+                  child: Icon(
+                    Icons.system_update_rounded,
+                    color: colors.emerald,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1792,7 +2178,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.verified_outlined, size: 18, color: colors.emerald),
+                  Icon(
+                    Icons.verified_outlined,
+                    size: 18,
+                    color: colors.emerald,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -1808,14 +2198,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         Text(
                           'Installed Build: ${AppConstants.appBuildNumber}',
-                          style: TextStyle(fontSize: 11, color: colors.textMuted),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textMuted,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   if (hasNewVersion) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.emerald.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
@@ -1832,7 +2228,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ] else ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.surfaceCard,
                         borderRadius: BorderRadius.circular(8),
@@ -1858,7 +2257,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: hasNewVersion ? colors.emerald : colors.surfaceElevated,
+                  backgroundColor: hasNewVersion
+                      ? colors.emerald
+                      : colors.surfaceElevated,
                   foregroundColor: hasNewVersion
                       ? (colors.isDark ? Colors.black : Colors.white)
                       : colors.textPrimary,
@@ -1875,7 +2276,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? null
                     : () async {
                         AppHaptics.medium();
-                        final info = await settings.checkForUpdates(force: true);
+                        final info = await settings.checkForUpdates(
+                          force: true,
+                        );
                         if (!context.mounted) return;
 
                         if (info.hasUpdate) {
@@ -1903,14 +2306,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       )
                     : Icon(
-                        hasNewVersion ? Icons.download_rounded : Icons.sync_rounded,
+                        hasNewVersion
+                            ? Icons.download_rounded
+                            : Icons.sync_rounded,
                         size: 18,
                       ),
                 label: Text(
                   settings.isCheckingUpdate
                       ? 'Checking GitHub for releases...'
-                      : (hasNewVersion ? 'Download Build ${latest.latestBuild}' : 'Check for Updates'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      : (hasNewVersion
+                            ? 'Download Build ${latest.latestBuild}'
+                            : 'Check for Updates'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -1983,7 +2393,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildThemeModeSection(BuildContext context, SettingsController settings) {
+  Widget _buildThemeModeSection(
+    BuildContext context,
+    SettingsController settings,
+  ) {
     final colors = context.colors;
     final currentMode = settings.themeMode;
 
@@ -2001,7 +2414,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: colors.emerald.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.palette_outlined, color: colors.emerald, size: 20),
+                  child: Icon(
+                    Icons.palette_outlined,
+                    color: colors.emerald,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -2061,7 +2478,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildHapticFeedbackSection(BuildContext context, SettingsController settings) {
+  Widget _buildHapticFeedbackSection(
+    BuildContext context,
+    SettingsController settings,
+  ) {
     final colors = context.colors;
     final isHapticsOn = settings.hapticsEnabled;
 
@@ -2079,7 +2499,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: colors.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.vibration_rounded, color: colors.primary, size: 20),
+                  child: Icon(
+                    Icons.vibration_rounded,
+                    color: colors.primary,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2119,13 +2543,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colors.primary,
-                        side: BorderSide(color: colors.primary.withOpacity(0.5)),
+                        side: BorderSide(
+                          color: colors.primary.withOpacity(0.5),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () => AppHaptics.selection(),
                       icon: const Icon(Icons.touch_app_outlined, size: 16),
-                      label: const Text('Test Click', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Test Click',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -2133,13 +2564,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colors.primary,
-                        side: BorderSide(color: colors.primary.withOpacity(0.5)),
+                        side: BorderSide(
+                          color: colors.primary.withOpacity(0.5),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () => AppHaptics.medium(),
                       icon: const Icon(Icons.check_circle_outline, size: 16),
-                      label: const Text('Test Firm', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Test Firm',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -2149,11 +2587,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         foregroundColor: colors.ruby,
                         side: BorderSide(color: colors.ruby.withOpacity(0.5)),
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () => AppHaptics.heavy(),
                       icon: const Icon(Icons.delete_outline, size: 16),
-                      label: const Text('Test Heavy', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Test Heavy',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   ),
                 ],

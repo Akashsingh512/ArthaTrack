@@ -1,7 +1,9 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../data/repositories/transaction_repository.dart';
@@ -49,11 +51,12 @@ class SettingsController extends ChangeNotifier {
     GmailReaderService? gmailService,
     SmsSyncService? smsSyncService,
     AppUpdateService? updateService,
-  })  : _secureStorage = secureStorage ?? SecureStorageService(),
-        _notificationChannel = notificationChannel ?? NotificationListenerChannel(),
-        _gmailService = gmailService ?? GmailReaderService(),
-        _smsSyncService = smsSyncService ?? SmsSyncService(),
-        _updateService = updateService ?? AppUpdateService();
+  }) : _secureStorage = secureStorage ?? SecureStorageService(),
+       _notificationChannel =
+           notificationChannel ?? NotificationListenerChannel(),
+       _gmailService = gmailService ?? GmailReaderService(),
+       _smsSyncService = smsSyncService ?? SmsSyncService(),
+       _updateService = updateService ?? AppUpdateService();
 
   bool get isLoading => _isLoading;
   ThemeMode get themeMode => _themeMode;
@@ -102,7 +105,11 @@ class SettingsController extends ChangeNotifier {
   int _smsSyncImportedSoFar = 0;
   int get smsSyncImportedSoFar => _smsSyncImportedSoFar;
 
-  Future<void> setSmsDatePreset(String preset, {DateTime? startDate, DateTime? endDate}) async {
+  Future<void> setSmsDatePreset(
+    String preset, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     _smsDatePreset = preset;
     _customStartDate = startDate;
     _customEndDate = endDate;
@@ -174,10 +181,9 @@ class SettingsController extends ChangeNotifier {
       _smsDatePreset = await _secureStorage.getSmsDatePreset();
       _autoCheckUpdates = await _secureStorage.getAutoCheckUpdates();
 
-      _isNotificationPermissionGranted =
-          await _notificationChannel.isPermissionGranted();
-      _isSmsPermissionGranted =
-          await _smsSyncService.isPermissionGranted();
+      _isNotificationPermissionGranted = await _notificationChannel
+          .isPermissionGranted();
+      _isSmsPermissionGranted = await _smsSyncService.isPermissionGranted();
     } catch (e) {
       print('Error loading settings: $e');
     } finally {
@@ -211,9 +217,16 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveBedrockConfig({required String model, required String region}) async {
-    _bedrockModel = model.trim().isNotEmpty ? model.trim() : AppConstants.defaultBedrockModel;
-    _bedrockRegion = region.trim().isNotEmpty ? region.trim() : AppConstants.defaultBedrockRegion;
+  Future<void> saveBedrockConfig({
+    required String model,
+    required String region,
+  }) async {
+    _bedrockModel = model.trim().isNotEmpty
+        ? model.trim()
+        : AppConstants.defaultBedrockModel;
+    _bedrockRegion = region.trim().isNotEmpty
+        ? region.trim()
+        : AppConstants.defaultBedrockRegion;
     await _secureStorage.setBedrockModel(_bedrockModel);
     await _secureStorage.setBedrockRegion(_bedrockRegion);
     notifyListeners();
@@ -252,8 +265,8 @@ class SettingsController extends ChangeNotifier {
   }
 
   Future<void> refreshNotificationPermission() async {
-    _isNotificationPermissionGranted =
-        await _notificationChannel.isPermissionGranted();
+    _isNotificationPermissionGranted = await _notificationChannel
+        .isPermissionGranted();
     notifyListeners();
   }
 
@@ -309,7 +322,9 @@ class SettingsController extends ChangeNotifier {
         return DateTime(now.year, now.month, 0, 23, 59, 59, 999);
       case 'custom':
         final end = customEnd ?? _customEndDate;
-        return end != null ? DateTime(end.year, end.month, end.day, 23, 59, 59, 999) : null;
+        return end != null
+            ? DateTime(end.year, end.month, end.day, 23, 59, 59, 999)
+            : null;
       default:
         return null;
     }
@@ -330,8 +345,14 @@ class SettingsController extends ChangeNotifier {
 
     try {
       final actualLimit = limit ?? (_smsPullLimit > 0 ? _smsPullLimit : 0);
-      final effectiveStart = explicitDateFilter ? startDate : (startDate ?? getCalculatedStartDate(_smsDatePreset));
-      final effectiveEnd = explicitDateFilter ? endDate : (endDate ?? getCalculatedEndDate(_smsDatePreset));
+      final effectiveStart = (startDate != null)
+          ? startDate
+          : (explicitDateFilter
+                ? null
+                : getCalculatedStartDate(_smsDatePreset));
+      final effectiveEnd = (endDate != null)
+          ? endDate
+          : (explicitDateFilter ? null : getCalculatedEndDate(_smsDatePreset));
 
       final result = await _smsSyncService.syncInbox(
         limit: actualLimit,
@@ -341,7 +362,9 @@ class SettingsController extends ChangeNotifier {
           _smsSyncProcessed = current;
           _smsSyncTotal = total;
           _smsSyncImportedSoFar = imported;
-          _smsSyncProgress = total > 0 ? (current / total).clamp(0.0, 1.0) : 0.0;
+          _smsSyncProgress = total > 0
+              ? (current / total).clamp(0.0, 1.0)
+              : 0.0;
           notifyListeners();
         },
       );
@@ -381,7 +404,9 @@ class SettingsController extends ChangeNotifier {
     }
   }
 
-  Future<String?> exportTransactionsCsv({bool includeRawMessage = false}) async {
+  Future<String?> exportTransactionsCsv({
+    bool includeRawMessage = false,
+  }) async {
     _isExporting = true;
     notifyListeners();
 
@@ -396,7 +421,9 @@ class SettingsController extends ChangeNotifier {
 
       if (includeRawMessage) {
         // Full CSV Header including Raw SMS for debugging and verification
-        buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message');
+        buffer.writeln(
+          'ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message',
+        );
         for (final tx in transactions) {
           final row = [
             tx.id?.toString() ?? '',
@@ -418,7 +445,9 @@ class SettingsController extends ChangeNotifier {
         }
       } else {
         // Standard clean CSV Header
-        buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+        buffer.writeln(
+          'ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source',
+        );
         for (final tx in transactions) {
           final row = [
             tx.id?.toString() ?? '',
@@ -484,13 +513,17 @@ class SettingsController extends ChangeNotifier {
   }
 
   /// Returns the full CSV text string so user can copy to clipboard
-  Future<String> getTransactionsCsvString({bool includeRawMessage = false}) async {
+  Future<String> getTransactionsCsvString({
+    bool includeRawMessage = false,
+  }) async {
     final txRepo = TransactionRepository();
     final transactions = await txRepo.getAllTransactions();
 
     final buffer = StringBuffer();
     if (includeRawMessage) {
-      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message');
+      buffer.writeln(
+        'ID,Date,Type,Amount,Category,Merchant,Account,Payment Source,Reference Number,Source,Engine,Status,Failure Reason,Raw Message',
+      );
       for (final tx in transactions) {
         final row = [
           tx.id?.toString() ?? '',
@@ -511,7 +544,9 @@ class SettingsController extends ChangeNotifier {
         buffer.writeln(row.join(','));
       }
     } else {
-      buffer.writeln('ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source');
+      buffer.writeln(
+        'ID,Date,Type,Amount,Category,Merchant,Account,Reference Number,Source',
+      );
       for (final tx in transactions) {
         final row = [
           tx.id?.toString() ?? '',
@@ -531,7 +566,10 @@ class SettingsController extends ChangeNotifier {
   }
 
   String _escapeCsv(String val) {
-    if (val.contains(',') || val.contains('"') || val.contains('\n') || val.contains('\r')) {
+    if (val.contains(',') ||
+        val.contains('"') ||
+        val.contains('\n') ||
+        val.contains('\r')) {
       return '"${val.replaceAll('"', '""')}"';
     }
     return val;
