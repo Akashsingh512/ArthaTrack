@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 
@@ -55,11 +57,13 @@ class UpdateInfo {
 }
 
 class AppUpdateService {
-  static const MethodChannel _channel = MethodChannel(AppConstants.updaterChannel);
+  static const MethodChannel _channel = MethodChannel(
+    AppConstants.updaterChannel,
+  );
   final SecureStorageService _storage;
 
   AppUpdateService({SecureStorageService? storage})
-      : _storage = storage ?? SecureStorageService();
+    : _storage = storage ?? SecureStorageService();
 
   /// Check GitHub releases for a newer APK build than currently installed
   Future<UpdateInfo> checkForUpdate({bool force = false}) async {
@@ -79,28 +83,33 @@ class AppUpdateService {
         'https://api.github.com/repos/${AppConstants.githubRepo}/releases?per_page=5',
       );
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'ArthaTrack-App-Updater',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'ArthaTrack-App-Updater',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        return UpdateInfo.noUpdate();
+        return await _checkUpdateViaFallback();
       }
 
       final List<dynamic> releases = jsonDecode(response.body);
       if (releases.isEmpty) {
-        return UpdateInfo.noUpdate();
+        return await _checkUpdateViaFallback();
       }
 
       int highestBuild = AppConstants.appBuildNumber;
       dynamic bestRelease;
       dynamic bestApkAsset;
 
-      final buildRegex = RegExp(r'(?:beta|build)[^\d]*(\d+)', caseSensitive: false);
+      final buildRegex = RegExp(
+        r'(?:beta|build)[^\d]*(\d+)',
+        caseSensitive: false,
+      );
       final versionRegex = RegExp(r'v?(\d+\.\d+\.\d+)');
 
       for (final rel in releases) {
@@ -128,18 +137,23 @@ class AppUpdateService {
           }
         }
 
-        if (foundBuild != null && foundBuild > highestBuild && apkAsset != null) {
+        if (foundBuild != null &&
+            foundBuild > highestBuild &&
+            apkAsset != null) {
           highestBuild = foundBuild;
           bestRelease = rel;
           bestApkAsset = apkAsset;
         }
       }
 
-      if (bestRelease != null && bestApkAsset != null && highestBuild > AppConstants.appBuildNumber) {
+      if (bestRelease != null &&
+          bestApkAsset != null &&
+          highestBuild > AppConstants.appBuildNumber) {
         final tagName = bestRelease['tag_name']?.toString() ?? '';
         final name = bestRelease['name']?.toString() ?? 'ArthaTrack Update';
         final body = bestRelease['body']?.toString() ?? '';
-        final downloadUrl = bestApkAsset['browser_download_url']?.toString() ?? '';
+        final downloadUrl =
+            bestApkAsset['browser_download_url']?.toString() ?? '';
         final sizeBytes = (bestApkAsset['size'] as num?)?.toInt() ?? 0;
         final sizeMb = (sizeBytes / (1024 * 1024));
         final publishedAtStr = bestRelease['published_at']?.toString();
@@ -167,11 +181,112 @@ class AppUpdateService {
         );
       }
 
-      return UpdateInfo.noUpdate();
+      return await _checkUpdateViaFallback();
     } catch (e) {
       debugPrint('[AppUpdateService] Error checking for updates: $e');
-      return UpdateInfo.noUpdate();
+      return await _checkUpdateViaFallback();
     }
+  }
+
+  /// Rate-limit proof fallback that resolves latest release via web redirects and Atom RSS feed
+  Future<UpdateInfo> _checkUpdateViaFallback() async {
+    final client = HttpClient();
+    try {
+      // 1. Try HEAD/GET on /releases/latest which 302 redirects to newest tag with zero rate limits
+      final req = await client.getUrl(
+        Uri.parse(
+          'https://github.com/${AppConstants.githubRepo}/releases/latest',
+        ),
+      );
+      req.followRedirects = false;
+      final resp = await req.close().timeout(const Duration(seconds: 10));
+      final location = resp.headers.value('location');
+
+      if (location != null && location.isNotEmpty) {
+        final tag = location.split('/').last;
+        final buildRegex = RegExp(
+          r'(?:beta|build)[^\d]*(\d+)',
+          caseSensitive: false,
+        );
+        final matchBuild = buildRegex.firstMatch(tag);
+        final foundBuild = matchBuild != null
+            ? int.tryParse(matchBuild.group(1) ?? '')
+            : null;
+
+        if (foundBuild != null && foundBuild > AppConstants.appBuildNumber) {
+          final apkUrl =
+              'https://github.com/${AppConstants.githubRepo}/releases/download/$tag/ArthaTrack-Beta-v1.1.0.apk';
+          return UpdateInfo(
+            hasUpdate: true,
+            latestVersion: AppConstants.appVersion,
+            latestBuild: foundBuild,
+            tagName: tag,
+            releaseName: 'ArthaTrack Beta (Build $foundBuild)',
+            releaseNotes:
+                'A new update (Build $foundBuild) is available with latest bug fixes and improvements.',
+            apkDownloadUrl: apkUrl,
+            apkSizeMb: 58.0,
+            publishedAt: DateTime.now(),
+          );
+        }
+      }
+
+      // 2. Try Atom feed fallback (public, unauthenticated, no rate limits)
+      final atomReq = await client.getUrl(
+        Uri.parse(
+          'https://github.com/${AppConstants.githubRepo}/releases.atom',
+        ),
+      );
+      final atomResp = await atomReq.close().timeout(
+        const Duration(seconds: 10),
+      );
+      if (atomResp.statusCode == 200) {
+        final body = await atomResp.transform(utf8.decoder).join();
+        final entryMatch = RegExp(
+          r'<entry>[\s\S]*?<title>(.*?)</title>[\s\S]*?<link[^>]*href="([^"]+)"',
+          caseSensitive: false,
+        ).firstMatch(body);
+
+        if (entryMatch != null) {
+          final title = entryMatch.group(1) ?? '';
+          final link = entryMatch.group(2) ?? '';
+          final tag = link.split('/').last;
+
+          final buildRegex = RegExp(
+            r'(?:beta|build)[^\d]*(\d+)',
+            caseSensitive: false,
+          );
+          final matchBuild = buildRegex.firstMatch('$tag $title');
+          final foundBuild = matchBuild != null
+              ? int.tryParse(matchBuild.group(1) ?? '')
+              : null;
+
+          if (foundBuild != null && foundBuild > AppConstants.appBuildNumber) {
+            final apkUrl =
+                'https://github.com/${AppConstants.githubRepo}/releases/download/$tag/ArthaTrack-Beta-v1.1.0.apk';
+            return UpdateInfo(
+              hasUpdate: true,
+              latestVersion: AppConstants.appVersion,
+              latestBuild: foundBuild,
+              tagName: tag,
+              releaseName: title.isNotEmpty
+                  ? title
+                  : 'ArthaTrack Beta (Build $foundBuild)',
+              releaseNotes:
+                  'A new update (Build $foundBuild) is available on GitHub.',
+              apkDownloadUrl: apkUrl,
+              apkSizeMb: 58.0,
+              publishedAt: DateTime.now(),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[AppUpdateService] Fallback check failed: $e');
+    } finally {
+      client.close();
+    }
+    return UpdateInfo.noUpdate();
   }
 
   /// Download the APK file with real-time streaming progress using robust HttpClient
@@ -194,8 +309,7 @@ class AppUpdateService {
       }
 
       client = HttpClient();
-      client.userAgent =
-          'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      client.userAgent = 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
       client.connectionTimeout = const Duration(seconds: 45);
       client.idleTimeout = const Duration(seconds: 45);
       client.autoUncompress = true;
@@ -273,7 +387,9 @@ class AppUpdateService {
   /// Launch Android package installer to install the downloaded APK
   Future<bool> installApk(String filePath) async {
     try {
-      final success = await _channel.invokeMethod<bool>('installApk', {'filePath': filePath});
+      final success = await _channel.invokeMethod<bool>('installApk', {
+        'filePath': filePath,
+      });
       return success ?? false;
     } catch (e) {
       debugPrint('[AppUpdateService] Install APK error: $e');
@@ -284,7 +400,9 @@ class AppUpdateService {
   /// Check if the app has permission to request package installs (Android 8.0+)
   Future<bool> canInstallPackages() async {
     try {
-      final canInstall = await _channel.invokeMethod<bool>('canInstallPackages');
+      final canInstall = await _channel.invokeMethod<bool>(
+        'canInstallPackages',
+      );
       return canInstall ?? true;
     } catch (e) {
       return true;
