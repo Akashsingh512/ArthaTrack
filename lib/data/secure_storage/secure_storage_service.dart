@@ -196,6 +196,15 @@ class SecureStorageService {
     await _storage.write(key: 'sms_pull_limit', value: limit.toString());
   }
 
+  Future<String> getSmsDatePreset() async {
+    final val = await _storage.read(key: 'sms_date_preset');
+    return val ?? 'this_month';
+  }
+
+  Future<void> setSmsDatePreset(String preset) async {
+    await _storage.write(key: 'sms_date_preset', value: preset);
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

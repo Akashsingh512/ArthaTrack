@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
@@ -27,81 +28,178 @@ class SmsSyncSheet extends StatefulWidget {
 }
 
 class _SmsSyncSheetState extends State<SmsSyncSheet> {
-  // Available preset limits: 0 represents "All" (no limit)
-  final List<int> _presetLimits = [50, 100, 250, 500, 1000, 5000, 0];
+  // Date Presets
+  final List<Map<String, String>> _datePresets = [
+    {'id': 'this_month', 'label': 'This Month'},
+    {'id': 'this_week', 'label': 'This Week'},
+    {'id': 'last_month', 'label': 'Last Month'},
+    {'id': 'last_3_months', 'label': 'Last 3 Months'},
+    {'id': 'this_year', 'label': 'This Year (2026)'},
+    {'id': 'all_time', 'label': 'All Time (Full)'},
+    {'id': 'custom', 'label': 'Custom Dates...'},
+  ];
 
-  int _selectedLimit = 500;
-  bool _isCustom = false;
+  late String _selectedPreset;
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
+
+  // Optional message cap: 0 means no cap
+  int _selectedLimitCap = 0;
+  final List<int> _limitCaps = [0, 250, 500, 1000, 5000];
+
   bool _saveAsDefault = true;
   bool _isSyncing = false;
   SmsSyncResult? _lastResult;
-  late TextEditingController _customCountController;
 
   @override
   void initState() {
     super.initState();
     final settings = Provider.of<SettingsController>(context, listen: false);
-    _selectedLimit = settings.smsPullLimit;
-    if (!_presetLimits.contains(_selectedLimit) && _selectedLimit > 0) {
-      _isCustom = true;
-      _customCountController = TextEditingController(text: _selectedLimit.toString());
-    } else {
-      _customCountController = TextEditingController(text: '300');
+    _selectedPreset = settings.smsDatePreset;
+    _selectedLimitCap = settings.smsPullLimit;
+
+    final now = DateTime.now();
+    _customStartDate = settings.customStartDate ?? DateTime(now.year, now.month, 1);
+    _customEndDate = settings.customEndDate ?? now;
+  }
+
+  DateTime? get _effectiveStartDate {
+    final now = DateTime.now();
+    switch (_selectedPreset) {
+      case 'this_week':
+        return now.subtract(const Duration(days: 7));
+      case 'this_month':
+        return DateTime(now.year, now.month, 1);
+      case 'last_month':
+        return DateTime(now.year, now.month - 1, 1);
+      case 'last_3_months':
+        return DateTime(now.year, now.month - 2, 1);
+      case 'this_year':
+        return DateTime(now.year, 1, 1);
+      case 'custom':
+        return _customStartDate;
+      case 'all_time':
+      default:
+        return null;
     }
   }
 
-  @override
-  void dispose() {
-    _customCountController.dispose();
-    super.dispose();
-  }
-
-  int get _effectiveLimit {
-    if (_isCustom) {
-      final val = int.tryParse(_customCountController.text.trim());
-      if (val != null && val > 0) {
-        return val.clamp(1, 50000);
-      }
-      return 500;
+  DateTime? get _effectiveEndDate {
+    final now = DateTime.now();
+    switch (_selectedPreset) {
+      case 'last_month':
+        return DateTime(now.year, now.month, 0, 23, 59, 59, 999);
+      case 'custom':
+        return _customEndDate != null
+            ? DateTime(_customEndDate!.year, _customEndDate!.month, _customEndDate!.day, 23, 59, 59, 999)
+            : null;
+      default:
+        return null;
     }
-    return _selectedLimit;
   }
 
-  String _getLimitLabel(int limit) {
-    if (limit == 0) return 'All Messages (Deep Scan)';
-    if (limit >= 1000) {
-      return '${(limit / 1000).toStringAsFixed(limit % 1000 == 0 ? 0 : 1)}k msgs';
+  String _getPeriodDescription() {
+    final now = DateTime.now();
+    final monthFormat = DateFormat('MMMM yyyy');
+    final dateFormat = DateFormat('dd MMM yyyy');
+
+    switch (_selectedPreset) {
+      case 'this_week':
+        return '⚡ Pulls bank SMS from the last 7 days (today back to ${dateFormat.format(now.subtract(const Duration(days: 7)))}).';
+      case 'this_month':
+        return '🗓️ Pulls all bank SMS for ${monthFormat.format(now)} (1st ${DateFormat('MMM').format(now)} to today).';
+      case 'last_month':
+        final prev = DateTime(now.year, now.month - 1, 1);
+        final prevEnd = DateTime(now.year, now.month, 0);
+        return '🗓️ Pulls all bank SMS for entire ${monthFormat.format(prev)} (${dateFormat.format(prev)} to ${dateFormat.format(prevEnd)}).';
+      case 'last_3_months':
+        final threeAgo = DateTime(now.year, now.month - 2, 1);
+        return '📊 Pulls bank SMS across the past 3 months (${dateFormat.format(threeAgo)} to today).';
+      case 'this_year':
+        return '📅 Pulls all bank SMS received in ${now.year} (from 1st January to today).';
+      case 'all_time':
+        return '🌐 Full Deep Scan. Inspects all historical bank SMS in your inbox with zero date restrictions.';
+      case 'custom':
+        if (_customStartDate != null && _customEndDate != null) {
+          return '🎯 Pulls bank SMS received between ${dateFormat.format(_customStartDate!)} and ${dateFormat.format(_customEndDate!)}.';
+        }
+        return '🎯 Custom date range. Select start and end dates below.';
+      default:
+        return 'Pulls bank SMS for the chosen period.';
     }
-    return '$limit msgs';
   }
 
-  String _getLimitDescription(int limit) {
-    if (limit == 50) {
-      return '⚡ Fastest scan (1-2s). Pulls latest 50 SMS to capture today\'s and yesterday\'s latest transactions.';
-    } else if (limit == 100) {
-      return '⚡ Quick check. Scans 100 recent messages across the last few days.';
-    } else if (limit == 250) {
-      return '🔍 Moderate scan. Scans up to 250 messages (typically 2-4 weeks of bank alerts).';
-    } else if (limit == 500) {
-      return '⭐ Recommended. Scans up to 500 messages (typically 1-3 months of banking activity).';
-    } else if (limit == 1000) {
-      return '📊 Extended scan. Scans up to 1,000 messages across several months of transactions.';
-    } else if (limit == 5000) {
-      return '🚀 Deep scan. Pulls up to 5,000 messages across recent years of inbox history.';
-    } else if (limit == 0) {
-      return '🌐 Full Deep Scan. Inspects every single SMS message in your phone\'s inbox with zero limit.';
-    } else {
-      return '🎯 Custom scan. Pulls your latest $limit SMS messages from inbox.';
+  String _getPeriodShortLabel() {
+    switch (_selectedPreset) {
+      case 'this_week':
+        return 'This Week';
+      case 'this_month':
+        return DateFormat('MMMM').format(DateTime.now());
+      case 'last_month':
+        final now = DateTime.now();
+        return DateFormat('MMMM').format(DateTime(now.year, now.month - 1, 1));
+      case 'last_3_months':
+        return 'Last 3 Months';
+      case 'this_year':
+        return '${DateTime.now().year}';
+      case 'all_time':
+        return 'All Time';
+      case 'custom':
+        if (_customStartDate != null && _customEndDate != null) {
+          return '${DateFormat('dd MMM').format(_customStartDate!)} - ${DateFormat('dd MMM').format(_customEndDate!)}';
+        }
+        return 'Custom';
+      default:
+        return 'Selected Period';
+    }
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    AppHaptics.light();
+    final colors = context.colors;
+    final now = DateTime.now();
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: now.add(const Duration(days: 1)),
+      initialDateRange: DateTimeRange(
+        start: _customStartDate ?? DateTime(now.year, now.month, 1),
+        end: _customEndDate ?? now,
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: colors.emerald,
+                  onPrimary: colors.isDark ? Colors.black : Colors.white,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      AppHaptics.selection();
+      setState(() {
+        _customStartDate = picked.start;
+        _customEndDate = picked.end;
+        _selectedPreset = 'custom';
+      });
     }
   }
 
   Future<void> _startSync() async {
     AppHaptics.medium();
     final settings = Provider.of<SettingsController>(context, listen: false);
-    final limitToUse = _effectiveLimit;
+
+    final start = _effectiveStartDate;
+    final end = _effectiveEndDate;
 
     if (_saveAsDefault) {
-      await settings.setSmsPullLimit(limitToUse);
+      await settings.setSmsDatePreset(_selectedPreset, startDate: _customStartDate, endDate: _customEndDate);
+      await settings.setSmsPullLimit(_selectedLimitCap);
     }
 
     setState(() {
@@ -109,7 +207,11 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
       _lastResult = null;
     });
 
-    final result = await settings.syncSmsInbox(limit: limitToUse);
+    final result = await settings.syncSmsInbox(
+      limit: _selectedLimitCap,
+      startDate: start,
+      endDate: end,
+    );
 
     if (!mounted) return;
 
@@ -120,7 +222,6 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
 
     if (result.status == SmsSyncStatus.success) {
       AppHaptics.success();
-      // Reload all state controllers across the app
       final dashboard = Provider.of<DashboardController>(context, listen: false);
       final tx = Provider.of<TransactionController>(context, listen: false);
       final analytics = Provider.of<AnalyticsController>(context, listen: false);
@@ -139,11 +240,11 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final currentLimit = _effectiveLimit;
+    final dateFormat = DateFormat('dd MMM yyyy');
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
+        maxHeight: MediaQuery.of(context).size.height * 0.90,
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -176,18 +277,18 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
               ),
             ),
 
-            // Header Title
+            // Header Row
             Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
                     color: colors.emerald.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.sms_rounded,
+                    Icons.date_range_rounded,
                     color: colors.emerald,
                     size: 22,
                   ),
@@ -208,7 +309,7 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Select how many messages to scan from inbox',
+                        'Select which month or date range to scan',
                         style: TextStyle(
                           fontSize: 12,
                           color: colors.textMuted,
@@ -228,9 +329,9 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
             ),
             const SizedBox(height: 18),
 
-            // Quick Limit Chips
+            // Section: Choose Time Period (Months / Weeks / Year)
             Text(
-              'MESSAGE SCAN LIMIT',
+              'SELECT TIME PERIOD',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -243,61 +344,26 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [
-                ..._presetLimits.map((limit) {
-                  final isSelected = !_isCustom && _selectedLimit == limit;
-                  String label = limit == 0 ? 'All (Deep)' : (limit == 500 ? '500 (Rec.)' : '$limit');
-                  return ChoiceChip(
-                    label: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected
-                            ? (colors.isDark ? Colors.black : Colors.white)
-                            : colors.textPrimary,
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: colors.emerald,
-                    backgroundColor: colors.surfaceCard,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                        color: isSelected ? colors.emerald : colors.border,
-                      ),
-                    ),
-                    onSelected: _isSyncing
-                        ? null
-                        : (selected) {
-                            if (selected) {
-                              AppHaptics.selection();
-                              setState(() {
-                                _isCustom = false;
-                                _selectedLimit = limit;
-                              });
-                            }
-                          },
-                  );
-                }),
-                ChoiceChip(
+              children: _datePresets.map((preset) {
+                final isSelected = _selectedPreset == preset['id'];
+                return ChoiceChip(
                   label: Text(
-                    'Custom...',
+                    preset['label']!,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: _isCustom ? FontWeight.w700 : FontWeight.w500,
-                      color: _isCustom
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
                           ? (colors.isDark ? Colors.black : Colors.white)
                           : colors.textPrimary,
                     ),
                   ),
-                  selected: _isCustom,
+                  selected: isSelected,
                   selectedColor: colors.emerald,
                   backgroundColor: colors.surfaceCard,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: _isCustom ? colors.emerald : colors.border,
+                      color: isSelected ? colors.emerald : colors.border,
                     ),
                   ),
                   onSelected: _isSyncing
@@ -306,54 +372,73 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
                           if (selected) {
                             AppHaptics.selection();
                             setState(() {
-                              _isCustom = true;
+                              _selectedPreset = preset['id']!;
                             });
+                            if (preset['id'] == 'custom') {
+                              _pickDateRange(context);
+                            }
                           }
                         },
-                ),
-              ],
+                );
+              }).toList(),
             ),
             const SizedBox(height: 14),
 
-            // Custom Count Input (if selected)
-            if (_isCustom) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colors.surfaceCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: colors.emerald, width: 1.2),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_note, color: colors.emerald, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _customCountController,
-                        keyboardType: TextInputType.number,
-                        enabled: !_isSyncing,
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+            // Custom Range Picker Card (if custom is active)
+            if (_selectedPreset == 'custom') ...[
+              InkWell(
+                onTap: _isSyncing ? null : () => _pickDateRange(context),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceCard,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.emerald, width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_month, color: colors.emerald, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Custom Date Range',
+                              style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_customStartDate != null ? dateFormat.format(_customStartDate!) : "Start"}  ➔  ${_customEndDate != null ? dateFormat.format(_customEndDate!) : "End"}',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          hintText: 'Enter count (e.g. 150, 300, 2000)',
-                          hintStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
-                          suffixText: 'messages',
-                        ),
-                        onChanged: (_) => setState(() {}),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: colors.emerald.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Change',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.emerald),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
             ],
 
-            // Dynamic Description Card
+            // Live Period Explanation Banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -363,7 +448,7 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
                 border: Border.all(color: colors.borderSubtle),
               ),
               child: Text(
-                _getLimitDescription(currentLimit),
+                _getPeriodDescription(),
                 style: TextStyle(
                   fontSize: 12.5,
                   height: 1.4,
@@ -373,7 +458,73 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Checkbox: Save as Default
+            // Optional Message Limit Cap Selector
+            Row(
+              children: [
+                Text(
+                  'MESSAGE CAP',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                    color: colors.textMuted,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '(optional safeguard)',
+                  style: TextStyle(fontSize: 10, color: colors.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _limitCaps.map((cap) {
+                  final isSelected = _selectedLimitCap == cap;
+                  final label = cap == 0 ? 'No Limit (All msgs)' : '$cap max';
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected
+                              ? (colors.isDark ? Colors.black : Colors.white)
+                              : colors.textPrimary,
+                        ),
+                      ),
+                      selected: isSelected,
+                      selectedColor: colors.emerald,
+                      backgroundColor: colors.surfaceCard,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isSelected ? colors.emerald : colors.border,
+                        ),
+                      ),
+                      onSelected: _isSyncing
+                          ? null
+                          : (selected) {
+                              if (selected) {
+                                AppHaptics.selection();
+                                setState(() {
+                                  _selectedLimitCap = cap;
+                                });
+                              }
+                            },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Checkbox: Remember as default
             InkWell(
               onTap: _isSyncing
                   ? null
@@ -410,7 +561,7 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Remember this count as my default scan limit',
+                        'Remember this time period as default sync setting',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -504,8 +655,8 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
                   _isSyncing
                       ? 'Scanning inbox messages...'
                       : (_lastResult?.status == SmsSyncStatus.success
-                          ? 'Scan Again (${_getLimitLabel(currentLimit)})'
-                          : 'Scan & Import (${_getLimitLabel(currentLimit)})'),
+                          ? 'Scan Again (${_getPeriodShortLabel()})'
+                          : 'Scan & Import (${_getPeriodShortLabel()})'),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

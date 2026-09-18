@@ -55,9 +55,9 @@ class DashboardScreen extends StatelessWidget {
           onRefresh: () async {
             AppHaptics.light();
             try {
-              final smsService = SmsSyncService();
-              if (await smsService.isPermissionGranted()) {
-                await smsService.syncInbox(limit: 100);
+              final settings = Provider.of<SettingsController>(context, listen: false);
+              if (settings.isSmsPermissionGranted) {
+                await settings.syncSmsInbox();
               }
             } catch (_) {}
             await controller.loadDashboardData();

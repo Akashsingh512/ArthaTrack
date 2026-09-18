@@ -1,7 +1,7 @@
 name: arthatrack
 description: "ArthaTrack - Production-ready, local-first personal finance tracker with BYOK AI & offline regex dual-engine parsing for India."
 publish_to: "none"
-version: 1.1.0+6
+version: 1.1.0+7
 
 environment:
   sdk: ^3.5.0

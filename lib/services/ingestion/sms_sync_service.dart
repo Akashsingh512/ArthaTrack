@@ -34,8 +34,9 @@ class SmsSyncService {
   final AccountRepository _accountRepo;
   final CategoryRepository _categoryRepo;
 
-  static bool _isSyncing = false;
-  bool get isSyncing => _isSyncing;
+  static Future<SmsSyncResult>? _activeSyncFuture;
+  static bool get isSyncing => _activeSyncFuture != null;
+  bool get isCurrentSyncing => isSyncing;
 
   SmsSyncService({
     TransactionParserPipeline? pipeline,
@@ -74,26 +75,50 @@ class SmsSyncService {
     } catch (_) {}
   }
 
-  /// Scans recent bank and UPI SMS messages from inbox and imports valid financial transactions
-  Future<SmsSyncResult> syncInbox({int limit = 100}) async {
-    if (_isSyncing) {
-      return const SmsSyncResult(
-        status: SmsSyncStatus.error,
-        importedCount: 0,
-        scannedCount: 0,
-        errorMessage: 'A sync is already in progress.',
-      );
+  /// Scans recent bank and UPI SMS messages from inbox and imports valid financial transactions.
+  /// If a sync is already in progress, awaits the in-flight sync rather than throwing an error.
+  Future<SmsSyncResult> syncInbox({
+    int limit = 0,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    if (_activeSyncFuture != null) {
+      try {
+        return await _activeSyncFuture!;
+      } catch (_) {
+        return const SmsSyncResult(
+          status: SmsSyncStatus.success,
+          importedCount: 0,
+          scannedCount: 0,
+        );
+      }
     }
 
-    _isSyncing = true;
+    final future = _doSyncInbox(
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
+    _activeSyncFuture = future;
 
+    try {
+      return await future;
+    } finally {
+      _activeSyncFuture = null;
+    }
+  }
+
+  Future<SmsSyncResult> _doSyncInbox({
+    required int limit,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
       // 1. Verify or prompt for SMS permission
       var hasPermission = await isPermissionGranted();
       if (!hasPermission) {
         hasPermission = await requestPermission();
         if (!hasPermission) {
-          _isSyncing = false;
           return const SmsSyncResult(
             status: SmsSyncStatus.permissionDenied,
             importedCount: 0,
@@ -104,13 +129,19 @@ class SmsSyncService {
       }
 
       // 2. Fetch SMS messages from native Telephony Provider
-      final List<dynamic>? rawMessages = await _channel.invokeMethod<List<dynamic>>(
-        'readInboxSms',
-        {'limit': limit},
-      );
+      final Map<String, dynamic> channelArgs = {'limit': limit};
+      if (startDate != null) {
+        channelArgs['startDate'] = startDate.millisecondsSinceEpoch;
+      }
+      if (endDate != null) {
+        channelArgs['endDate'] = endDate.millisecondsSinceEpoch;
+      }
+
+      final List<dynamic>? rawMessages = await _channel
+          .invokeMethod<List<dynamic>>('readInboxSms', channelArgs)
+          .timeout(const Duration(seconds: 45));
 
       if (rawMessages == null || rawMessages.isEmpty) {
-        _isSyncing = false;
         return const SmsSyncResult(
           status: SmsSyncStatus.success,
           importedCount: 0,
@@ -161,6 +192,13 @@ class SmsSyncService {
           DateTime? txDate;
           if (dateMs is int && dateMs > 0) {
             txDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
+          }
+
+          if (startDate != null && txDate != null && txDate.isBefore(startDate)) {
+            continue;
+          }
+          if (endDate != null && txDate != null && txDate.isAfter(endDate)) {
+            continue;
           }
 
           int resolvedAccountId = accountId;
@@ -214,8 +252,6 @@ class SmsSyncService {
         scannedCount: 0,
         errorMessage: e.toString(),
       );
-    } finally {
-      _isSyncing = false;
     }
   }
 }

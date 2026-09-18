@@ -118,8 +118,10 @@ class MainActivity : FlutterActivity() {
                 "readInboxSms" -> {
                     val rawLimit = call.argument<Int>("limit") ?: 5000
                     val limit = if (rawLimit <= 0) 0 else rawLimit.coerceIn(1, 50000)
+                    val startDate = call.argument<Long>("startDate")
+                    val endDate = call.argument<Long>("endDate")
                     try {
-                        val messages = readSmsMessages(limit)
+                        val messages = readSmsMessages(limit, startDate, endDate)
                         result.success(messages)
                     } catch (e: Exception) {
                         result.error("SMS_READ_ERROR", e.message, null)
@@ -307,17 +309,32 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun readSmsMessages(limit: Int): List<Map<String, Any>> {
+    private fun readSmsMessages(limit: Int, startDate: Long? = null, endDate: Long? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
         val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("_id", "address", "body", "date")
         val sortOrder = if (limit > 0) "date DESC LIMIT $limit" else "date DESC"
 
+        val whereClauses = mutableListOf<String>()
+        val whereArgs = mutableListOf<String>()
+
+        if (startDate != null && startDate > 0) {
+            whereClauses.add("date >= ?")
+            whereArgs.add(startDate.toString())
+        }
+        if (endDate != null && endDate > 0) {
+            whereClauses.add("date <= ?")
+            whereArgs.add(endDate.toString())
+        }
+
+        val selection = if (whereClauses.isNotEmpty()) whereClauses.joinToString(" AND ") else null
+        val selectionArgs = if (whereArgs.isNotEmpty()) whereArgs.toTypedArray() else null
+
         val cursor = contentResolver.query(
             uri,
             projection,
-            null,
-            null,
+            selection,
+            selectionArgs,
             sortOrder
         ) ?: return list
 

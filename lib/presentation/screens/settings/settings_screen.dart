@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
+import '../../controllers/analytics_controller.dart';
+import '../../controllers/balance_sheet_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
@@ -201,19 +203,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             DropdownButtonFormField<String>(
               value: settings.selectedProvider,
               decoration: const InputDecoration(labelText: 'AI Key Provider'),
-              dropdownColor: AppColors.surfaceElevated,
-              items: const [
+              dropdownColor: Theme.of(context).cardColor,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+                fontSize: 14,
+              ),
+              items: [
                 DropdownMenuItem(
                   value: AppConstants.providerGemini,
-                  child: Text('Google Gemini (gemini-flash-latest)'),
+                  child: Text(
+                    'Google Gemini (gemini-flash-latest)',
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: AppConstants.providerGroq,
-                  child: Text('Groq (llama-3.3-70b-versatile)'),
+                  child: Text(
+                    'Groq (llama-3.3-70b-versatile)',
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: AppConstants.providerBedrock,
-                  child: Text('AWS Bedrock (qwen.qwen3-coder-next)'),
+                  child: Text(
+                    'AWS Bedrock (qwen.qwen3-coder-next)',
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                  ),
                 ),
               ],
               onChanged: (val) {
@@ -306,7 +321,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF334155)),
+                      side: BorderSide(color: context.colors.border),
+                      foregroundColor: context.colors.textPrimary,
                     ),
                     onPressed: settings.isTestingKey
                         ? null
@@ -339,7 +355,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Test Key', style: TextStyle(color: AppColors.textPrimary)),
+                        : Text('Test Key', style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 if (settings.hasActiveKey) ...[
@@ -436,13 +452,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               )
             else ...[
-              // Default SMS Pull Limit Setting
+              // Default SMS Sync Period Setting
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceElevated,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.borderSubtle),
+                  color: context.colors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.colors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,67 +466,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Default SMS Scan Limit',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        Text(
+                          'Default SMS Scan Period',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: context.colors.textPrimary,
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppColors.emerald.withOpacity(0.15),
+                            color: context.colors.emerald.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            settings.smsPullLimit == 0
-                                ? 'All (Deep Scan)'
-                                : '${settings.smsPullLimit} messages',
-                            style: const TextStyle(
+                            settings.smsDatePreset == 'this_month'
+                                ? 'This Month'
+                                : (settings.smsDatePreset == 'this_week'
+                                    ? 'This Week'
+                                    : (settings.smsDatePreset == 'last_month'
+                                        ? 'Last Month'
+                                        : (settings.smsDatePreset == 'last_3_months'
+                                            ? 'Last 3 Months'
+                                            : (settings.smsDatePreset == 'this_year'
+                                                ? 'This Year (2026)'
+                                                : (settings.smsDatePreset == 'all_time'
+                                                    ? 'All Time'
+                                                    : 'Custom Range'))))),
+                            style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.emerald,
+                              color: context.colors.emerald,
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Default number of messages to pull and parse when syncing.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    Text(
+                      'Choose which month or timeframe of messages to scan from your inbox.',
+                      style: TextStyle(fontSize: 11, color: context.colors.textMuted),
                     ),
                     const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [50, 100, 250, 500, 1000, 5000, 0].map((lim) {
-                          final isSelected = settings.smsPullLimit == lim;
-                          final label = lim == 0 ? 'All' : '$lim';
+                        children: [
+                          {'id': 'this_month', 'label': 'This Month'},
+                          {'id': 'this_week', 'label': 'This Week'},
+                          {'id': 'last_month', 'label': 'Last Month'},
+                          {'id': 'last_3_months', 'label': '3 Months'},
+                          {'id': 'this_year', 'label': 'This Year'},
+                          {'id': 'all_time', 'label': 'All Time'},
+                        ].map((preset) {
+                          final isSelected = settings.smsDatePreset == preset['id'];
                           return Padding(
                             padding: const EdgeInsets.only(right: 6),
                             child: ChoiceChip(
                               label: Text(
-                                label,
+                                preset['label']!,
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? Colors.black : AppColors.textPrimary,
+                                  color: isSelected
+                                      ? (context.colors.isDark ? Colors.black : Colors.white)
+                                      : context.colors.textPrimary,
                                 ),
                               ),
                               selected: isSelected,
-                              selectedColor: AppColors.emerald,
-                              backgroundColor: AppColors.surfaceCard,
+                              selectedColor: context.colors.emerald,
+                              backgroundColor: context.colors.surfaceCard,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 side: BorderSide(
-                                  color: isSelected ? AppColors.emerald : AppColors.borderSubtle,
+                                  color: isSelected ? context.colors.emerald : context.colors.border,
                                 ),
                               ),
-                              onSelected: (selected) {
-                                if (selected) {
-                                  AppHaptics.selection();
-                                  settings.setSmsPullLimit(lim);
-                                }
-                              },
+                              onSelected: isSyncing
+                                  ? null
+                                  : (selected) {
+                                      if (selected) {
+                                        AppHaptics.selection();
+                                        settings.setSmsDatePreset(preset['id']!);
+                                      }
+                                    },
                             ),
                           );
                         }).toList(),
@@ -526,21 +566,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.emerald,
-                    side: const BorderSide(color: AppColors.emerald),
+                    foregroundColor: context.colors.emerald,
+                    side: BorderSide(color: context.colors.emerald),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () {
-                    AppHaptics.medium();
-                    SmsSyncSheet.show(context);
-                  },
-                  icon: const Icon(Icons.tune, size: 18),
+                  onPressed: isSyncing
+                      ? null
+                      : () {
+                          AppHaptics.medium();
+                          SmsSyncSheet.show(context);
+                        },
+                  icon: const Icon(Icons.date_range_rounded, size: 18),
                   label: const Text(
-                    'Customize Pull Limit & Scan...',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    'Select Specific Months or Range (e.g. Sept - Nov)...',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
                   ),
                 ),
               ),
@@ -551,8 +593,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.emerald,
-                        foregroundColor: Colors.black,
+                        backgroundColor: context.colors.emerald,
+                        foregroundColor: context.colors.isDark ? Colors.black : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: isSyncing
@@ -560,17 +602,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : () => _triggerSmsSync(
                                 context,
                                 settings,
-                                limit: settings.smsPullLimit,
+                                label: 'Scanning messages for ${settings.smsDatePreset == "this_month" ? "This Month" : settings.smsDatePreset}...',
                               ),
                       icon: isSyncing
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: context.colors.isDark ? Colors.black : Colors.white,
+                              ),
                             )
                           : const Icon(Icons.sync, size: 18),
                       label: Text(
-                        'Sync (${settings.smsPullLimit == 0 ? "All" : settings.smsPullLimit})',
+                        isSyncing
+                            ? 'Syncing...'
+                            : 'Sync (${settings.smsDatePreset == "this_month" ? "This Month" : (settings.smsDatePreset == "all_time" ? "All" : settings.smsDatePreset)})',
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -579,13 +626,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.emerald,
-                        side: const BorderSide(color: AppColors.emerald),
+                        foregroundColor: context.colors.emerald,
+                        side: BorderSide(color: context.colors.emerald),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: isSyncing
                           ? null
-                          : () => _triggerSmsSync(context, settings, limit: 0),
+                          : () => _triggerSmsSync(
+                                context,
+                                settings,
+                                limit: 0,
+                                startDate: null,
+                                endDate: null,
+                                label: 'Deep scanning entire SMS inbox history...',
+                              ),
                       icon: const Icon(Icons.all_inclusive, size: 18),
                       label: const Text(
                         'Deep Scan (All)',
@@ -605,22 +659,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _triggerSmsSync(
     BuildContext context,
     SettingsController settings, {
-    required int limit,
+    int? limit,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? label,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final dashboard = Provider.of<DashboardController>(context, listen: false);
     final txController = Provider.of<TransactionController>(context, listen: false);
+    final analytics = Provider.of<AnalyticsController>(context, listen: false);
+    final balance = Provider.of<BalanceSheetController>(context, listen: false);
 
     messenger.showSnackBar(
       SnackBar(
-        content: Text(limit <= 0
-            ? 'Deep scanning entire SMS inbox for all bank transactions...'
-            : 'Scanning up to $limit bank SMS messages...'),
+        content: Text(label ?? 'Scanning bank SMS messages from inbox...'),
         duration: const Duration(seconds: 3),
       ),
     );
 
-    final result = await settings.syncSmsInbox(limit: limit);
+    final result = await settings.syncSmsInbox(
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
 
     if (!context.mounted) return;
 
@@ -639,7 +700,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else if (result.status == SmsSyncStatus.error) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('SMS sync error: ${result.errorMessage}'),
+          content: Text('SMS sync notice: ${result.errorMessage}'),
           backgroundColor: AppColors.ruby,
         ),
       );
@@ -656,6 +717,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       await dashboard.loadDashboardData();
       await txController.loadTransactions();
+      await analytics.loadAnalytics();
+      await balance.loadBalanceSheet();
     }
   }
 

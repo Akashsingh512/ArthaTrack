@@ -67,6 +67,22 @@ class SettingsController extends ChangeNotifier {
   int _smsPullLimit = 500;
   int get smsPullLimit => _smsPullLimit;
 
+  String _smsDatePreset = 'this_month';
+  String get smsDatePreset => _smsDatePreset;
+
+  DateTime? _customStartDate;
+  DateTime? get customStartDate => _customStartDate;
+  DateTime? _customEndDate;
+  DateTime? get customEndDate => _customEndDate;
+
+  Future<void> setSmsDatePreset(String preset, {DateTime? startDate, DateTime? endDate}) async {
+    _smsDatePreset = preset;
+    _customStartDate = startDate;
+    _customEndDate = endDate;
+    notifyListeners();
+    await _secureStorage.setSmsDatePreset(preset);
+  }
+
   Future<void> setSmsPullLimit(int limit) async {
     _smsPullLimit = limit;
     notifyListeners();
@@ -128,6 +144,7 @@ class SettingsController extends ChangeNotifier {
       _bedrockRegion = await _secureStorage.getBedrockRegion();
 
       _smsPullLimit = await _secureStorage.getSmsPullLimit();
+      _smsDatePreset = await _secureStorage.getSmsDatePreset();
 
       _isNotificationPermissionGranted =
           await _notificationChannel.isPermissionGranted();
@@ -234,13 +251,59 @@ class SettingsController extends ChangeNotifier {
     await refreshSmsPermission();
   }
 
-  Future<SmsSyncResult> syncSmsInbox({int? limit}) async {
+  DateTime? getCalculatedStartDate(String preset, {DateTime? customStart}) {
+    final now = DateTime.now();
+    switch (preset) {
+      case 'this_week':
+        return now.subtract(const Duration(days: 7));
+      case 'this_month':
+        return DateTime(now.year, now.month, 1);
+      case 'last_month':
+        return DateTime(now.year, now.month - 1, 1);
+      case 'last_3_months':
+        return DateTime(now.year, now.month - 2, 1);
+      case 'last_6_months':
+        return DateTime(now.year, now.month - 5, 1);
+      case 'this_year':
+        return DateTime(now.year, 1, 1);
+      case 'custom':
+        return customStart ?? _customStartDate;
+      case 'all_time':
+      default:
+        return null;
+    }
+  }
+
+  DateTime? getCalculatedEndDate(String preset, {DateTime? customEnd}) {
+    final now = DateTime.now();
+    switch (preset) {
+      case 'last_month':
+        return DateTime(now.year, now.month, 0, 23, 59, 59, 999);
+      case 'custom':
+        return customEnd ?? _customEndDate;
+      default:
+        return null;
+    }
+  }
+
+  Future<SmsSyncResult> syncSmsInbox({
+    int? limit,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     _isSmsSyncing = true;
     notifyListeners();
 
     try {
       final actualLimit = limit ?? _smsPullLimit;
-      final result = await _smsSyncService.syncInbox(limit: actualLimit);
+      final effectiveStart = startDate ?? getCalculatedStartDate(_smsDatePreset);
+      final effectiveEnd = endDate ?? getCalculatedEndDate(_smsDatePreset);
+
+      final result = await _smsSyncService.syncInbox(
+        limit: actualLimit,
+        startDate: effectiveStart,
+        endDate: effectiveEnd,
+      );
       _isSmsPermissionGranted = await _smsSyncService.isPermissionGranted();
       _isSmsSyncing = false;
       notifyListeners();

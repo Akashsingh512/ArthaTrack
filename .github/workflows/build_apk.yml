@@ -69,28 +69,30 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta6
-          name: "ArthaTrack Beta v1.1.0 (Build 6)"
+          tag_name: v1.1.0-beta7
+          name: "ArthaTrack Beta v1.1.0 (Build 7)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 6)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 7)
             
-            #### 🌟 Highlights & New Features:
-            - **⚡ User-Configurable SMS Transaction Pull Limit**: You can now decide exactly how many transactions/messages to pull and scan from your SMS inbox! Choose between quick presets (**50**, **100**, **250**, **500 (Recommended)**, **1,000**, **5,000**, **All / Deep Scan**) or enter any **Custom Number** (e.g. 150, 300, 750). Includes a "Remember as default limit" option in both the Sync Sheet and Settings.
-            - **📊 Dedicated Analytics & Insights Tab**: Complete interactive visual breakdown with:
-              - **Interactive Category Donut Chart** with percentage breakdowns and tap-to-inspect.
-              - **Daily Spending Bar Chart** with peak-day highlighting.
-              - **Cash Flow & Savings Rate Card** comparing income, expense, and net savings.
-              - **Top Merchants Leaderboard** showing where your money goes.
-              - **Payment Mode Breakdown** (UPI vs Cards vs NetBanking vs Cash).
-            - **🛍️ Intelligent Merchant & Shop Category Finder**: Automatic, accurate category classification for brands and stores (e.g. `biteandbrew` -> Food, `zudio` -> Shopping, hypermarkets, cafes, bakeries, travel, and more).
-            - **📳 Fixed Micro-Haptic Feedback**: Added native Android `VIBRATE` permission and native `Vibrator` / `VibratorManager` bridge for crisp, realistic physical haptic feedback across all taps, chips, and actions.
-            - **📑 Dual CSV Export Options**: Choose between **Standard CSV Export** and **Export with Raw SMS** saved directly to public `/storage/emulated/0/Download/`.
-            - **Multi-Select Bulk Categorization**: Select multiple transactions and update categories simultaneously.
-            - **AES-256 Encrypted Auto-Backup**: Zero-dependency backups to Google Drive and WebDAV.
+            #### 🌟 Highlights & What's New in Build 7:
+            - **📅 Date-Range & Month-Based SMS Transaction Pulling**:
+              - You can now pull transactions directly by date window: **This Month**, **This Week Only**, **Last Month**, **Last 3 Months**, **This Year (2026)**, **All Time**, or any **Custom Range (e.g. Sept to Nov)** with start and end date pickers!
+              - Native Android Telephony SQL filtering (`date >= ? AND date <= ?`) filters messages directly at the Android SQLite layer for near-instant scanning.
+              - Visual explanation card in the SMS Sync Sheet dynamically displays the exact date range being scanned.
+              - Set your preferred date period as your permanent default in Settings.
+            - **🛡️ Fixed SMS Concurrency Error (`A sync is already in progress`)**:
+              - Completely resolved the red snackbar error caused by concurrent background/pull-to-refresh checks and manual user taps. Background and foreground syncs are now gracefully coalesced with platform timeouts.
+            - **☀️ Light Mode UI Bug Fixes in Settings**:
+              - **Fixed Dropdown Text Contrast**: Dropdown menu background and text now dynamically adapt to light and dark themes with full readability.
+              - **Fixed "Test Key" Button**: Border and label colors now display crisp dark slate text on light mode instead of blending into white.
+              - **SMS Section Theming**: All cards and borders in Settings now utilize theme-aware adaptive surfaces.
+            - **📊 Dedicated Analytics & Insights Tab**: Donut charts, spending bars, cash flow, merchant leaderboard, and payment mode breakdown.
+            - **🛍️ Intelligent Merchant & Shop Category Finder**: Accurate category classification for shops and merchants (e.g. `biteandbrew` -> Food, `zudio` -> Shopping).
+            - **📳 Crisp Micro-Haptics & Dual CSV Export**: Native physical haptics and dual CSV export (normal & with raw SMS) directly to `/storage/emulated/0/Download/`.
 
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
-            *(Application ID: `com.arthatrack.beta` — installs smoothly on your phone)*
+            *(Application ID: `com.arthatrack.beta` — updates smoothly over Build 6)*
           files: build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
