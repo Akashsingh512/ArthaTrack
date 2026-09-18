@@ -575,6 +575,108 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
             ),
             const SizedBox(height: 16),
 
+            // Live Progressive Sync Card (when syncing)
+            if (_isSyncing) ...[
+              Consumer<SettingsController>(
+                builder: (context, settings, _) {
+                  final progress = settings.smsSyncProgress;
+                  final processed = settings.smsSyncProcessed;
+                  final total = settings.smsSyncTotal;
+                  final imported = settings.smsSyncImportedSoFar;
+                  final pct = (progress * 100).toInt();
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: colors.emerald.withOpacity(0.35)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: colors.emerald,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  total > 0 ? 'Scanning Inbox: $pct%' : 'Reading Inbox Messages...',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (total > 0)
+                              Text(
+                                '$processed / $total msgs',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.emerald,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: total > 0 ? progress : null,
+                            minHeight: 7,
+                            backgroundColor: colors.surfaceCard,
+                            valueColor: AlwaysStoppedAnimation<Color>(colors.emerald),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.auto_awesome, size: 13, color: colors.emerald),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '$imported transaction${imported == 1 ? '' : 's'} detected so far',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (total > 0 && (total - processed) > 0)
+                              Text(
+                                '${total - processed} remaining',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+            ],
+
             // Result Banner (if completed)
             if (_lastResult != null) ...[
               Container(

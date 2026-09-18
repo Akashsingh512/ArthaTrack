@@ -15,6 +15,7 @@ import 'balance_sheet/balance_sheet_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'settings/settings_screen.dart';
 import 'transactions/transactions_screen.dart';
+import '../widgets/update_dialog_sheet.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key});
@@ -67,6 +68,9 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
 
       // Check periodic encrypted auto-backup in the background
       _checkAutoBackup();
+
+      // Silently check if an app update is available on GitHub
+      _checkAppUpdate();
     });
   }
 
@@ -76,6 +80,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       // Whenever user returns to the app, automatically scan for new messages
       _autoDetectAndSyncRecentSms();
       _checkAutoBackup();
+      _checkAppUpdate();
     }
   }
 
@@ -109,6 +114,19 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
   Future<void> _checkAutoBackup() async {
     try {
       await BackupService().checkAndTriggerAutoBackup();
+    } catch (_) {}
+  }
+
+  /// Silently checks if a newer app release exists on GitHub
+  Future<void> _checkAppUpdate() async {
+    try {
+      final settings = Provider.of<SettingsController>(context, listen: false);
+      if (!settings.autoCheckUpdates) return;
+
+      final updateInfo = await settings.checkForUpdates(force: false);
+      if (updateInfo.hasUpdate && mounted) {
+        UpdateDialogSheet.show(context, updateInfo);
+      }
     } catch (_) {}
   }
 

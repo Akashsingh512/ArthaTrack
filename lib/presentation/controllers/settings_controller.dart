@@ -10,12 +10,14 @@ import '../../services/ingestion/gmail_reader_service.dart';
 import '../../services/ingestion/notification_listener_channel.dart';
 import '../../services/ingestion/sms_sync_service.dart';
 import '../../services/parsing/engine_a_ai_parser.dart';
+import '../../services/updater/app_update_service.dart';
 
 class SettingsController extends ChangeNotifier {
   final SecureStorageService _secureStorage;
   final NotificationListenerChannel _notificationChannel;
   final GmailReaderService _gmailService;
   final SmsSyncService _smsSyncService;
+  final AppUpdateService _updateService;
 
   bool _isLoading = false;
   ThemeMode _themeMode = ThemeMode.dark;
@@ -30,15 +32,28 @@ class SettingsController extends ChangeNotifier {
   bool _isTestingKey = false;
   String? _keyTestStatus; // 'SUCCESS', 'FAILED', or null
 
+  bool _autoCheckUpdates = true;
+  bool get autoCheckUpdates => _autoCheckUpdates;
+
+  bool _isCheckingUpdate = false;
+  bool get isCheckingUpdate => _isCheckingUpdate;
+
+  UpdateInfo? _latestUpdateInfo;
+  UpdateInfo? get latestUpdateInfo => _latestUpdateInfo;
+
+  AppUpdateService get updateService => _updateService;
+
   SettingsController({
     SecureStorageService? secureStorage,
     NotificationListenerChannel? notificationChannel,
     GmailReaderService? gmailService,
     SmsSyncService? smsSyncService,
+    AppUpdateService? updateService,
   })  : _secureStorage = secureStorage ?? SecureStorageService(),
         _notificationChannel = notificationChannel ?? NotificationListenerChannel(),
         _gmailService = gmailService ?? GmailReaderService(),
-        _smsSyncService = smsSyncService ?? SmsSyncService();
+        _smsSyncService = smsSyncService ?? SmsSyncService(),
+        _updateService = updateService ?? AppUpdateService();
 
   bool get isLoading => _isLoading;
   ThemeMode get themeMode => _themeMode;
@@ -74,6 +89,18 @@ class SettingsController extends ChangeNotifier {
   DateTime? get customStartDate => _customStartDate;
   DateTime? _customEndDate;
   DateTime? get customEndDate => _customEndDate;
+
+  double _smsSyncProgress = 0.0;
+  double get smsSyncProgress => _smsSyncProgress;
+
+  int _smsSyncProcessed = 0;
+  int get smsSyncProcessed => _smsSyncProcessed;
+
+  int _smsSyncTotal = 0;
+  int get smsSyncTotal => _smsSyncTotal;
+
+  int _smsSyncImportedSoFar = 0;
+  int get smsSyncImportedSoFar => _smsSyncImportedSoFar;
 
   Future<void> setSmsDatePreset(String preset, {DateTime? startDate, DateTime? endDate}) async {
     _smsDatePreset = preset;
@@ -145,6 +172,7 @@ class SettingsController extends ChangeNotifier {
 
       _smsPullLimit = await _secureStorage.getSmsPullLimit();
       _smsDatePreset = await _secureStorage.getSmsDatePreset();
+      _autoCheckUpdates = await _secureStorage.getAutoCheckUpdates();
 
       _isNotificationPermissionGranted =
           await _notificationChannel.isPermissionGranted();
@@ -292,6 +320,10 @@ class SettingsController extends ChangeNotifier {
     DateTime? endDate,
   }) async {
     _isSmsSyncing = true;
+    _smsSyncProgress = 0.0;
+    _smsSyncProcessed = 0;
+    _smsSyncTotal = 0;
+    _smsSyncImportedSoFar = 0;
     notifyListeners();
 
     try {
@@ -303,6 +335,13 @@ class SettingsController extends ChangeNotifier {
         limit: actualLimit,
         startDate: effectiveStart,
         endDate: effectiveEnd,
+        onProgress: (current, total, imported) {
+          _smsSyncProcessed = current;
+          _smsSyncTotal = total;
+          _smsSyncImportedSoFar = imported;
+          _smsSyncProgress = total > 0 ? (current / total).clamp(0.0, 1.0) : 0.0;
+          notifyListeners();
+        },
       );
       _isSmsPermissionGranted = await _smsSyncService.isPermissionGranted();
       _isSmsSyncing = false;
@@ -494,5 +533,24 @@ class SettingsController extends ChangeNotifier {
       return '"${val.replaceAll('"', '""')}"';
     }
     return val;
+  }
+
+  Future<void> setAutoCheckUpdates(bool enabled) async {
+    _autoCheckUpdates = enabled;
+    await _secureStorage.setAutoCheckUpdates(enabled);
+    notifyListeners();
+  }
+
+  Future<UpdateInfo> checkForUpdates({bool force = true}) async {
+    _isCheckingUpdate = true;
+    notifyListeners();
+    try {
+      final info = await _updateService.checkForUpdate(force: force);
+      _latestUpdateInfo = info;
+      return info;
+    } finally {
+      _isCheckingUpdate = false;
+      notifyListeners();
+    }
   }
 }

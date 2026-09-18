@@ -69,30 +69,32 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta7
-          name: "ArthaTrack Beta v1.1.0 (Build 7)"
+          tag_name: v1.1.0-beta8
+          name: "ArthaTrack Beta v1.1.0 (Build 8)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 7)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 8)
             
-            #### 🌟 Highlights & What's New in Build 7:
-            - **📅 Date-Range & Month-Based SMS Transaction Pulling**:
-              - You can now pull transactions directly by date window: **This Month**, **This Week Only**, **Last Month**, **Last 3 Months**, **This Year (2026)**, **All Time**, or any **Custom Range (e.g. Sept to Nov)** with start and end date pickers!
-              - Native Android Telephony SQL filtering (`date >= ? AND date <= ?`) filters messages directly at the Android SQLite layer for near-instant scanning.
-              - Visual explanation card in the SMS Sync Sheet dynamically displays the exact date range being scanned.
-              - Set your preferred date period as your permanent default in Settings.
-            - **🛡️ Fixed SMS Concurrency Error (`A sync is already in progress`)**:
-              - Completely resolved the red snackbar error caused by concurrent background/pull-to-refresh checks and manual user taps. Background and foreground syncs are now gracefully coalesced with platform timeouts.
+            #### 🌟 Highlights & What's New in Build 8:
+            - **🔄 In-App Direct GitHub Auto-Updater**:
+              - You no longer have to visit GitHub releases in a browser to update ArthaTrack!
+              - The app now checks for updates directly from GitHub on launch and via the new **"App Version & Updates"** section in **Settings**.
+              - Download updates directly inside the app with a smooth streaming progress bar and install in 1 tap via Android's native system package installer.
+            - **📊 Real-Time Live Progressive Sync Bar**:
+              - Watch the live progress of your SMS scan: displays exact percentage (`Scanning: 68%`), live message counter (`340 / 500 msgs`), and real-time transaction count (`42 transactions detected so far`) in both the Sync Sheet and Settings.
+            - **🛡️ Security Hardening & Vulnerability Remediation**:
+              - **SMS Spoofing Guard**: Secured `SmsReceiver` with `android.permission.BROADCAST_SMS` so only the Android OS Telephony provider can deliver SMS broadcasts to ArthaTrack.
+              - **ADB Backup Protection**: Added `android:allowBackup="false"` to prevent unauthorized USB ADB extraction of the SQLite database.
+            - **📅 Date-Range & Month-Based SMS Pulling**:
+              - Pull transactions by exact calendar periods: **This Month**, **This Week Only**, **Last Month**, **Last 3 Months**, **This Year (2026)**, **All Time**, or any **Custom Date Range (e.g. Sept to Nov)**.
+              - Native Android Telephony SQL filtering (`date >= ? AND date <= ?`) filters messages directly in SQLite for instant scanning.
             - **☀️ Light Mode UI Bug Fixes in Settings**:
-              - **Fixed Dropdown Text Contrast**: Dropdown menu background and text now dynamically adapt to light and dark themes with full readability.
-              - **Fixed "Test Key" Button**: Border and label colors now display crisp dark slate text on light mode instead of blending into white.
-              - **SMS Section Theming**: All cards and borders in Settings now utilize theme-aware adaptive surfaces.
-            - **📊 Dedicated Analytics & Insights Tab**: Donut charts, spending bars, cash flow, merchant leaderboard, and payment mode breakdown.
-            - **🛍️ Intelligent Merchant & Shop Category Finder**: Accurate category classification for shops and merchants (e.g. `biteandbrew` -> Food, `zudio` -> Shopping).
-            - **📳 Crisp Micro-Haptics & Dual CSV Export**: Native physical haptics and dual CSV export (normal & with raw SMS) directly to `/storage/emulated/0/Download/`.
+              - Fixed dropdown text contrast and "Test Key" button styling for crisp readability in light theme.
+            - **📊 Dedicated Analytics & Insights Tab**:
+              - Donut charts, spending bars, cash flow, merchant leaderboard, and payment mode breakdowns.
 
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
-            *(Application ID: `com.arthatrack.beta` — updates smoothly over Build 6)*
+            *(Application ID: `com.arthatrack.beta` — updates smoothly over previous builds)*
           files: build/app/outputs/flutter-apk/ArthaTrack-Beta-v1.1.0.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -205,6 +205,30 @@ class SecureStorageService {
     await _storage.write(key: 'sms_date_preset', value: preset);
   }
 
+  Future<bool> getAutoCheckUpdates() async {
+    final val = await _storage.read(key: AppConstants.secureKeyAutoCheckUpdates);
+    if (val != null) {
+      return val == 'true';
+    }
+    return true; // default true
+  }
+
+  Future<void> setAutoCheckUpdates(bool enabled) async {
+    await _storage.write(key: AppConstants.secureKeyAutoCheckUpdates, value: enabled.toString());
+  }
+
+  Future<int?> getLastUpdateCheck() async {
+    final val = await _storage.read(key: AppConstants.secureKeyLastUpdateCheck);
+    if (val != null) {
+      return int.tryParse(val);
+    }
+    return null;
+  }
+
+  Future<void> setLastUpdateCheck(int timestamp) async {
+    await _storage.write(key: AppConstants.secureKeyLastUpdateCheck, value: timestamp.toString());
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

@@ -12,6 +12,8 @@ import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
 import '../../widgets/sms_sync_sheet.dart';
+import '../../widgets/update_dialog_sheet.dart';
+import '../../../../services/updater/app_update_service.dart';
 import 'widgets/backup_settings_sheet.dart';
 import 'widgets/manage_categories_sheet.dart';
 
@@ -106,6 +108,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Custom Categories Management Section
                 _buildCategoryManagementSection(context),
+                const SizedBox(height: 20),
+
+                // In-App Updates & Version Section
+                _buildAppUpdateSection(context, settings),
                 const SizedBox(height: 20),
 
                 // Privacy-First Guarantee Card
@@ -587,6 +593,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              // Live Progressive Sync Card
+              if (isSyncing) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.colors.surfaceCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: context.colors.emerald.withOpacity(0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            settings.smsSyncTotal > 0
+                                ? 'Scanning: ${(settings.smsSyncProgress * 100).toInt()}%'
+                                : 'Reading Inbox Messages...',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: context.colors.emerald,
+                            ),
+                          ),
+                          if (settings.smsSyncTotal > 0)
+                            Text(
+                              '${settings.smsSyncProcessed} / ${settings.smsSyncTotal} msgs',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: context.colors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: settings.smsSyncTotal > 0 ? settings.smsSyncProgress : null,
+                          minHeight: 6,
+                          backgroundColor: context.colors.surfaceElevated,
+                          valueColor: AlwaysStoppedAnimation<Color>(context.colors.emerald),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.auto_awesome, size: 12, color: context.colors.emerald),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${settings.smsSyncImportedSoFar} transactions detected so far',
+                            style: TextStyle(fontSize: 11, color: context.colors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
 
               Row(
                 children: [
@@ -1650,18 +1720,229 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildAppUpdateSection(BuildContext context, SettingsController settings) {
+    final colors = context.colors;
+    final latest = settings.latestUpdateInfo;
+    final hasNewVersion = latest != null && latest.hasUpdate;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colors.emerald.withOpacity(colors.isDark ? 0.2 : 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.emerald.withOpacity(0.3)),
+                  ),
+                  child: Icon(Icons.system_update_rounded, color: colors.emerald, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'App Version & Updates',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Direct in-app release updates from GitHub',
+                        style: TextStyle(fontSize: 12, color: colors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Version info badge & status
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: colors.surfaceElevated,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.verified_outlined, size: 18, color: colors.emerald),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ArthaTrack Beta v${AppConstants.appVersion}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'Installed Build: ${AppConstants.appBuildNumber}',
+                          style: TextStyle(fontSize: 11, color: colors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (hasNewVersion) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colors.emerald.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colors.emerald),
+                      ),
+                      child: Text(
+                        'Build ${latest.latestBuild} Available',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: colors.emerald,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceCard,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Text(
+                        'Up to date',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Check for updates button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasNewVersion ? colors.emerald : colors.surfaceElevated,
+                  foregroundColor: hasNewVersion
+                      ? (colors.isDark ? Colors.black : Colors.white)
+                      : colors.textPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: hasNewVersion ? colors.emerald : colors.border,
+                    ),
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: settings.isCheckingUpdate
+                    ? null
+                    : () async {
+                        AppHaptics.medium();
+                        final info = await settings.checkForUpdates(force: true);
+                        if (!context.mounted) return;
+
+                        if (info.hasUpdate) {
+                          UpdateDialogSheet.show(context, info);
+                        } else {
+                          AppHaptics.light();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '✓ You are on the latest version! (Build ${AppConstants.appBuildNumber})',
+                              ),
+                              backgroundColor: colors.emerald,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      },
+                icon: settings.isCheckingUpdate
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colors.textPrimary,
+                        ),
+                      )
+                    : Icon(
+                        hasNewVersion ? Icons.download_rounded : Icons.sync_rounded,
+                        size: 18,
+                      ),
+                label: Text(
+                  settings.isCheckingUpdate
+                      ? 'Checking GitHub for releases...'
+                      : (hasNewVersion ? 'Download Build ${latest.latestBuild}' : 'Check for Updates'),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Switch: Auto-check for updates
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              value: settings.autoCheckUpdates,
+              onChanged: (val) {
+                AppHaptics.selection();
+                settings.setAutoCheckUpdates(val);
+              },
+              title: Text(
+                'Auto-check for updates on launch',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: colors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Notifies you when a new build is published on GitHub',
+                style: TextStyle(fontSize: 11, color: colors.textMuted),
+              ),
+              activeColor: colors.emerald,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrivacyNoticeCard() {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: colors.surfaceElevated,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E293B)),
+        border: Border.all(color: colors.border),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.shield_outlined, color: AppColors.emerald, size: 24),
-          SizedBox(width: 12),
+          Icon(Icons.shield_outlined, color: colors.emerald, size: 24),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1671,13 +1952,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Your financial transactions, balances, and assets are stored solely on this device in SQLite. No analytics, no user tracking, and no external user-data backend.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, color: colors.textMuted),
                 ),
               ],
             ),

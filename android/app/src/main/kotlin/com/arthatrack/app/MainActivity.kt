@@ -22,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -33,6 +34,7 @@ class MainActivity : FlutterActivity() {
     private val METHOD_CHANNEL = "com.arthatrack.app/notification_control"
     private val SMS_CHANNEL = "com.arthatrack.app/sms_reader"
     private val HAPTICS_CHANNEL = "com.arthatrack.app/haptics"
+    private val UPDATER_CHANNEL = "com.arthatrack.app/updater"
     private val SMS_PERMISSION_REQ_CODE = 2002
 
     private var pendingSmsResult: MethodChannel.Result? = null
@@ -150,6 +152,65 @@ class MainActivity : FlutterActivity() {
                     val type = call.argument<String>("type") ?: "light"
                     triggerHaptic(type)
                     result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+
+        // MethodChannel for In-App Auto-Update & APK Installation
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, UPDATER_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "canInstallPackages" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        result.success(packageManager.canRequestPackageInstalls())
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "openInstallPermissionSettings" -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                data = Uri.parse("package:$packageName")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } else {
+                            result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        result.error("SETTINGS_ERROR", e.message, null)
+                    }
+                }
+                "installApk" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath == null) {
+                        result.error("INVALID_ARGS", "filePath must not be null", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val file = File(filePath)
+                        if (!file.exists()) {
+                            result.error("FILE_NOT_FOUND", "APK file does not exist at $filePath", null)
+                            return@setMethodCallHandler
+                        }
+
+                        val authority = "${applicationContext.packageName}.fileprovider"
+                        val apkUri = FileProvider.getUriForFile(this, authority, file)
+
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("INSTALL_ERROR", e.message, null)
+                    }
                 }
                 else -> {
                     result.notImplemented()

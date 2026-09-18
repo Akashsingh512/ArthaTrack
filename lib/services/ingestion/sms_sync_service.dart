@@ -26,6 +26,12 @@ class SmsSyncResult {
   });
 }
 
+typedef SmsSyncProgressCallback = void Function(
+  int processedCount,
+  int totalCount,
+  int importedCount,
+);
+
 class SmsSyncService {
   static const MethodChannel _channel = MethodChannel('com.arthatrack.app/sms_reader');
 
@@ -48,7 +54,7 @@ class SmsSyncService {
         _accountRepo = accountRepo ?? AccountRepository(),
         _categoryRepo = categoryRepo ?? CategoryRepository();
 
-  /// Checks if the READ_SMS Android permission is granted
+  /// Checks if SMS read permission is granted by the user
   Future<bool> isPermissionGranted() async {
     try {
       final bool? granted = await _channel.invokeMethod<bool>('checkSmsPermission');
@@ -58,7 +64,7 @@ class SmsSyncService {
     }
   }
 
-  /// Requests runtime READ_SMS permission from the user
+  /// Prompts runtime permission dialog to read incoming and inbox SMS
   Future<bool> requestPermission() async {
     try {
       final bool? granted = await _channel.invokeMethod<bool>('requestSmsPermission');
@@ -81,6 +87,7 @@ class SmsSyncService {
     int limit = 0,
     DateTime? startDate,
     DateTime? endDate,
+    SmsSyncProgressCallback? onProgress,
   }) async {
     if (_activeSyncFuture != null) {
       try {
@@ -98,6 +105,7 @@ class SmsSyncService {
       limit: limit,
       startDate: startDate,
       endDate: endDate,
+      onProgress: onProgress,
     );
     _activeSyncFuture = future;
 
@@ -112,6 +120,7 @@ class SmsSyncService {
     required int limit,
     DateTime? startDate,
     DateTime? endDate,
+    SmsSyncProgressCallback? onProgress,
   }) async {
     try {
       // 1. Verify or prompt for SMS permission
@@ -154,9 +163,14 @@ class SmsSyncService {
 
       int importedCount = 0;
       int scannedCount = rawMessages.length;
+      int processedCount = 0;
       final seenAccountsWithBalance = <int>{};
 
+      onProgress?.call(0, scannedCount, 0);
+
       for (final item in rawMessages) {
+        processedCount++;
+        onProgress?.call(processedCount, scannedCount, importedCount);
         if (item is! Map) continue;
         final sender = item['sender']?.toString() ?? '';
         final body = item['body']?.toString() ?? '';
@@ -237,6 +251,7 @@ class SmsSyncService {
 
           await _transactionRepo.insertTransaction(tx);
           importedCount++;
+          onProgress?.call(processedCount, scannedCount, importedCount);
         }
       }
 
