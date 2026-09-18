@@ -119,8 +119,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "readInboxSms" -> {
-                    val rawLimit = (call.argument<Any>("limit") as? Number)?.toInt() ?: 50000
-                    val limit = if (rawLimit <= 0) 50000 else rawLimit.coerceIn(1, 50000)
+                    val rawLimit = (call.argument<Any>("limit") as? Number)?.toInt() ?: 0
+                    val limit = if (rawLimit <= 0) 0 else rawLimit
                     val startDate = (call.argument<Any>("startDate") as? Number)?.toLong()
                     val endDate = (call.argument<Any>("endDate") as? Number)?.toLong()
                     try {
@@ -389,9 +389,8 @@ class MainActivity : FlutterActivity() {
 
     private fun readSmsMessages(limit: Int, startDate: Long? = null, endDate: Long? = null): List<Map<String, Any>> {
         val list = mutableListOf<Map<String, Any>>()
-        val uri = Uri.parse("content://sms/inbox")
         val projection = arrayOf("_id", "address", "body", "date")
-        val sortOrder = if (limit > 0) "date DESC LIMIT $limit" else "date DESC"
+        val sortOrder = "date DESC"
 
         val whereClauses = mutableListOf<String>()
         val whereArgs = mutableListOf<String>()
@@ -405,54 +404,61 @@ class MainActivity : FlutterActivity() {
             whereArgs.add(endDate.toString())
         }
 
-        val selection = if (whereClauses.isNotEmpty()) whereClauses.joinToString(" AND ") else null
-        val selectionArgs = if (whereArgs.isNotEmpty()) whereArgs.toTypedArray() else null
+        val baseSelection = if (whereClauses.isNotEmpty()) whereClauses.joinToString(" AND ") else null
+        val baseSelectionArgs = if (whereArgs.isNotEmpty()) whereArgs.toTypedArray() else null
 
-        // Safe query execution with fallback in case an OEM ROM rejects LIMIT in sortOrder
-        var cursor: Cursor? = null
-        try {
-            cursor = contentResolver.query(
-                uri,
-                projection,
-                selection,
-                selectionArgs,
-                if (limit > 0) "date DESC LIMIT $limit" else "date DESC"
-            )
-        } catch (e: Exception) {
+        fun queryUri(uri: Uri, extraWhere: String? = null) {
+            val querySelection = if (extraWhere != null) {
+                if (baseSelection != null) "$baseSelection AND $extraWhere" else extraWhere
+            } else {
+                baseSelection
+            }
+
+            var cursor: Cursor? = null
             try {
                 cursor = contentResolver.query(
                     uri,
                     projection,
-                    selection,
-                    selectionArgs,
-                    "date DESC"
+                    querySelection,
+                    baseSelectionArgs,
+                    sortOrder
                 )
-            } catch (inner: Exception) {
-                return list
-            }
-        }
+            } catch (_: Exception) {}
 
-        cursor?.use {
-            val addressIdx = it.getColumnIndex("address")
-            val bodyIdx = it.getColumnIndex("body")
-            val dateIdx = it.getColumnIndex("date")
+            cursor?.use {
+                val addressIdx = it.getColumnIndex("address")
+                val bodyIdx = it.getColumnIndex("body")
+                val dateIdx = it.getColumnIndex("date")
 
-            while (it.moveToNext() && (limit <= 0 || list.size < limit)) {
-                val address = if (addressIdx >= 0) it.getString(addressIdx) ?: "" else ""
-                val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
-                val date = if (dateIdx >= 0) it.getLong(dateIdx) else System.currentTimeMillis()
+                while (it.moveToNext()) {
+                    if (limit > 0 && list.size >= limit) {
+                        break
+                    }
+                    val address = if (addressIdx >= 0) it.getString(addressIdx) ?: "" else ""
+                    val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
+                    val date = if (dateIdx >= 0) it.getLong(dateIdx) else System.currentTimeMillis()
 
-                if (body.isNotBlank()) {
-                    list.add(
-                        mapOf(
-                            "sender" to address,
-                            "body" to body,
-                            "date" to date
+                    if (body.isNotBlank()) {
+                        list.add(
+                            mapOf(
+                                "sender" to address,
+                                "body" to body,
+                                "date" to date
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
+
+        // 1. Primary query to content://sms/inbox
+        queryUri(Uri.parse("content://sms/inbox"))
+
+        // 2. Secondary fallback to content://sms (type = 1 inbox) if primary returned nothing
+        if (list.isEmpty()) {
+            queryUri(Uri.parse("content://sms"), "type = 1")
+        }
+
         return list
     }
 

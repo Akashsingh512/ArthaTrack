@@ -148,7 +148,7 @@ class SmsSyncService {
 
       final List<dynamic>? rawMessages = await _channel
           .invokeMethod<List<dynamic>>('readInboxSms', channelArgs)
-          .timeout(const Duration(seconds: 45));
+          .timeout(const Duration(minutes: 3));
 
       if (rawMessages == null || rawMessages.isEmpty) {
         return const SmsSyncResult(

@@ -202,9 +202,10 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
     });
 
     final result = await settings.syncSmsInbox(
-      limit: 50000,
+      limit: 0,
       startDate: start,
       endDate: end,
+      explicitDateFilter: true,
     );
 
     if (!mounted) return;

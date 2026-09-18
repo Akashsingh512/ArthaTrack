@@ -69,25 +69,23 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta10
-          name: "ArthaTrack Beta v1.1.0 (Build 10)"
+          tag_name: v1.1.0-beta11
+          name: "ArthaTrack Beta v1.1.0 (Build 11)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 10)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 11)
             
-            #### 🌟 Highlights & What's New in Build 10:
-            - **⚡ Fixed In-App Updater Download Engine**:
-              - Completely resolved the `unawaited_return_in_try_block` socket termination bug where HTTP client connection was closed prematurely during download.
-              - Rebuilt the downloader on high-performance native `dart:io` `HttpClient` with automatic redirect handling, 45-second connection/idle timeouts, and streaming chunk verification.
-            - **🌐 1-Tap "Download via Browser" Fallback**:
-              - Added a direct Chrome/system browser download option inside the update dialog so users can download and install reliably even on weak roaming or high-latency mobile data.
-            - **🔓 Removed Artificial Message Caps & Enabled 50,000 Full Inbox Scan**:
-              - Completely eliminated restrictive message cap selectors (250, 500, 1000).
-              - Scans up to 50,000 messages with full period coverage for **This Month**, **Last Month**, **Last 3 Months**, **This Year**, **Custom Range**, or **All Time**.
-            - **🎯 Automatic Month-View Alignment on Import**:
-              - When syncing a specific period (e.g. *Last Month*), your active transaction screen automatically shifts to that month so newly imported transactions appear immediately!
-            - **🛡️ Security Hardened**:
-              - Secured SMS broadcast receiver against spoofing and disabled unauthorized ADB backup extraction.
-
+            #### 🌟 Highlights & What's New in Build 11:
+            - **🔓 100% Uncapped All-Time SMS Historical Sync**:
+              - Completely removed any remaining message limits or query caps.
+              - Selecting **All Time** now queries your entire phone SMS history without restriction, importing all historical transactions across every month and year.
+            - **🛡️ Android OEM Query Resilience (Samsung / Xiaomi / Vivo / Oppo / Pixel)**:
+              - Eliminated SQL `LIMIT` keyword inside `sortOrder` to prevent Android `SQLiteQueryBuilder` crashes on modern OEM ROMs.
+              - Added secondary fallback to `content://sms` (`type = 1`) if `content://sms/inbox` is restricted or empty.
+            - **⏱️ Extended Channel Timeout**:
+              - MethodChannel IPC timeout increased to 3 minutes, reliably handling inboxes with tens of thousands of messages without timing out.
+            - **⚡ Fixed In-App Updater & Browser Fallback**:
+              - In-app update downloads stream directly via native `HttpClient` with zero connection leaks, plus a 1-tap Chrome/browser download fallback.
+            
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!
             *(Application ID: `com.arthatrack.beta` — updates smoothly over previous builds)*

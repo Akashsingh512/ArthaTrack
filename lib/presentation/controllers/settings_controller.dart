@@ -319,6 +319,7 @@ class SettingsController extends ChangeNotifier {
     int? limit,
     DateTime? startDate,
     DateTime? endDate,
+    bool explicitDateFilter = false,
   }) async {
     _isSmsSyncing = true;
     _smsSyncProgress = 0.0;
@@ -328,9 +329,9 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final actualLimit = (limit != null && limit > 0) ? limit : (_smsPullLimit > 0 ? _smsPullLimit : 50000);
-      final effectiveStart = startDate ?? getCalculatedStartDate(_smsDatePreset);
-      final effectiveEnd = endDate ?? getCalculatedEndDate(_smsDatePreset);
+      final actualLimit = limit ?? (_smsPullLimit > 0 ? _smsPullLimit : 0);
+      final effectiveStart = explicitDateFilter ? startDate : (startDate ?? getCalculatedStartDate(_smsDatePreset));
+      final effectiveEnd = explicitDateFilter ? endDate : (endDate ?? getCalculatedEndDate(_smsDatePreset));
 
       final result = await _smsSyncService.syncInbox(
         limit: actualLimit,

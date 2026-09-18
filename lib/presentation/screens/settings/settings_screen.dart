@@ -749,9 +749,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     final result = await settings.syncSmsInbox(
-      limit: limit ?? 50000,
+      limit: limit ?? 0,
       startDate: startDate,
       endDate: endDate,
+      explicitDateFilter: true,
     );
 
     if (!context.mounted) return;

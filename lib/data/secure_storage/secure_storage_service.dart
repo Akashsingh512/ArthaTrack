@@ -187,9 +187,9 @@ class SecureStorageService {
     final val = await _storage.read(key: 'sms_pull_limit');
     if (val != null) {
       final parsed = int.tryParse(val);
-      if (parsed != null && parsed >= 50000) return parsed;
+      if (parsed != null && (parsed == 0 || parsed >= 50000)) return parsed;
     }
-    return 50000;
+    return 0;
   }
 
   Future<void> setSmsPullLimit(int limit) async {
