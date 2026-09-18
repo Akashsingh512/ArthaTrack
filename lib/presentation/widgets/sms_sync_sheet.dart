@@ -43,10 +43,6 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
   DateTime? _customStartDate;
   DateTime? _customEndDate;
 
-  // Optional message cap: 0 means no cap
-  int _selectedLimitCap = 0;
-  final List<int> _limitCaps = [0, 250, 500, 1000, 5000];
-
   bool _saveAsDefault = true;
   bool _isSyncing = false;
   SmsSyncResult? _lastResult;
@@ -56,7 +52,6 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
     super.initState();
     final settings = Provider.of<SettingsController>(context, listen: false);
     _selectedPreset = settings.smsDatePreset;
-    _selectedLimitCap = settings.smsPullLimit;
 
     final now = DateTime.now();
     _customStartDate = settings.customStartDate ?? DateTime(now.year, now.month, 1);
@@ -199,7 +194,6 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
 
     if (_saveAsDefault) {
       await settings.setSmsDatePreset(_selectedPreset, startDate: _customStartDate, endDate: _customEndDate);
-      await settings.setSmsPullLimit(_selectedLimitCap);
     }
 
     setState(() {
@@ -208,7 +202,7 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
     });
 
     final result = await settings.syncSmsInbox(
-      limit: _selectedLimitCap,
+      limit: 50000,
       startDate: start,
       endDate: end,
     );
@@ -226,6 +220,24 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
       final tx = Provider.of<TransactionController>(context, listen: false);
       final analytics = Provider.of<AnalyticsController>(context, listen: false);
       final balance = Provider.of<BalanceSheetController>(context, listen: false);
+
+      // Automatically align transaction view to the synced period so user immediately sees their imported data!
+      final now = DateTime.now();
+      if (_selectedPreset == 'last_month') {
+        tx.setMonthFilter(DateTime(now.year, now.month - 1));
+      } else if (_selectedPreset == 'this_month') {
+        tx.setMonthFilter(DateTime(now.year, now.month));
+      } else if (_selectedPreset == 'all_time' || _selectedPreset == 'last_3_months' || _selectedPreset == 'this_year') {
+        tx.setMonthFilter(null);
+      } else if (_selectedPreset == 'custom' && _customStartDate != null) {
+        if (_customEndDate != null &&
+            _customStartDate!.year == _customEndDate!.year &&
+            _customStartDate!.month == _customEndDate!.month) {
+          tx.setMonthFilter(DateTime(_customStartDate!.year, _customStartDate!.month));
+        } else {
+          tx.setMonthFilter(null);
+        }
+      }
 
       await dashboard.loadDashboardData();
       await tx.loadTransactions();
@@ -458,68 +470,30 @@ class _SmsSyncSheetState extends State<SmsSyncSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Optional Message Limit Cap Selector
-            Row(
-              children: [
-                Text(
-                  'MESSAGE CAP',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
-                    color: colors.textMuted,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '(optional safeguard)',
-                  style: TextStyle(fontSize: 10, color: colors.textMuted),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            // Uncapped Full Scan Assurance Badge
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.emerald.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.emerald.withOpacity(0.25)),
+              ),
               child: Row(
-                children: _limitCaps.map((cap) {
-                  final isSelected = _selectedLimitCap == cap;
-                  final label = cap == 0 ? 'No Limit (All msgs)' : '$cap max';
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected
-                              ? (colors.isDark ? Colors.black : Colors.white)
-                              : colors.textPrimary,
-                        ),
+                children: [
+                  Icon(Icons.all_inclusive, size: 18, color: colors.emerald),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Uncapped deep scan (up to 50,000 messages in period). Captures all transactions with zero message caps.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.emerald,
                       ),
-                      selected: isSelected,
-                      selectedColor: colors.emerald,
-                      backgroundColor: colors.surfaceCard,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: isSelected ? colors.emerald : colors.border,
-                        ),
-                      ),
-                      onSelected: _isSyncing
-                          ? null
-                          : (selected) {
-                              if (selected) {
-                                AppHaptics.selection();
-                                setState(() {
-                                  _selectedLimitCap = cap;
-                                });
-                              }
-                            },
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 14),

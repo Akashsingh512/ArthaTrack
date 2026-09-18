@@ -40,7 +40,7 @@ class AppConstants {
 
   // App Version & In-App Updates
   static const String appVersion = '1.1.0';
-  static const int appBuildNumber = 8;
+  static const int appBuildNumber = 9;
   static const String githubRepo = 'Akashsingh512/ArthaTrack';
   static const String updaterChannel = 'com.arthatrack.app/updater';
   static const String secureKeyAutoCheckUpdates = 'app_auto_check_updates';

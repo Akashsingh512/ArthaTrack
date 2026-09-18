@@ -69,28 +69,26 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta8
-          name: "ArthaTrack Beta v1.1.0 (Build 8)"
+          tag_name: v1.1.0-beta9
+          name: "ArthaTrack Beta v1.1.0 (Build 9)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 8)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 9)
             
-            #### 🌟 Highlights & What's New in Build 8:
+            #### 🌟 Highlights & What's New in Build 9:
+            - **🔓 Removed Artificial Message Caps & Enabled 50,000 Full Inbox Scan**:
+              - Completely eliminated the restrictive message cap selector (250, 500, 1000) that prematurely truncated date-based message scans.
+              - Date-based scans (**This Month**, **Last Month**, **Last 3 Months**, **This Year**, **Sept to Nov**, or **All Time**) now scan **100% of messages** in that time window (up to 50,000 messages) with zero artificial cutoffs.
+            - **🛡️ Resilient Android Telephony Query Engine**:
+              - Hardened `MainActivity.kt` with OEM-agnostic fallback query execution to guarantee flawless retrieval across Samsung, Xiaomi, Oppo, Vivo, OnePlus, and Google Pixel devices.
+              - Full type-safety for millisecond epoch timestamps and safe limit clamping.
+            - **🎯 Automatic Month-View Alignment on Import**:
+              - When syncing a specific period (e.g. *Last Month* or a custom date range), the app automatically shifts your active transaction view to that month so newly imported transactions appear on screen immediately!
             - **🔄 In-App Direct GitHub Auto-Updater**:
-              - You no longer have to visit GitHub releases in a browser to update ArthaTrack!
-              - The app now checks for updates directly from GitHub on launch and via the new **"App Version & Updates"** section in **Settings**.
-              - Download updates directly inside the app with a smooth streaming progress bar and install in 1 tap via Android's native system package installer.
-            - **📊 Real-Time Live Progressive Sync Bar**:
-              - Watch the live progress of your SMS scan: displays exact percentage (`Scanning: 68%`), live message counter (`340 / 500 msgs`), and real-time transaction count (`42 transactions detected so far`) in both the Sync Sheet and Settings.
-            - **🛡️ Security Hardening & Vulnerability Remediation**:
-              - **SMS Spoofing Guard**: Secured `SmsReceiver` with `android.permission.BROADCAST_SMS` so only the Android OS Telephony provider can deliver SMS broadcasts to ArthaTrack.
-              - **ADB Backup Protection**: Added `android:allowBackup="false"` to prevent unauthorized USB ADB extraction of the SQLite database.
-            - **📅 Date-Range & Month-Based SMS Pulling**:
-              - Pull transactions by exact calendar periods: **This Month**, **This Week Only**, **Last Month**, **Last 3 Months**, **This Year (2026)**, **All Time**, or any **Custom Date Range (e.g. Sept to Nov)**.
-              - Native Android Telephony SQL filtering (`date >= ? AND date <= ?`) filters messages directly in SQLite for instant scanning.
-            - **☀️ Light Mode UI Bug Fixes in Settings**:
-              - Fixed dropdown text contrast and "Test Key" button styling for crisp readability in light theme.
-            - **📊 Dedicated Analytics & Insights Tab**:
-              - Donut charts, spending bars, cash flow, merchant leaderboard, and payment mode breakdowns.
+              - Download and update ArthaTrack directly inside the app with 1-tap installation.
+            - **📊 Real-Time Progressive Sync Bar**:
+              - Streaming progress bar with live scan percentage, message counter, and detected transaction count.
+            - **🛡️ Security Hardened**:
+              - Secured SMS broadcast receiver against spoofing and disabled unauthorized ADB backup extraction.
 
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

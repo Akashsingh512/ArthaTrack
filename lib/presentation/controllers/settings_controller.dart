@@ -79,7 +79,7 @@ class SettingsController extends ChangeNotifier {
   bool _hapticsEnabled = true;
   bool get hapticsEnabled => _hapticsEnabled;
 
-  int _smsPullLimit = 500;
+  int _smsPullLimit = 50000;
   int get smsPullLimit => _smsPullLimit;
 
   String _smsDatePreset = 'this_month';
@@ -111,9 +111,9 @@ class SettingsController extends ChangeNotifier {
   }
 
   Future<void> setSmsPullLimit(int limit) async {
-    _smsPullLimit = limit;
+    _smsPullLimit = limit > 0 ? limit : 50000;
     notifyListeners();
-    await _secureStorage.setSmsPullLimit(limit);
+    await _secureStorage.setSmsPullLimit(_smsPullLimit);
   }
 
   Future<void> setHapticsEnabled(bool enabled) async {
@@ -308,7 +308,8 @@ class SettingsController extends ChangeNotifier {
       case 'last_month':
         return DateTime(now.year, now.month, 0, 23, 59, 59, 999);
       case 'custom':
-        return customEnd ?? _customEndDate;
+        final end = customEnd ?? _customEndDate;
+        return end != null ? DateTime(end.year, end.month, end.day, 23, 59, 59, 999) : null;
       default:
         return null;
     }
@@ -327,7 +328,7 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final actualLimit = limit ?? _smsPullLimit;
+      final actualLimit = (limit != null && limit > 0) ? limit : (_smsPullLimit > 0 ? _smsPullLimit : 50000);
       final effectiveStart = startDate ?? getCalculatedStartDate(_smsDatePreset);
       final effectiveEnd = endDate ?? getCalculatedEndDate(_smsDatePreset);
 

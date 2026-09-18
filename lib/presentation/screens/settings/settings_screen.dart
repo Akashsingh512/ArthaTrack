@@ -672,6 +672,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : () => _triggerSmsSync(
                                 context,
                                 settings,
+                                limit: 50000,
                                 label: 'Scanning messages for ${settings.smsDatePreset == "this_month" ? "This Month" : settings.smsDatePreset}...',
                               ),
                       icon: isSyncing
@@ -705,10 +706,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : () => _triggerSmsSync(
                                 context,
                                 settings,
-                                limit: 0,
+                                limit: 50000,
                                 startDate: null,
                                 endDate: null,
-                                label: 'Deep scanning entire SMS inbox history...',
+                                label: 'Deep scanning entire SMS inbox history (up to 50,000 msgs)...',
                               ),
                       icon: const Icon(Icons.all_inclusive, size: 18),
                       label: const Text(
@@ -748,7 +749,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     final result = await settings.syncSmsInbox(
-      limit: limit,
+      limit: limit ?? 50000,
       startDate: startDate,
       endDate: endDate,
     );
@@ -785,6 +786,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: AppColors.emerald,
         ),
       );
+
+      final now = DateTime.now();
+      if (settings.smsDatePreset == 'last_month') {
+        txController.setMonthFilter(DateTime(now.year, now.month - 1));
+      } else if (settings.smsDatePreset == 'this_month') {
+        txController.setMonthFilter(DateTime(now.year, now.month));
+      } else if (settings.smsDatePreset == 'all_time' ||
+          settings.smsDatePreset == 'last_3_months' ||
+          settings.smsDatePreset == 'this_year' ||
+          startDate == null) {
+        txController.setMonthFilter(null);
+      }
+
       await dashboard.loadDashboardData();
       await txController.loadTransactions();
       await analytics.loadAnalytics();

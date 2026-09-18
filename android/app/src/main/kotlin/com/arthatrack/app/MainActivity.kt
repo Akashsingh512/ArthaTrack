@@ -21,6 +21,7 @@ import android.view.HapticFeedbackConstants
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import android.database.Cursor
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -118,10 +119,10 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "readInboxSms" -> {
-                    val rawLimit = call.argument<Int>("limit") ?: 5000
-                    val limit = if (rawLimit <= 0) 0 else rawLimit.coerceIn(1, 50000)
-                    val startDate = call.argument<Long>("startDate")
-                    val endDate = call.argument<Long>("endDate")
+                    val rawLimit = (call.argument<Any>("limit") as? Number)?.toInt() ?: 50000
+                    val limit = if (rawLimit <= 0) 50000 else rawLimit.coerceIn(1, 50000)
+                    val startDate = (call.argument<Any>("startDate") as? Number)?.toLong()
+                    val endDate = (call.argument<Any>("endDate") as? Number)?.toLong()
                     try {
                         val messages = readSmsMessages(limit, startDate, endDate)
                         result.success(messages)
@@ -391,20 +392,36 @@ class MainActivity : FlutterActivity() {
         val selection = if (whereClauses.isNotEmpty()) whereClauses.joinToString(" AND ") else null
         val selectionArgs = if (whereArgs.isNotEmpty()) whereArgs.toTypedArray() else null
 
-        val cursor = contentResolver.query(
-            uri,
-            projection,
-            selection,
-            selectionArgs,
-            sortOrder
-        ) ?: return list
+        // Safe query execution with fallback in case an OEM ROM rejects LIMIT in sortOrder
+        var cursor: Cursor? = null
+        try {
+            cursor = contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                if (limit > 0) "date DESC LIMIT $limit" else "date DESC"
+            )
+        } catch (e: Exception) {
+            try {
+                cursor = contentResolver.query(
+                    uri,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    "date DESC"
+                )
+            } catch (inner: Exception) {
+                return list
+            }
+        }
 
-        cursor.use {
+        cursor?.use {
             val addressIdx = it.getColumnIndex("address")
             val bodyIdx = it.getColumnIndex("body")
             val dateIdx = it.getColumnIndex("date")
 
-            while (it.moveToNext()) {
+            while (it.moveToNext() && (limit <= 0 || list.size < limit)) {
                 val address = if (addressIdx >= 0) it.getString(addressIdx) ?: "" else ""
                 val body = if (bodyIdx >= 0) it.getString(bodyIdx) ?: "" else ""
                 val date = if (dateIdx >= 0) it.getLong(dateIdx) else System.currentTimeMillis()
