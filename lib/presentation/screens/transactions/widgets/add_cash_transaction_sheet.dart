@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
+import '../../../../services/parsing/category_finder.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../controllers/transaction_controller.dart';
 
@@ -22,8 +23,36 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
   int? _selectedAccountId;
   DateTime _selectedDate = DateTime.now();
 
+  String? _autoDetectedCategory;
+  bool _userManuallySelectedCategory = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _merchantController.addListener(_onMerchantChanged);
+  }
+
+  void _onMerchantChanged() {
+    final query = _merchantController.text.trim();
+    final detected = CategoryFinder.suggestCategory(query);
+    if (detected != null && detected != _autoDetectedCategory) {
+      setState(() {
+        _autoDetectedCategory = detected;
+        if (!_userManuallySelectedCategory) {
+          _category = detected;
+          AppHaptics.selection();
+        }
+      });
+    } else if (detected == null && _autoDetectedCategory != null) {
+      setState(() {
+        _autoDetectedCategory = null;
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _merchantController.removeListener(_onMerchantChanged);
     _amountController.dispose();
     _merchantController.dispose();
     super.dispose();
@@ -204,13 +233,30 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Merchant / Note',
-                  hintText: 'e.g. Local Street Food, Cab, Grocery',
+                  hintText: 'e.g. biteandbrew, zudio, cab, grocery',
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Enter merchant or note';
                   return null;
                 },
               ),
+              if (_autoDetectedCategory != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 13, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Auto-detected: $_autoDetectedCategory',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 14),
 
               // Category Picker
@@ -238,7 +284,12 @@ class _AddCashTransactionSheetState extends State<AddCashTransactionSheet> {
                   );
                 }).toList(),
                 onChanged: (val) {
-                  if (val != null) setState(() => _category = val);
+                  if (val != null) {
+                    setState(() {
+                      _category = val;
+                      _userManuallySelectedCategory = true;
+                    });
+                  }
                 },
               ),
               const SizedBox(height: 14),

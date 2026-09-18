@@ -9,6 +9,7 @@ import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
+import '../../widgets/sms_sync_sheet.dart';
 import 'widgets/backup_settings_sheet.dart';
 import 'widgets/manage_categories_sheet.dart';
 
@@ -71,6 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Appearance & Theme Section
                 _buildThemeModeSection(context, settings),
+                const SizedBox(height: 16),
+
+                // Tactile Micro-Haptics Section
+                _buildHapticFeedbackSection(context, settings),
                 const SizedBox(height: 16),
 
                 // BYOK AI Engine Configuration Section
@@ -431,6 +436,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               )
             else ...[
+              // Default SMS Pull Limit Setting
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.borderSubtle),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Default SMS Scan Limit',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.emerald.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            settings.smsPullLimit == 0
+                                ? 'All (Deep Scan)'
+                                : '${settings.smsPullLimit} messages',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.emerald,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Default number of messages to pull and parse when syncing.',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [50, 100, 250, 500, 1000, 5000, 0].map((lim) {
+                          final isSelected = settings.smsPullLimit == lim;
+                          final label = lim == 0 ? 'All' : '$lim';
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ChoiceChip(
+                              label: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected ? Colors.black : AppColors.textPrimary,
+                                ),
+                              ),
+                              selected: isSelected,
+                              selectedColor: AppColors.emerald,
+                              backgroundColor: AppColors.surfaceCard,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: isSelected ? AppColors.emerald : AppColors.borderSubtle,
+                                ),
+                              ),
+                              onSelected: (selected) {
+                                if (selected) {
+                                  AppHaptics.selection();
+                                  settings.setSmsPullLimit(lim);
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Customize & Pull Sheet Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.emerald,
+                    side: const BorderSide(color: AppColors.emerald),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    AppHaptics.medium();
+                    SmsSyncSheet.show(context);
+                  },
+                  icon: const Icon(Icons.tune, size: 18),
+                  label: const Text(
+                    'Customize Pull Limit & Scan...',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
               Row(
                 children: [
                   Expanded(
@@ -442,7 +557,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: isSyncing
                           ? null
-                          : () => _triggerSmsSync(context, settings, limit: 5000),
+                          : () => _triggerSmsSync(
+                                context,
+                                settings,
+                                limit: settings.smsPullLimit,
+                              ),
                       icon: isSyncing
                           ? const SizedBox(
                               width: 14,
@@ -450,9 +569,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                             )
                           : const Icon(Icons.sync, size: 18),
-                      label: const Text(
-                        'Sync (5,000)',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      label: Text(
+                        'Sync (${settings.smsPullLimit == 0 ? "All" : settings.smsPullLimit})',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -1577,6 +1696,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHapticFeedbackSection(BuildContext context, SettingsController settings) {
+    final colors = context.colors;
+    final isHapticsOn = settings.hapticsEnabled;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.vibration_rounded, color: colors.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tactile Micro-Haptics',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Crisp physical click feedback on buttons, chips, and actions',
+                        style: TextStyle(fontSize: 12, color: colors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: isHapticsOn,
+                  activeColor: colors.primary,
+                  onChanged: (val) => settings.setHapticsEnabled(val),
+                ),
+              ],
+            ),
+            if (isHapticsOn) ...[
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.primary,
+                        side: BorderSide(color: colors.primary.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => AppHaptics.selection(),
+                      icon: const Icon(Icons.touch_app_outlined, size: 16),
+                      label: const Text('Test Click', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.primary,
+                        side: BorderSide(color: colors.primary.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => AppHaptics.medium(),
+                      icon: const Icon(Icons.check_circle_outline, size: 16),
+                      label: const Text('Test Firm', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.ruby,
+                        side: BorderSide(color: colors.ruby.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => AppHaptics.heavy(),
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                      label: const Text('Test Heavy', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

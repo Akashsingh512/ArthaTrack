@@ -69,20 +69,24 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta5
-          name: "ArthaTrack Beta v1.1.0 (Build 5)"
+          tag_name: v1.1.0-beta6
+          name: "ArthaTrack Beta v1.1.0 (Build 6)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 5)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 6)
             
-            #### 🌟 Highlights & Features Included:
-            - **📑 Dual Export Options**: Choose between **Standard CSV Export** (clean financial ledger) and **Export with Raw SMS** (audit log with unparsed SMS messages) to inspect and verify how all messages are sorted.
-            - **📂 Public Downloads Saving**: Both export types save directly to your phone's public `/storage/emulated/0/Download/` folder (`arthatrack_transactions.csv` & `arthatrack_transactions_with_sms.csv`) via Android MediaStore API.
-            - **📋 1-Tap Copy All CSV**: Easily copy all CSV data (standard or with SMS text) to clipboard for instant sharing.
-            - **Multi-Select Bulk Categorization**: Select multiple transactions and update categories simultaneously, or create new custom categories on-the-fly.
-            - **AES-256 Encrypted Auto-Backup & Migration**: Zero-dependency Pure-Dart encrypted backups to Google Drive (`appDataFolder`) and WebDAV (Nextcloud/NAS) with PBKDF2/HMAC-SHA256 passphrase security.
-            - **Subtle Micro-Haptic Feedback**: Centralized tactile response system across all buttons, chips, tabs, and bottom sheets.
-            - **Motion & Animated Transition Curves**: Polished animated curves on category and filter chips.
-            - **Indian Banking Engine V3.0 Edge Case Polish**: NACH/AutoPay pre-debit notice shield and accurate refund income tracking.
+            #### 🌟 Highlights & New Features:
+            - **⚡ User-Configurable SMS Transaction Pull Limit**: You can now decide exactly how many transactions/messages to pull and scan from your SMS inbox! Choose between quick presets (**50**, **100**, **250**, **500 (Recommended)**, **1,000**, **5,000**, **All / Deep Scan**) or enter any **Custom Number** (e.g. 150, 300, 750). Includes a "Remember as default limit" option in both the Sync Sheet and Settings.
+            - **📊 Dedicated Analytics & Insights Tab**: Complete interactive visual breakdown with:
+              - **Interactive Category Donut Chart** with percentage breakdowns and tap-to-inspect.
+              - **Daily Spending Bar Chart** with peak-day highlighting.
+              - **Cash Flow & Savings Rate Card** comparing income, expense, and net savings.
+              - **Top Merchants Leaderboard** showing where your money goes.
+              - **Payment Mode Breakdown** (UPI vs Cards vs NetBanking vs Cash).
+            - **🛍️ Intelligent Merchant & Shop Category Finder**: Automatic, accurate category classification for brands and stores (e.g. `biteandbrew` -> Food, `zudio` -> Shopping, hypermarkets, cafes, bakeries, travel, and more).
+            - **📳 Fixed Micro-Haptic Feedback**: Added native Android `VIBRATE` permission and native `Vibrator` / `VibratorManager` bridge for crisp, realistic physical haptic feedback across all taps, chips, and actions.
+            - **📑 Dual CSV Export Options**: Choose between **Standard CSV Export** and **Export with Raw SMS** saved directly to public `/storage/emulated/0/Download/`.
+            - **Multi-Select Bulk Categorization**: Select multiple transactions and update categories simultaneously.
+            - **AES-256 Encrypted Auto-Backup**: Zero-dependency backups to Google Drive and WebDAV.
 
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

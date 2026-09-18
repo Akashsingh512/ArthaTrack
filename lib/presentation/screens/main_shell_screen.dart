@@ -5,10 +5,12 @@ import '../../core/utils/app_haptics.dart';
 import '../../services/backup/backup_service.dart';
 import '../../services/ingestion/notification_listener_channel.dart';
 import '../../services/ingestion/sms_sync_service.dart';
+import '../controllers/analytics_controller.dart';
 import '../controllers/balance_sheet_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/transaction_controller.dart';
+import 'analytics/analytics_screen.dart';
 import 'balance_sheet/balance_sheet_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'settings/settings_screen.dart';
@@ -37,6 +39,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
         if (mounted) {
           Provider.of<DashboardController>(context, listen: false).loadDashboardData();
           Provider.of<TransactionController>(context, listen: false).loadTransactions();
+          Provider.of<AnalyticsController>(context, listen: false).loadAnalytics();
           Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -55,6 +58,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<DashboardController>(context, listen: false).loadDashboardData();
       Provider.of<TransactionController>(context, listen: false).loadTransactions();
+      Provider.of<AnalyticsController>(context, listen: false).loadAnalytics();
       Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
       Provider.of<SettingsController>(context, listen: false).loadSettings();
 
@@ -85,6 +89,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       if (result.importedCount > 0 && mounted) {
         Provider.of<DashboardController>(context, listen: false).loadDashboardData();
         Provider.of<TransactionController>(context, listen: false).loadTransactions();
+        Provider.of<AnalyticsController>(context, listen: false).loadAnalytics();
         Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,9 +128,10 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
     final screens = [
       DashboardScreen(
         onNavigateToTransactions: () => _navigateToTab(1),
-        onNavigateToSettings: () => _navigateToTab(3),
+        onNavigateToSettings: () => _navigateToTab(4),
       ),
       const TransactionsScreen(),
+      const AnalyticsScreen(),
       const BalanceSheetScreen(),
       const SettingsScreen(),
     ];
@@ -165,6 +171,11 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
               icon: Icon(Icons.receipt_long_outlined),
               activeIcon: Icon(Icons.receipt_long),
               label: 'Transactions',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.insights_outlined),
+              activeIcon: Icon(Icons.insights_rounded),
+              label: 'Analytics',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.account_balance_outlined),

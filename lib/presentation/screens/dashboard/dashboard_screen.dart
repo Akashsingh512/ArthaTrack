@@ -8,6 +8,7 @@ import '../../../../services/ingestion/sms_sync_service.dart';
 import '../../controllers/dashboard_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
+import '../../widgets/sms_sync_sheet.dart';
 import '../transactions/widgets/add_cash_transaction_sheet.dart';
 import '../transactions/widgets/edit_transaction_sheet.dart';
 import 'widgets/allocate_savings_sheet.dart';
@@ -232,63 +233,7 @@ class DashboardScreen extends StatelessWidget {
 
   Future<void> _syncSms(BuildContext context) async {
     AppHaptics.medium();
-    final settings = Provider.of<SettingsController>(context, listen: false);
-    final dashboard = Provider.of<DashboardController>(context, listen: false);
-    final txController = Provider.of<TransactionController>(context, listen: false);
-    final scaffold = ScaffoldMessenger.of(context);
-
-    scaffold.showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-            ),
-            SizedBox(width: 12),
-            Text('Scanning bank SMS messages from inbox...'),
-          ],
-        ),
-        duration: Duration(seconds: 4),
-      ),
-    );
-
-    final result = await settings.syncSmsInbox();
-
-    if (result.status == SmsSyncStatus.permissionDenied) {
-      scaffold.showSnackBar(
-        SnackBar(
-          content: const Text('SMS permission denied. Tap to open Settings to allow SMS access.'),
-          backgroundColor: AppColors.ruby,
-          action: SnackBarAction(
-            label: 'Settings',
-            textColor: Colors.white,
-            onPressed: () => settings.openSmsAppSettings(),
-          ),
-        ),
-      );
-    } else if (result.status == SmsSyncStatus.error) {
-      scaffold.showSnackBar(
-        SnackBar(
-          content: Text('SMS sync notice: ${result.errorMessage}'),
-          backgroundColor: AppColors.ruby,
-        ),
-      );
-    } else {
-      scaffold.showSnackBar(
-        SnackBar(
-          content: Text(
-            result.importedCount > 0
-                ? 'Successfully imported ${result.importedCount} new bank transactions from SMS!'
-                : 'All bank SMS messages are already up to date (0 new found).',
-          ),
-          backgroundColor: AppColors.emerald,
-        ),
-      );
-      await dashboard.loadDashboardData();
-      await txController.loadTransactions();
-    }
+    await SmsSyncSheet.show(context);
   }
 
   Future<void> _syncGmail(BuildContext context) async {

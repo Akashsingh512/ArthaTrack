@@ -32,6 +32,9 @@ class IndianBankingConstants {
     'IDFCFB': 'IDFC FIRST Bank',
     'PNBSMS': 'PNB',
     'PAYTMB': 'Paytm Payments Bank',
+    'JIOBNK': 'Jio Payments Bank',
+    'JPBL': 'Jio Payments Bank',
+    'JIOFIN': 'Jio Payments Bank',
     'SCBLTD': 'Standard Chartered Bank',
     'SCBBNK': 'Standard Chartered Bank',
     'HSBCIN': 'HSBC India',
@@ -97,9 +100,9 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // Universal Account Snippet Extractor (handles "A/c **8910", "XX5678", "ending 4321", "Card ending 7890", "FASTag XX3456")
+  // Universal Account Snippet Extractor (handles "A/c **8910", "XX5678", "ending 4321", "Card ending 7890", "FASTag XX3456", "Sent from x8146")
   static final RegExp universalAccountRegex = RegExp(
-    r'(?:\bA\/c|\bAcct|\bCard|\bFASTag|\bending)\s*(?:no\.?)?\s*[:\s]*[a-zA-Z]*[\*X]*(\d{3,4})\b',
+    r'(?:\bA\/c|\bAcct|\bCard|\bFASTag|\bending|\bfrom|\bto)\s*(?:no\.?)?\s*[:\s]*[a-zA-Z]*[\*X]*(\d{3,4})\b',
     caseSensitive: false,
   );
 
@@ -136,10 +139,12 @@ class IndianBankingConstants {
     r'due\s+for\s+presentation|presentation\s+date|presented\s+to\s+your\s+bank|'
     r'due\s+(?:on|date|tomorrow)|'
     r'(?:e[\s\-]?)?mandate\s+(?:registered|created|approved|set\s*up|activated|received)|'
-    r'autopay\s+(?:registered|set\s*up|activated|scheduled|received)|'
-    r'standing\s+instruction\s+(?:registered|set\s*up)|'
+    r'autopay\s+(?:registered|set\s+up|activated|scheduled|received)|'
+    r'standing\s+instruction\s+(?:registered|set\s+up)|'
     r'(?:ensure|maintain|keep)\s+(?:sufficient|adequate)?\s*balance|'
-    r'pre[\s\-]debit\s+notification'
+    r'pre[\s\-]debit\s+notification|'
+    r'mandate\s+is\s+successfully\s+revoked|funds\s+will\s+be\s+unblocked|'
+    r'raised\s+a\s+upi\s+mandate|to\s+authorise\s+it'
     r')\b',
     caseSensitive: false,
   );
@@ -147,6 +152,10 @@ class IndianBankingConstants {
   // STRICT PROMOTIONAL, NON-TRANSACTIONAL & RECEIPT SHIELD: Filter out EMI offers, pre-approved loans, bill due reminders, and payment receipts
   static final RegExp promotionalBlocklistRegex = RegExp(
     r'\b('
+    r'employer\s+verification\s+alert|cyber\s+cell\s+official|chargesheet\s+filing|simpl\s+dues|'
+    r'received\s+your\s+.*?\s+application|app\.?\s*no\.?\s*\d+|'
+    r'added\s+to\s+your\s+simpl\s+bill|'
+    r'spent\s+\d+\s+points|'
     r'pay\s+(?:your\s+)?(?:bill|due|amt|amount|now|before|by)|'
     r'bill\s+(?:due|is\s+due|of\s+(?:rs|inr|₹)|generated|reminder)|'
     r'due\s+(?:date|amount|by|on)|'
@@ -240,17 +249,17 @@ class IndianBankingConstants {
 
   // 5. Merchant & Sender Extraction Heuristics with strict word boundaries
   static final RegExp expenseMerchantRegex = RegExp(
-    r'\b(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:from|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
+    r'\b(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp incomeMerchantRegex = RegExp(
-    r'\b(?:received\s+from|transfer\s+from|from|by)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:to|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
+    r'\b(?:received\s+from|transfer\s+from|from|by)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:to|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'\b(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:from|on|ref|upi|avl|bal|for|with)|\.|\,|$|\n)',
+    r'\b(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
@@ -263,7 +272,7 @@ class IndianBankingConstants {
 
   // Bank Card inline merchant regex (e.g. "17:34:28 IST SRI VENKATE Avl Limit: ...")
   static final RegExp cardMerchantRegex = RegExp(
-    r'(?:\d{2}[:\.]\d{2}(?:[:\.]\d{2})?\s*(?:IST|AM|PM)?\s+)(.+?)(?:\s+(?:Avl\s+(?:Limit|Bal|Balance)|Total\s+Bal|Bal|Limit|Not\s+you|Ref|UPI|\n|$))',
+    r'(?<![\d,\.])\b(?:(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?|\d{2}\.\d{2}\.\d{2})\s*(?:IST|AM|PM)?\s+([A-Za-z0-9\s\.\*\-\@\_]+?)(?:\s+(?:Avl\s*(?:Limit|Bal|Balance|Lmt)|Avail\s*(?:Limit|Bal)|Total\s*Bal|Bal|Limit|Not\s+you|Ref|UPI|\n|$))',
     caseSensitive: false,
     dotAll: true,
   );
@@ -288,6 +297,7 @@ class IndianBankingConstants {
     r'pnb|punjab\s*national\s*bank|'
     r'canara\s*bank|bank\s*of\s*baroda|\bbob\b|'
     r'federal\s*bank|yes\s*bank|union\s*bank|'
+    r'jio\s*payments\s*bank|\bjpbl\b|'
     r'paytm\s*(?:payments\s*bank|wallet|bank)?|'
     r'airtel\s*(?:payments\s*bank|money|bank)|'
     r'cash'
@@ -315,6 +325,7 @@ class IndianBankingConstants {
     if (lower.contains('federal')) return 'Federal Bank';
     if (lower.contains('yes bank')) return 'Yes Bank';
     if (lower.contains('union bank')) return 'Union Bank';
+    if (lower.contains('jio payments') || lower.contains('jpbl')) return 'Jio Payments Bank';
     if (lower.contains('paytm')) return 'Paytm Payments Bank';
     if (lower.contains('airtel payments') || lower.contains('airtel money') || lower.contains('airtel bank')) return 'Airtel Payments Bank';
     if (lower.contains('cash')) return 'Cash in Hand';
@@ -332,22 +343,30 @@ class IndianBankingConstants {
       'canteen', 'darshini', 'upahar', 'bhojan', 'caterer', 'caterers', 'biryani',
       'bawarchi', 'shawarma', 'chaat', 'juice', 'tea', 'chai', 'tapri', 'kitchen',
       'diner', 'rolls', 'paratha', 'dosa', 'idli', 'snack', 'snacks', 'food court',
-      'bar', 'pub', 'brewery', 'restro', 'treat', 'eats'
+      'bar', 'pub', 'brewery', 'restro', 'treat', 'eats',
+      'biteandbrew', 'brewandbite', 'brew and bite', 'bite and brew',
+      'mumbai cafe', 'snug cuppa', 'cuppa', 's m condiments', 'condiments',
+      'fruit juice', 'seti momos', 'hot momos', 'momos', 'munchmart',
+      'sumeru hotel', 'samosa point', 'samosa', 'cafe vishala',
+      'bangalore tiffin room', 'avighna fast foods', 'navabharath foods',
+      'swish', 'ayodhya palace', 'kamaths natural retail', 'natural ice cream'
     ],
     'Groceries': [
       'zepto', 'blinkit', 'instamart', 'bigbasket', 'dmart', 'd-mart',
       'nature\'s basket', 'grofers', 'bbnow', 'spencer', 'more retail',
       'dairy', 'milk', 'doodh', 'supermarket', 'kirana', 'fresho', 'country delight',
       'provision', 'general store', 'store', 'bazaar', 'vegetables', 'fruits',
-      'sabzi', 'mandi', 'ration', 'daily needs', 'hypermarket', 'mart'
+      'sabzi', 'mandi', 'ration', 'daily needs', 'hypermarket', 'mart',
+      'ratnadeep', 'kpn farm fresh', 'kpn', 'neeladri', 'muthahalli',
+      'hasiru thota', 'venkatesh fruits', 'kumuda mart', 'ayush hypermarket'
     ],
     'Travel': [
-      'uber', 'ola', 'rapido', 'makemytrip', 'irctc', 'yatra', 'indigo',
+      'uber', 'ola', 'rapido', 'yulu', 'makemytrip', 'irctc', 'yatra', 'indigo',
       'air india', 'fastag', 'toll', 'metro', 'vistara', 'spicejet',
       'redbus', 'abhibus', 'fuel', 'petrol', 'diesel', 'cng', 'hpcl', 'bpcl', 'iocl',
       'shell', 'gas station', 'petroleum', 'auto', 'cab', 'taxi', 'parking',
       'railway', 'bus', 'flight', 'airline', 'cleartrip', 'goibibo', 'namma metro',
-      'delhi metro', 'transport', 'commute'
+      'delhi metro', 'transport', 'commute', 'bmtc', 'bmrc', 'dmrc'
     ],
     'Shopping': [
       'amazon', 'flipkart', 'myntra', 'ajio', 'nykaa', 'meesho', 'zara',
@@ -356,34 +375,37 @@ class IndianBankingConstants {
       'cloth', 'clothes', 'textiles', 'silks', 'garments', 'jewellers', 'jewelers',
       'jewellery', 'footwear', 'shoes', 'fashion', 'tailor', 'boutique', 'hardware',
       'mobiles', 'electronics', 'stationery', 'book store', 'books', 'opticals',
-      'watches', 'mall', 'retail', 'fashions', 'apparel'
+      'watches', 'mall', 'retail', 'fashions', 'apparel',
+      'zudio', 'sufi traders', 'krishna stationery', 'lovable', 'trends',
+      'reliance trends', 'ekart'
     ],
     'Bills': [
       'bescom', 'airtel', 'jio', 'vi', 'vodafone', 'electricity', 'water',
       'gas', 'broadband', 'billdesk', 'recharge', 'tata power', 'torrent',
       'mahavitaran', 'cesc', 'adani electricity', 'piped gas', 'dth', 'tata play',
       'postpaid', 'prepaid', 'cylinder', 'indane', 'bharat gas', 'hp gas',
-      'wifi', 'utility', 'power', 'discom', 'cable', 'maintenance'
+      'wifi', 'utility', 'power', 'discom', 'cable', 'maintenance', 'cheq'
     ],
     'Entertainment': [
       'netflix', 'spotify', 'bookmyshow', 'prime video', 'hotstar', 'pvr',
       'inox', 'cinepolis', 'sony liv', 'zee5', 'youtube', 'apple music',
       'gaana', 'jiosaavn', 'steam', 'playstation', 'cinema', 'theatre',
-      'movie', 'gaming', 'game', 'amusement', 'ticket', 'event', 'club'
+      'movie', 'gaming', 'game', 'amusement', 'ticket', 'event', 'club', 'cinephile'
     ],
     'Health': [
       'apollo', 'pharmeasy', '1mg', 'tata 1mg', 'netmeds', 'hospital',
       'clinic', 'pharmacy', 'practo', 'medplus', 'diagnostic', 'dr lal',
       'metropolis', 'max healthcare', 'fortis', 'manipal', 'medical', 'chemist',
-      'pharma', 'doctor', 'dr', 'diagnostics', 'pathology', 'dental', 'eyecare',
-      'optical', 'nursing', 'healthcare', 'ayurvedic', 'homeopathy', 'medicos'
+      'pharma', 'doctor', 'diagnostics', 'pathology', 'dental', 'eyecare',
+      'optical', 'nursing', 'healthcare', 'ayurvedic', 'homeopathy', 'medicos',
+      'yash chemists', 'healthians', 'swamy medicals'
     ],
     'Investment': [
       'zerodha', 'groww', 'groww invest', 'kuvera', 'angel one', 'upstox', 'mutual fund',
       'sip', 'coin', 'smallcase', 'indmoney', 'etmoney', 'motilal', 'icici direct',
       'uti', 'sbi mutual', 'hdfc mutual', 'nippon', 'stocks', 'shares', 'nse',
       'bse', 'gold', 'ppf', 'nps', 'fixed deposit', 'indian clearing corp', 'iccl',
-      'nsccl', 'nach'
+      'nsccl', 'nach', 'ach-dr', 'ach', 'ksec', 'trading account', 'gullak'
     ],
     'Salary': [
       'salary', 'payroll', 'stipend', 'bonus', 'salary credit',

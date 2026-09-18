@@ -9,6 +9,7 @@ import '../../../../data/models/account_model.dart';
 import '../../../../data/models/transaction_model.dart';
 import '../../../../data/repositories/account_repository.dart';
 import '../../../../data/repositories/category_repository.dart';
+import '../../../../services/parsing/category_finder.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
 import '../../../controllers/transaction_controller.dart';
@@ -37,6 +38,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   int? _selectedAccountId;
   bool _isCustomAccount = false;
   bool _showRawText = false;
+  String? _suggestedCategory;
 
   @override
   void initState() {
@@ -48,10 +50,25 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
     _type = widget.transaction.type.toUpperCase();
     _selectedAccountId = widget.transaction.accountId;
     _selectedDate = DateTime.tryParse(widget.transaction.date) ?? DateTime.now();
+
+    _merchantController.addListener(_onMerchantChanged);
+  }
+
+  void _onMerchantChanged() {
+    final query = _merchantController.text.trim();
+    final detected = CategoryFinder.suggestCategory(query);
+    if (detected != null && detected != _category) {
+      if (detected != _suggestedCategory) {
+        setState(() => _suggestedCategory = detected);
+      }
+    } else if (_suggestedCategory != null) {
+      setState(() => _suggestedCategory = null);
+    }
   }
 
   @override
   void dispose() {
+    _merchantController.removeListener(_onMerchantChanged);
     _merchantController.dispose();
     _amountController.dispose();
     _newAccountController.dispose();
@@ -344,7 +361,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
               TextFormField(
                 controller: _merchantController,
                 decoration: const InputDecoration(
-                  hintText: 'e.g. Swiggy, Sharma Kirana, Nikhil, Amazon',
+                  hintText: 'e.g. biteandbrew, zudio, Amazon, Swiggy',
                   prefixIcon: Icon(Icons.storefront_outlined, size: 20),
                 ),
                 validator: (val) {
@@ -354,6 +371,42 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   return null;
                 },
               ),
+              if (_suggestedCategory != null) ...[
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () {
+                    AppHaptics.selection();
+                    setState(() {
+                      _category = _suggestedCategory!;
+                      _suggestedCategory = null;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 13, color: AppColors.primary),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Suggested: $_suggestedCategory (Tap to apply)',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Field 2: Category Selector

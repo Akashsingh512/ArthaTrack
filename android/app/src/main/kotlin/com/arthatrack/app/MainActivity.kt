@@ -12,8 +12,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.MediaStore
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -28,6 +32,7 @@ class MainActivity : FlutterActivity() {
     private val EVENT_CHANNEL = "com.arthatrack.app/notifications"
     private val METHOD_CHANNEL = "com.arthatrack.app/notification_control"
     private val SMS_CHANNEL = "com.arthatrack.app/sms_reader"
+    private val HAPTICS_CHANNEL = "com.arthatrack.app/haptics"
     private val SMS_PERMISSION_REQ_CODE = 2002
 
     private var pendingSmsResult: MethodChannel.Result? = null
@@ -135,6 +140,89 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+
+        // MethodChannel for Direct Native Tactile Micro-Haptics
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HAPTICS_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "haptic" -> {
+                    val type = call.argument<String>("type") ?: "light"
+                    triggerHaptic(type)
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+    }
+
+    private fun triggerHaptic(type: String) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                vibratorManager?.defaultVibrator ?: (getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+
+            if (vibrator != null && vibrator.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val effectId = when (type) {
+                        "selection" -> VibrationEffect.EFFECT_CLICK
+                        "light" -> VibrationEffect.EFFECT_CLICK
+                        "medium" -> VibrationEffect.EFFECT_CLICK
+                        "heavy" -> VibrationEffect.EFFECT_HEAVY_CLICK
+                        "error" -> VibrationEffect.EFFECT_DOUBLE_CLICK
+                        else -> VibrationEffect.EFFECT_CLICK
+                    }
+                    val effect = VibrationEffect.createPredefined(effectId)
+                    vibrator.vibrate(effect)
+                    return
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val (durationMs, amplitude) = when (type) {
+                        "selection" -> Pair(15L, 150)
+                        "light" -> Pair(20L, 190)
+                        "medium" -> Pair(35L, 220)
+                        "heavy" -> Pair(50L, 255)
+                        "error" -> Pair(80L, 255)
+                        else -> Pair(20L, 180)
+                    }
+                    val effect = VibrationEffect.createOneShot(durationMs, amplitude)
+                    vibrator.vibrate(effect)
+                    return
+                } else {
+                    @Suppress("DEPRECATION")
+                    val durationMs = when (type) {
+                        "selection" -> 18L
+                        "light" -> 22L
+                        "medium" -> 35L
+                        "heavy" -> 50L
+                        "error" -> 80L
+                        else -> 22L
+                    }
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(durationMs)
+                    return
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Fallback: Perform haptic feedback directly on window decorView with IGNORE flags
+        try {
+            val feedbackConstant = when (type) {
+                "selection" -> HapticFeedbackConstants.KEYBOARD_TAP
+                "light" -> HapticFeedbackConstants.VIRTUAL_KEY
+                "medium" -> HapticFeedbackConstants.KEYBOARD_TAP
+                "heavy" -> HapticFeedbackConstants.LONG_PRESS
+                else -> HapticFeedbackConstants.KEYBOARD_TAP
+            }
+            window?.decorView?.performHapticFeedback(
+                feedbackConstant,
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING or
+                    HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
+            )
+        } catch (_: Exception) {}
     }
 
     private fun saveToDownloads(fileName: String, content: String): String {

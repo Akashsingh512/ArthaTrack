@@ -174,6 +174,28 @@ class SecureStorageService {
     await _storage.write(key: AppConstants.secureKeyBackupLastStatus, value: status);
   }
 
+  Future<bool> getHapticsEnabled() async {
+    final val = await _storage.read(key: 'haptics_enabled');
+    return val != 'false';
+  }
+
+  Future<void> setHapticsEnabled(bool enabled) async {
+    await _storage.write(key: 'haptics_enabled', value: enabled.toString());
+  }
+
+  Future<int> getSmsPullLimit() async {
+    final val = await _storage.read(key: 'sms_pull_limit');
+    if (val != null) {
+      final parsed = int.tryParse(val);
+      if (parsed != null) return parsed;
+    }
+    return 500;
+  }
+
+  Future<void> setSmsPullLimit(int limit) async {
+    await _storage.write(key: 'sms_pull_limit', value: limit.toString());
+  }
+
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }

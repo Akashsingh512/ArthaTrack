@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/app_haptics.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/secure_storage/secure_storage_service.dart';
 import '../../services/ingestion/gmail_reader_service.dart';
@@ -60,6 +61,28 @@ class SettingsController extends ChangeNotifier {
   String get bedrockModel => _bedrockModel;
   String get bedrockRegion => _bedrockRegion;
 
+  bool _hapticsEnabled = true;
+  bool get hapticsEnabled => _hapticsEnabled;
+
+  int _smsPullLimit = 500;
+  int get smsPullLimit => _smsPullLimit;
+
+  Future<void> setSmsPullLimit(int limit) async {
+    _smsPullLimit = limit;
+    notifyListeners();
+    await _secureStorage.setSmsPullLimit(limit);
+  }
+
+  Future<void> setHapticsEnabled(bool enabled) async {
+    _hapticsEnabled = enabled;
+    AppHaptics.isEnabled = enabled;
+    notifyListeners();
+    await _secureStorage.setHapticsEnabled(enabled);
+    if (enabled) {
+      AppHaptics.medium();
+    }
+  }
+
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     notifyListeners();
@@ -94,12 +117,17 @@ class SettingsController extends ChangeNotifier {
         _themeMode = ThemeMode.dark;
       }
 
+      _hapticsEnabled = await _secureStorage.getHapticsEnabled();
+      AppHaptics.isEnabled = _hapticsEnabled;
+
       _selectedProvider = await _secureStorage.getAiProvider();
       final key = await _secureStorage.getActiveApiKey();
       _apiKey = key ?? '';
       _hasActiveKey = _apiKey.isNotEmpty;
       _bedrockModel = await _secureStorage.getBedrockModel();
       _bedrockRegion = await _secureStorage.getBedrockRegion();
+
+      _smsPullLimit = await _secureStorage.getSmsPullLimit();
 
       _isNotificationPermissionGranted =
           await _notificationChannel.isPermissionGranted();
@@ -206,12 +234,13 @@ class SettingsController extends ChangeNotifier {
     await refreshSmsPermission();
   }
 
-  Future<SmsSyncResult> syncSmsInbox({int limit = 5000}) async {
+  Future<SmsSyncResult> syncSmsInbox({int? limit}) async {
     _isSmsSyncing = true;
     notifyListeners();
 
     try {
-      final result = await _smsSyncService.syncInbox(limit: limit);
+      final actualLimit = limit ?? _smsPullLimit;
+      final result = await _smsSyncService.syncInbox(limit: actualLimit);
       _isSmsPermissionGranted = await _smsSyncService.isPermissionGranted();
       _isSmsSyncing = false;
       notifyListeners();
