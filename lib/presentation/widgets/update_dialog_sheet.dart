@@ -90,7 +90,8 @@ class _UpdateDialogSheetState extends State<UpdateDialogSheet> {
       AppHaptics.error();
       setState(() {
         _state = UpdateDownloadState.error;
-        _errorMessage = 'Download could not be completed. Please check your internet connection.';
+        _errorMessage =
+            'In-app download could not complete. You can tap Retry or tap "Download via Browser" below to get it directly in Chrome.';
       });
     }
   }
@@ -424,13 +425,36 @@ class _UpdateDialogSheetState extends State<UpdateDialogSheet> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _state == UpdateDownloadState.error ? 'Retry Download' : 'Download & Install Update',
+                            _state == UpdateDownloadState.error ? 'Retry In-App Download' : 'Download & Install Update',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.emerald,
+                        side: BorderSide(color: colors.emerald.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        AppHaptics.medium();
+                        widget.updateService.openInBrowser(widget.updateInfo.apkDownloadUrl);
+                      },
+                      icon: const Icon(Icons.open_in_browser, size: 18),
+                      label: const Text(
+                        'Download via Browser (Chrome)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),

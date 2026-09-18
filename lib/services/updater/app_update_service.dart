@@ -174,17 +174,19 @@ class AppUpdateService {
     }
   }
 
-  /// Download the APK file with real-time streaming progress
+  /// Download the APK file with real-time streaming progress using robust HttpClient
   Future<String?> downloadApk({
     required String downloadUrl,
     required void Function(double progress, int received, int total) onProgress,
     bool Function()? isCancelled,
   }) async {
-    http.Client? client;
+    HttpClient? client;
+    IOSink? sink;
+    File? targetFile;
+
     try {
-      client = http.Client();
       final tempDir = await getTemporaryDirectory();
-      final targetFile = File('${tempDir.path}/arthatrack_update.apk');
+      targetFile = File('${tempDir.path}/arthatrack_update.apk');
 
       if (await targetFile.exists()) {
         try {
@@ -192,43 +194,35 @@ class AppUpdateService {
         } catch (_) {}
       }
 
-      final request = http.Request('GET', Uri.parse(downloadUrl));
-      request.headers['User-Agent'] = 'ArthaTrack-App-Updater';
+      client = HttpClient();
+      client.userAgent =
+          'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+      client.connectionTimeout = const Duration(seconds: 45);
+      client.idleTimeout = const Duration(seconds: 45);
+      client.autoUncompress = true;
+      client.badCertificateCallback = (cert, host, port) => true;
 
-      final response = await client.send(request);
+      final uri = Uri.parse(downloadUrl);
+      final request = await client.getUrl(uri);
+      request.followRedirects = true;
+      request.maxRedirects = 10;
+      request.headers.set(HttpHeaders.acceptHeader, '*/*');
 
-      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers['location'] != null) {
-        // Redirect followed automatically or manually
-        final redirectUri = Uri.parse(response.headers['location']!);
-        final redirectReq = http.Request('GET', redirectUri);
-        redirectReq.headers['User-Agent'] = 'ArthaTrack-App-Updater';
-        final redirectResp = await client.send(redirectReq);
-        return _streamToFile(redirectResp, targetFile, onProgress, isCancelled);
+      final response = await request.close();
+
+      if (response.statusCode != HttpStatus.ok) {
+        debugPrint('[AppUpdateService] HTTP error: ${response.statusCode}');
+        return null;
       }
 
-      return _streamToFile(response, targetFile, onProgress, isCancelled);
-    } catch (e) {
-      debugPrint('[AppUpdateService] Download error: $e');
-      return null;
-    } finally {
-      client?.close();
-    }
-  }
+      final totalBytes = response.contentLength;
+      int receivedBytes = 0;
+      sink = targetFile.openWrite();
 
-  Future<String?> _streamToFile(
-    http.StreamedResponse response,
-    File targetFile,
-    void Function(double progress, int received, int total) onProgress,
-    bool Function()? isCancelled,
-  ) async {
-    final totalBytes = response.contentLength ?? 0;
-    int receivedBytes = 0;
-    final sink = targetFile.openWrite();
-
-    try {
-      await for (final chunk in response.stream) {
+      await for (final chunk in response) {
         if (isCancelled != null && isCancelled()) {
           await sink.close();
+          sink = null;
           if (await targetFile.exists()) {
             await targetFile.delete();
           }
@@ -244,16 +238,36 @@ class AppUpdateService {
 
       await sink.flush();
       await sink.close();
+      sink = null;
 
-      return targetFile.path;
+      if (await targetFile.exists() && await targetFile.length() > 0) {
+        return targetFile.path;
+      }
+      return null;
     } catch (e) {
-      await sink.close();
-      if (await targetFile.exists()) {
+      debugPrint('[AppUpdateService] Download error: $e');
+      if (sink != null) {
+        try {
+          await sink.close();
+        } catch (_) {}
+      }
+      if (targetFile != null && await targetFile.exists()) {
         try {
           await targetFile.delete();
         } catch (_) {}
       }
       return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
+  /// Open external URL in Android system browser (Chrome) for 1-tap fallback download
+  Future<void> openInBrowser(String url) async {
+    try {
+      await _channel.invokeMethod('openBrowser', {'url': url});
+    } catch (e) {
+      debugPrint('[AppUpdateService] Open browser error: $e');
     }
   }
 

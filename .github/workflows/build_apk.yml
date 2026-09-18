@@ -69,24 +69,22 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta9
-          name: "ArthaTrack Beta v1.1.0 (Build 9)"
+          tag_name: v1.1.0-beta10
+          name: "ArthaTrack Beta v1.1.0 (Build 10)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 9)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 10)
             
-            #### 🌟 Highlights & What's New in Build 9:
+            #### 🌟 Highlights & What's New in Build 10:
+            - **⚡ Fixed In-App Updater Download Engine**:
+              - Completely resolved the `unawaited_return_in_try_block` socket termination bug where HTTP client connection was closed prematurely during download.
+              - Rebuilt the downloader on high-performance native `dart:io` `HttpClient` with automatic redirect handling, 45-second connection/idle timeouts, and streaming chunk verification.
+            - **🌐 1-Tap "Download via Browser" Fallback**:
+              - Added a direct Chrome/system browser download option inside the update dialog so users can download and install reliably even on weak roaming or high-latency mobile data.
             - **🔓 Removed Artificial Message Caps & Enabled 50,000 Full Inbox Scan**:
-              - Completely eliminated the restrictive message cap selector (250, 500, 1000) that prematurely truncated date-based message scans.
-              - Date-based scans (**This Month**, **Last Month**, **Last 3 Months**, **This Year**, **Sept to Nov**, or **All Time**) now scan **100% of messages** in that time window (up to 50,000 messages) with zero artificial cutoffs.
-            - **🛡️ Resilient Android Telephony Query Engine**:
-              - Hardened `MainActivity.kt` with OEM-agnostic fallback query execution to guarantee flawless retrieval across Samsung, Xiaomi, Oppo, Vivo, OnePlus, and Google Pixel devices.
-              - Full type-safety for millisecond epoch timestamps and safe limit clamping.
+              - Completely eliminated restrictive message cap selectors (250, 500, 1000).
+              - Scans up to 50,000 messages with full period coverage for **This Month**, **Last Month**, **Last 3 Months**, **This Year**, **Custom Range**, or **All Time**.
             - **🎯 Automatic Month-View Alignment on Import**:
-              - When syncing a specific period (e.g. *Last Month* or a custom date range), the app automatically shifts your active transaction view to that month so newly imported transactions appear on screen immediately!
-            - **🔄 In-App Direct GitHub Auto-Updater**:
-              - Download and update ArthaTrack directly inside the app with 1-tap installation.
-            - **📊 Real-Time Progressive Sync Bar**:
-              - Streaming progress bar with live scan percentage, message counter, and detected transaction count.
+              - When syncing a specific period (e.g. *Last Month*), your active transaction screen automatically shifts to that month so newly imported transactions appear immediately!
             - **🛡️ Security Hardened**:
               - Secured SMS broadcast receiver against spoofing and disabled unauthorized ADB backup extraction.
 
