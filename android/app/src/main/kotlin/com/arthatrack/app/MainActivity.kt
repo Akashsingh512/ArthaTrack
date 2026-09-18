@@ -140,6 +140,21 @@ class MainActivity : FlutterActivity() {
                         result.error("SAVE_FAILED", e.message, null)
                     }
                 }
+                "updateSyncNotification" -> {
+                    val title = call.argument<String>("title") ?: "ArthaTrack SMS Sync"
+                    val message = call.argument<String>("message") ?: "Scanning messages..."
+                    val progress = (call.argument<Any>("progress") as? Number)?.toInt() ?: 0
+                    val max = (call.argument<Any>("max") as? Number)?.toInt() ?: 100
+                    val isOngoing = call.argument<Boolean>("isOngoing") ?: true
+                    showSyncNotification(title, message, progress, max, isOngoing)
+                    result.success(true)
+                }
+                "finishSyncNotification" -> {
+                    val title = call.argument<String>("title") ?: "SMS Sync Complete"
+                    val message = call.argument<String>("message") ?: "Transactions are up to date."
+                    finishSyncNotification(title, message)
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -569,5 +584,79 @@ class MainActivity : FlutterActivity() {
         } catch (e: Exception) {
             // Gracefully ignore
         }
+    }
+
+    private val SYNC_NOTIFICATION_ID = 2004
+
+    private fun showSyncNotification(title: String, message: String, progress: Int, max: Int, isOngoing: Boolean) {
+        try {
+            createNotificationChannel()
+            val intent = Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getActivity(this, SYNC_NOTIFICATION_ID, intent, pendingIntentFlags)
+
+            val builder = NotificationCompat.Builder(this, "arthatrack_alerts")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setOngoing(isOngoing)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+
+            if (max > 0) {
+                builder.setProgress(max, progress, false)
+            } else {
+                builder.setProgress(0, 0, true)
+            }
+
+            val notificationManager = NotificationManagerCompat.from(this)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationManager.notify(SYNC_NOTIFICATION_ID, builder.build())
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun finishSyncNotification(title: String, message: String) {
+        try {
+            createNotificationChannel()
+            val intent = Intent(this, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getActivity(this, SYNC_NOTIFICATION_ID, intent, pendingIntentFlags)
+
+            val builder = NotificationCompat.Builder(this, "arthatrack_alerts")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+            val notificationManager = NotificationManagerCompat.from(this)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationManager.notify(SYNC_NOTIFICATION_ID, builder.build())
+            }
+        } catch (_: Exception) {}
     }
 }

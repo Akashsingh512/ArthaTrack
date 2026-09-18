@@ -69,20 +69,22 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta12
-          name: "ArthaTrack Beta v1.1.0 (Build 12)"
+          tag_name: v1.1.0-beta13
+          name: "ArthaTrack Beta v1.1.0 (Build 13)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 12)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 13)
             
-            #### 🌟 Highlights & What's New in Build 12:
-            - **📱 Paginated SMS Reading — Bypasses Android OEM ContentProvider Limits**:
-              - Some Android devices (Samsung OneUI, Xiaomi HyperOS, Vivo FuntouchOS) restrict single ContentProvider queries to ~50 results.
-              - Build 12 implements **200-message page batching** with date-cursor pagination, reading your entire SMS history in chunks of 200, then automatically fetching the next batch until all historical messages are retrieved.
-              - Supports up to 100,000 messages (500 pages × 200 per page) across all months and years.
-            - **🔓 Zero Caps, Full History**:
-              - Selecting **All Time** now reliably scans 100% of your inbox regardless of device restrictions.
-            - **⚡ In-App Updater & Browser Fallback** (from Build 10/11):
-              - Reliable download via Chrome fallback button.
+            #### 🌟 Highlights & What's New in Build 13:
+            - **🔄 Background SMS Sync & Instant Resume**:
+              - Added ongoing system notification with live progress bar so Android does not kill or freeze sync when the app is minimized or backgrounded.
+              - In-memory fast-forwarding resumes interrupted syncs instantly (<0.001 ms per message) without re-parsing from scratch.
+            - **🛡️ Duplicate Transactions Elimination**:
+              - Mutual Fund / SIP Mandate Deduplication: Eliminates duplicate Axis Bank ACH vs. NACH debits appearing for the same mandate.
+              - Auto-heals reference numbers from raw SMS (including UPI P2A/P2M and UMRN mandates).
+              - Automatic database cleanup purges legacy duplicate mandate entries on launch.
+              - Self-transfers between own accounts are properly excluded from income and expense aggregate calculations.
+            - **🎨 Dialog Theme & Contrast Polish**:
+              - Fixed "Set Balance" and "Edit Account" dialogs in Light Theme so text is crisp and clear against themed surface backgrounds.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

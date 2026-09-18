@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -29,7 +30,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
+      Provider.of<BalanceSheetController>(
+        context,
+        listen: false,
+      ).loadBalanceSheet();
     });
   }
 
@@ -52,7 +56,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               indicatorColor: AppColors.emerald,
               labelColor: AppColors.emerald,
               unselectedLabelColor: AppColors.textMuted,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
               tabs: const [
                 Tab(text: 'Overview'),
                 Tab(text: 'Accounts'),
@@ -62,7 +69,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
             ),
           ),
           body: controller.isLoading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.emerald))
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.emerald),
+                )
               : TabBarView(
                   controller: _tabController,
                   children: [
@@ -77,7 +86,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  Widget _buildOverviewTab(BuildContext context, BalanceSheetController controller) {
+  Widget _buildOverviewTab(
+    BuildContext context,
+    BalanceSheetController controller,
+  ) {
     final colors = context.colors;
 
     return SingleChildScrollView(
@@ -175,13 +187,19 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  Widget _buildAccountsTab(BuildContext context, BalanceSheetController controller) {
+  Widget _buildAccountsTab(
+    BuildContext context,
+    BalanceSheetController controller,
+  ) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.liquid,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add),
-        label: const Text('Add Account', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Add Account',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () {
           AppHaptics.medium();
           _showAddAccountDialog(context, controller);
@@ -197,21 +215,36 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
 
           return Card(
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isCredit ? AppColors.ruby : AppColors.liquid).withOpacity(0.15),
+                  color: (isCredit ? AppColors.ruby : AppColors.liquid)
+                      .withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  isCredit ? Icons.credit_card : (acc.isCash ? Icons.money : Icons.account_balance),
+                  isCredit
+                      ? Icons.credit_card
+                      : (acc.isCash ? Icons.money : Icons.account_balance),
                   color: isCredit ? AppColors.ruby : AppColors.liquid,
                   size: 20,
                 ),
               ),
-              title: Text(acc.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(acc.type, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              title: Text(
+                acc.name,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                acc.type,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
               onTap: () {
                 AppHaptics.light();
                 _showEditAccountDialog(context, controller, acc);
@@ -224,7 +257,9 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: acc.balance < 0 ? AppColors.ruby : AppColors.textPrimary,
+                      color: acc.balance < 0
+                          ? AppColors.ruby
+                          : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -238,13 +273,19 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  Widget _buildAssetsTab(BuildContext context, BalanceSheetController controller) {
+  Widget _buildAssetsTab(
+    BuildContext context,
+    BalanceSheetController controller,
+  ) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.asset,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add),
-        label: const Text('Add Asset', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Add Asset',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () {
           AppHaptics.medium();
           showModalBottomSheet(
@@ -256,7 +297,12 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         },
       ),
       body: controller.assets.isEmpty
-          ? const Center(child: Text('No assets added yet.', style: TextStyle(color: AppColors.textMuted)))
+          ? const Center(
+              child: Text(
+                'No assets added yet.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               itemCount: controller.assets.length,
@@ -266,19 +312,32 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
 
                 return Card(
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppColors.asset.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.stars, color: AppColors.asset, size: 20),
+                      child: const Icon(
+                        Icons.stars,
+                        color: AppColors.asset,
+                        size: 20,
+                      ),
                     ),
-                    title: Text(asset.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(
+                      asset.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     subtitle: Text(
                       '${asset.category}${asset.interestRate > 0 ? ' • ${asset.interestRate}% return' : ''}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -292,7 +351,11 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                           ),
                         ),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textMuted),
+                          icon: const Icon(
+                            Icons.more_vert,
+                            size: 18,
+                            color: AppColors.textMuted,
+                          ),
                           color: AppColors.surfaceElevated,
                           onSelected: (val) {
                             if (val == 'edit') {
@@ -300,16 +363,26 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: AppColors.surface,
-                                builder: (context) => AddEditAssetSheet(existingAsset: asset),
+                                builder: (context) =>
+                                    AddEditAssetSheet(existingAsset: asset),
                               );
                             } else if (val == 'delete') {
                               controller.deleteAsset(asset.id!);
-                              Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                              Provider.of<DashboardController>(
+                                context,
+                                listen: false,
+                              ).loadDashboardData();
                             }
                           },
                           itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
                           ],
                         ),
                       ],
@@ -321,13 +394,19 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  Widget _buildDebtsTab(BuildContext context, BalanceSheetController controller) {
+  Widget _buildDebtsTab(
+    BuildContext context,
+    BalanceSheetController controller,
+  ) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.debt,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Add Liability', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Add Liability',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         onPressed: () {
           AppHaptics.medium();
           showModalBottomSheet(
@@ -339,7 +418,12 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         },
       ),
       body: controller.debts.isEmpty
-          ? const Center(child: Text('No liabilities or debts recorded.', style: TextStyle(color: AppColors.textMuted)))
+          ? const Center(
+              child: Text(
+                'No liabilities or debts recorded.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               itemCount: controller.debts.length,
@@ -349,19 +433,32 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
 
                 return Card(
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppColors.debt.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.credit_score, color: AppColors.debt, size: 20),
+                      child: const Icon(
+                        Icons.credit_score,
+                        color: AppColors.debt,
+                        size: 20,
+                      ),
                     ),
-                    title: Text(debt.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(
+                      debt.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     subtitle: Text(
                       '${debt.category}${debt.interestRate > 0 ? ' • ${debt.interestRate}% p.a.' : ''}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -375,7 +472,11 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                           ),
                         ),
                         PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert, size: 18, color: AppColors.textMuted),
+                          icon: const Icon(
+                            Icons.more_vert,
+                            size: 18,
+                            color: AppColors.textMuted,
+                          ),
                           color: AppColors.surfaceElevated,
                           onSelected: (val) {
                             if (val == 'edit') {
@@ -383,16 +484,26 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: AppColors.surface,
-                                builder: (context) => AddEditDebtSheet(existingDebt: debt),
+                                builder: (context) =>
+                                    AddEditDebtSheet(existingDebt: debt),
                               );
                             } else if (val == 'delete') {
                               controller.deleteDebt(debt.id!);
-                              Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                              Provider.of<DashboardController>(
+                                context,
+                                listen: false,
+                              ).loadDashboardData();
                             }
                           },
                           itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
                           ],
                         ),
                       ],
@@ -404,7 +515,10 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     );
   }
 
-  void _showAddAccountDialog(BuildContext context, BalanceSheetController controller) {
+  void _showAddAccountDialog(
+    BuildContext context,
+    BalanceSheetController controller,
+  ) {
     final nameCtrl = TextEditingController();
     final balCtrl = TextEditingController();
     String type = 'SAVINGS';
@@ -412,26 +526,103 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     showDialog(
       context: context,
       builder: (ctx) {
+        final colors = context.colors;
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              backgroundColor: AppColors.surface,
-              title: const Text('Add Bank Account'),
+              backgroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: colors.border),
+              ),
+              title: Text(
+                'Add Bank Account',
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Account Name', hintText: 'e.g. HDFC Salary, ICICI Card'),
+                    style: TextStyle(color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Account Name',
+                      labelStyle: TextStyle(color: colors.textMuted),
+                      hintText: 'e.g. HDFC Salary, ICICI Card',
+                      hintStyle: TextStyle(
+                        color: colors.textMuted.withOpacity(0.6),
+                      ),
+                      filled: true,
+                      fillColor: colors.surfaceElevated,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: colors.emerald,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: type,
-                    decoration: const InputDecoration(labelText: 'Account Type'),
-                    items: const [
-                      DropdownMenuItem(value: 'SAVINGS', child: Text('Savings Bank')),
-                      DropdownMenuItem(value: 'CREDIT_CARD', child: Text('Credit Card')),
-                      DropdownMenuItem(value: 'CASH', child: Text('Cash Wallet')),
+                    dropdownColor: colors.surface,
+                    style: TextStyle(color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Account Type',
+                      labelStyle: TextStyle(color: colors.textMuted),
+                      filled: true,
+                      fillColor: colors.surfaceElevated,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: colors.emerald,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'SAVINGS',
+                        child: Text(
+                          'Savings Bank',
+                          style: TextStyle(color: colors.textPrimary),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'CREDIT_CARD',
+                        child: Text(
+                          'Credit Card',
+                          style: TextStyle(color: colors.textPrimary),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'CASH',
+                        child: Text(
+                          'Cash Wallet',
+                          style: TextStyle(color: colors.textPrimary),
+                        ),
+                      ),
                     ],
                     onChanged: (v) {
                       if (v != null) setStateDialog(() => type = v);
@@ -440,29 +631,83 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
                   const SizedBox(height: 12),
                   TextField(
                     controller: balCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Current Balance', prefixText: '₹ '),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: TextStyle(color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Current Balance',
+                      labelStyle: TextStyle(color: colors.textMuted),
+                      prefixText: '₹ ',
+                      prefixStyle: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      filled: true,
+                      fillColor: colors.surfaceElevated,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: colors.emerald,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: colors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.emerald,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                   onPressed: () async {
                     if (nameCtrl.text.trim().isNotEmpty) {
-                      final balance = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
+                      final balance =
+                          double.tryParse(
+                            balCtrl.text.replaceAll(',', '').trim(),
+                          ) ??
+                          0.0;
                       await controller.addAccount(
                         name: nameCtrl.text.trim(),
                         type: type,
                         balance: balance,
                       );
                       if (context.mounted) {
-                        Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                        Provider.of<DashboardController>(
+                          context,
+                          listen: false,
+                        ).loadDashboardData();
                         Navigator.pop(ctx);
                       }
                     }
                   },
-                  child: const Text('Add Account'),
+                  child: const Text(
+                    'Add Account',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             );
@@ -477,6 +722,7 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     BalanceSheetController controller,
     dynamic acc,
   ) {
+    final colors = context.colors;
     final balCtrl = TextEditingController(
       text: acc.balance == 0.0 ? '' : acc.balance.abs().toStringAsFixed(2),
     );
@@ -484,8 +730,19 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        title: Text('Set Balance for ${acc.name}'),
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colors.border),
+        ),
+        title: Text(
+          'Set Balance for ${acc.name}',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,16 +751,43 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
               acc.isCreditCard
                   ? 'Enter outstanding credit card dues'
                   : 'Enter current available bank balance',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: balCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
-              decoration: const InputDecoration(
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
                 labelText: 'Balance / Amount',
+                labelStyle: TextStyle(color: colors.textMuted),
                 prefixText: '₹ ',
+                prefixStyle: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+                filled: true,
+                fillColor: colors.surfaceElevated,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.emerald, width: 2),
+                ),
               ),
             ),
           ],
@@ -511,20 +795,42 @@ class _BalanceSheetScreenState extends State<BalanceSheetScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: colors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.emerald,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: () async {
               AppHaptics.medium();
-              final val = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
+              final val =
+                  double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ??
+                  0.0;
               final target = acc.isCreditCard && val > 0 ? -val : val;
               await controller.updateAccountBalance(acc.id!, target);
               if (context.mounted) {
-                Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+                Provider.of<DashboardController>(
+                  context,
+                  listen: false,
+                ).loadDashboardData();
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('Save Balance'),
+            child: const Text(
+              'Save Balance',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -581,7 +887,13 @@ class _SummaryCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: context.colors.textMuted)),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.colors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -590,10 +902,18 @@ class _SummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     IndianCurrencyFormatter.format(amount),
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: color),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: color,
+                    ),
                   ),
                   const SizedBox(height: 2),
-                  Icon(Icons.arrow_forward_ios, size: 12, color: context.colors.textMuted),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: context.colors.textMuted,
+                  ),
                 ],
               ),
             ],

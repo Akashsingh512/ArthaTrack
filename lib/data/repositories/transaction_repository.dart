@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+
 import '../database/app_database.dart';
 import '../database/tables/accounts_table.dart';
 import '../database/tables/transactions_table.dart';
@@ -8,7 +9,7 @@ class TransactionRepository {
   final AppDatabase _dbProvider;
 
   TransactionRepository({AppDatabase? dbProvider})
-      : _dbProvider = dbProvider ?? AppDatabase.instance;
+    : _dbProvider = dbProvider ?? AppDatabase.instance;
 
   Future<List<TransactionModel>> getAllTransactions() async {
     final db = await _dbProvider.database;
@@ -41,6 +42,19 @@ class TransactionRepository {
     return maps.isNotEmpty;
   }
 
+  /// Returns all existing raw texts as an in-memory Set for ultra-fast fast-forwarding during bulk sync
+  Future<Set<String>> getAllRawTextsSet() async {
+    final db = await _dbProvider.database;
+    final maps = await db.query(
+      TransactionsTable.tableName,
+      columns: [TransactionsTable.colRawText],
+    );
+    return maps
+        .map((e) => (e[TransactionsTable.colRawText] as String? ?? '').trim())
+        .where((s) => s.isNotEmpty)
+        .toSet();
+  }
+
   /// Comprehensive deduplication across multiple SMS and push notifications:
   /// 1. Exact raw text match
   /// 2. Reference number match (UPI Ref / RRN / Txn ID)
@@ -59,47 +73,93 @@ class TransactionRepository {
       if (rawMatch.isNotEmpty) return true;
     }
 
-    // 2. Reference Number Match (UPI Ref, RRN, Txn ID)
-    if (tx.referenceNumber != null && tx.referenceNumber!.trim().isNotEmpty) {
+    // 2. Reference Number Match (UPI Ref, RRN, Txn ID, UMRN)
+    final ref = tx.referenceNumber?.trim();
+    if (ref != null && ref.isNotEmpty) {
       final refMatch = await db.query(
         TransactionsTable.tableName,
-        where: '${TransactionsTable.colReferenceNumber} = ?',
-        whereArgs: [tx.referenceNumber!.trim()],
+        where:
+            '${TransactionsTable.colReferenceNumber} = ? AND ${TransactionsTable.colType} = ?',
+        whereArgs: [ref, tx.type],
         limit: 1,
       );
       if (refMatch.isNotEmpty) return true;
     }
 
-    // 3. Same-Day Merchant & Amount Deduplication:
+    // 3. NACH & ACH Duplicate Deduplication:
+    // Banks (like Axis Bank) send TWO separate SMS for the same SIP/Mandate:
+    // 1) "Debit INR 1000.00 ... ACH-DR-GROWW ..."
+    // 2) "NACH debit towards GROWW ... with UMRN ... has been successfully processed in A/c no. XX6535 today"
+    final rawLower = tx.rawText.toLowerCase();
+    final isMandateTxn =
+        rawLower.contains('nach') ||
+        rawLower.contains('ach-dr') ||
+        rawLower.contains('umrn') ||
+        rawLower.contains('mandate');
+
+    final txDateTime = DateTime.tryParse(tx.date);
+    final datePrefix = tx.date.length >= 10 ? tx.date.substring(0, 10) : '';
+
+    if (isMandateTxn && tx.amount > 0.0 && datePrefix.isNotEmpty) {
+      final nachMatch = await db.query(
+        TransactionsTable.tableName,
+        where:
+            '''
+          ${TransactionsTable.colAccountId} = ?
+          AND ${TransactionsTable.colAmount} = ?
+          AND ${TransactionsTable.colDate} LIKE ?
+          AND (
+            LOWER(${TransactionsTable.colRawText}) LIKE '%nach%'
+            OR LOWER(${TransactionsTable.colRawText}) LIKE '%ach-dr%'
+            OR LOWER(${TransactionsTable.colRawText}) LIKE '%umrn%'
+            OR LOWER(${TransactionsTable.colRawText}) LIKE '%mandate%'
+          )
+        ''',
+        whereArgs: [tx.accountId, tx.amount, '$datePrefix%'],
+        limit: 1,
+      );
+      if (nachMatch.isNotEmpty) return true;
+    }
+
+    // 4. Same-Day Merchant & Amount Deduplication:
     // If a transaction with the same amount, type, and merchant already exists on the same calendar day
     // (prevents duplicate entries from SMS vs Notification or parallel sync runs)
-    final txDateTime = DateTime.tryParse(tx.date);
     if (txDateTime != null && tx.amount > 0.0) {
-      final datePrefix = tx.date.length >= 10 ? tx.date.substring(0, 10) : '';
       if (datePrefix.isNotEmpty &&
           tx.merchant != 'Unknown' &&
           tx.merchant != 'Unknown Merchant') {
         final sameDayMatch = await db.query(
           TransactionsTable.tableName,
-          where: '''
+          where:
+              '''
             ${TransactionsTable.colAmount} = ? 
             AND ${TransactionsTable.colType} = ? 
             AND LOWER(${TransactionsTable.colMerchant}) = ?
             AND ${TransactionsTable.colDate} LIKE ?
           ''',
-          whereArgs: [tx.amount, tx.type, tx.merchant.trim().toLowerCase(), '$datePrefix%'],
+          whereArgs: [
+            tx.amount,
+            tx.type,
+            tx.merchant.trim().toLowerCase(),
+            '$datePrefix%',
+          ],
           limit: 1,
         );
         if (sameDayMatch.isNotEmpty) return true;
       }
 
-      // 4. Time Window Fuzzy Match (Same Amount, Same Type, within +/- 30 minutes)
-      final startWindow = txDateTime.subtract(const Duration(minutes: 30)).toIso8601String();
-      final endWindow = txDateTime.add(const Duration(minutes: 30)).toIso8601String();
+      // 5. Time Window Fuzzy Match (Same Amount, Same Type, within +/- 30 minutes)
+      final startWindow = txDateTime
+          .subtract(const Duration(minutes: 30))
+          .toIso8601String();
+      final endWindow = txDateTime
+          .add(const Duration(minutes: 30))
+          .toIso8601String();
 
       final fuzzyMatch = await db.query(
         TransactionsTable.tableName,
-        where: '''
+        where:
+            '''
           ${TransactionsTable.colAmount} = ? 
           AND ${TransactionsTable.colType} = ? 
           AND ${TransactionsTable.colDate} >= ? 
@@ -129,14 +189,19 @@ class TransactionRepository {
       if (!transaction.isFailed && !transaction.isPendingHold) {
         // If EXPENSE -> decrease balance
         // If INCOME or REFUND -> increase balance
-        final delta = transaction.isExpense ? -transaction.amount : transaction.amount;
+        final delta = transaction.isExpense
+            ? -transaction.amount
+            : transaction.amount;
 
-        await txn.rawUpdate('''
+        await txn.rawUpdate(
+          '''
           UPDATE ${AccountsTable.tableName}
           SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
               ${AccountsTable.colUpdatedAt} = ?
           WHERE ${AccountsTable.colId} = ?
-        ''', [delta, DateTime.now().toIso8601String(), transaction.accountId]);
+        ''',
+          [delta, DateTime.now().toIso8601String(), transaction.accountId],
+        );
       }
 
       return id;
@@ -160,12 +225,15 @@ class TransactionRepository {
       // Reverse adjustment only if it was a settled SUCCESS transaction
       if (!tx.isFailed && !tx.isPendingHold) {
         final revertDelta = tx.isExpense ? tx.amount : -tx.amount;
-        await txn.rawUpdate('''
+        await txn.rawUpdate(
+          '''
           UPDATE ${AccountsTable.tableName}
           SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
               ${AccountsTable.colUpdatedAt} = ?
           WHERE ${AccountsTable.colId} = ?
-        ''', [revertDelta, DateTime.now().toIso8601String(), tx.accountId]);
+        ''',
+          [revertDelta, DateTime.now().toIso8601String(), tx.accountId],
+        );
       }
 
       return await txn.delete(
@@ -178,7 +246,11 @@ class TransactionRepository {
 
   /// Updates transaction details (merchant, category, account, type, paymentSource)
   /// and adjusts account balances if the account or type was changed
-  Future<int> updateTransaction(TransactionModel updatedTx, {int? previousAccountId, String? previousType}) async {
+  Future<int> updateTransaction(
+    TransactionModel updatedTx, {
+    int? previousAccountId,
+    String? previousType,
+  }) async {
     final db = await _dbProvider.database;
 
     return await db.transaction((txn) async {
@@ -195,25 +267,34 @@ class TransactionRepository {
         final oldIsExpense = oldType.toUpperCase() == 'EXPENSE';
         final newIsExpense = updatedTx.isExpense;
 
-        final amountChanged = (existing.amount - updatedTx.amount).abs() > 0.001;
-        if (oldAccId != updatedTx.accountId || oldIsExpense != newIsExpense || amountChanged) {
+        final amountChanged =
+            (existing.amount - updatedTx.amount).abs() > 0.001;
+        if (oldAccId != updatedTx.accountId ||
+            oldIsExpense != newIsExpense ||
+            amountChanged) {
           // Revert old transaction effect on old account
           final revertDelta = oldIsExpense ? existing.amount : -existing.amount;
-          await txn.rawUpdate('''
+          await txn.rawUpdate(
+            '''
             UPDATE ${AccountsTable.tableName}
             SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
                 ${AccountsTable.colUpdatedAt} = ?
             WHERE ${AccountsTable.colId} = ?
-          ''', [revertDelta, DateTime.now().toIso8601String(), oldAccId]);
+          ''',
+            [revertDelta, DateTime.now().toIso8601String(), oldAccId],
+          );
 
           // Apply new transaction effect on new account
           final newDelta = newIsExpense ? -updatedTx.amount : updatedTx.amount;
-          await txn.rawUpdate('''
+          await txn.rawUpdate(
+            '''
             UPDATE ${AccountsTable.tableName}
             SET ${AccountsTable.colBalance} = ${AccountsTable.colBalance} + ?,
                 ${AccountsTable.colUpdatedAt} = ?
             WHERE ${AccountsTable.colId} = ?
-          ''', [newDelta, DateTime.now().toIso8601String(), updatedTx.accountId]);
+          ''',
+            [newDelta, DateTime.now().toIso8601String(), updatedTx.accountId],
+          );
         }
       }
 
@@ -229,18 +310,29 @@ class TransactionRepository {
   /// Returns total expenses for the given month
   Future<double> getTotalMonthlyExpenses({DateTime? forMonth}) async {
     final targetMonth = forMonth ?? DateTime.now();
-    final start = DateTime(targetMonth.year, targetMonth.month, 1).toIso8601String();
-    final end = DateTime(targetMonth.year, targetMonth.month + 1, 1).toIso8601String();
+    final start = DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      1,
+    ).toIso8601String();
+    final end = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      1,
+    ).toIso8601String();
 
     final db = await _dbProvider.database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
       WHERE UPPER(${TransactionsTable.colType}) = 'EXPENSE'
         AND (${TransactionsTable.colStatus} IS NULL OR UPPER(${TransactionsTable.colStatus}) != 'FAILED')
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
-    ''', [start, end]);
+    ''',
+      [start, end],
+    );
 
     final total = result.first['total'] as num?;
     return total?.toDouble() ?? 0.0;
@@ -249,18 +341,29 @@ class TransactionRepository {
   /// Returns total income for the given month (includes refunds and excludes failed)
   Future<double> getTotalMonthlyIncome({DateTime? forMonth}) async {
     final targetMonth = forMonth ?? DateTime.now();
-    final start = DateTime(targetMonth.year, targetMonth.month, 1).toIso8601String();
-    final end = DateTime(targetMonth.year, targetMonth.month + 1, 1).toIso8601String();
+    final start = DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      1,
+    ).toIso8601String();
+    final end = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      1,
+    ).toIso8601String();
 
     final db = await _dbProvider.database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
       WHERE UPPER(${TransactionsTable.colType}) IN ('INCOME', 'REFUND')
         AND (${TransactionsTable.colStatus} IS NULL OR UPPER(${TransactionsTable.colStatus}) != 'FAILED')
         AND ${TransactionsTable.colDate} >= ?
         AND ${TransactionsTable.colDate} < ?
-    ''', [start, end]);
+    ''',
+      [start, end],
+    );
 
     final total = result.first['total'] as num?;
     return total?.toDouble() ?? 0.0;
@@ -269,11 +372,20 @@ class TransactionRepository {
   /// Returns category breakdown map { 'Food': 4500.0, 'Travel': 1200.0 } for a given month
   Future<Map<String, double>> getCategoryExpenses({DateTime? forMonth}) async {
     final targetMonth = forMonth ?? DateTime.now();
-    final start = DateTime(targetMonth.year, targetMonth.month, 1).toIso8601String();
-    final end = DateTime(targetMonth.year, targetMonth.month + 1, 1).toIso8601String();
+    final start = DateTime(
+      targetMonth.year,
+      targetMonth.month,
+      1,
+    ).toIso8601String();
+    final end = DateTime(
+      targetMonth.year,
+      targetMonth.month + 1,
+      1,
+    ).toIso8601String();
 
     final db = await _dbProvider.database;
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT ${TransactionsTable.colCategory} as category,
              SUM(${TransactionsTable.colAmount}) as total
       FROM ${TransactionsTable.tableName}
@@ -283,7 +395,9 @@ class TransactionRepository {
         AND ${TransactionsTable.colDate} < ?
       GROUP BY ${TransactionsTable.colCategory}
       ORDER BY total DESC
-    ''', [start, end]);
+    ''',
+      [start, end],
+    );
 
     final breakdown = <String, double>{};
     for (final row in result) {
@@ -297,13 +411,17 @@ class TransactionRepository {
   /// Looks up user's previously chosen category for this merchant/payee (Memory Learning)
   Future<String?> getCategoryForMerchant(String merchant) async {
     final trimmed = merchant.trim();
-    if (trimmed.isEmpty || trimmed == 'Unknown' || trimmed == 'Unknown Merchant') return null;
+    if (trimmed.isEmpty ||
+        trimmed == 'Unknown' ||
+        trimmed == 'Unknown Merchant')
+      return null;
 
     final db = await _dbProvider.database;
     final maps = await db.query(
       TransactionsTable.tableName,
       columns: [TransactionsTable.colCategory],
-      where: 'LOWER(${TransactionsTable.colMerchant}) = ? AND ${TransactionsTable.colCategory} != ?',
+      where:
+          'LOWER(${TransactionsTable.colMerchant}) = ? AND ${TransactionsTable.colCategory} != ?',
       whereArgs: [trimmed.toLowerCase(), 'Other'],
       orderBy: '${TransactionsTable.colDate} DESC',
       limit: 1,
@@ -316,16 +434,68 @@ class TransactionRepository {
   }
 
   /// Bulk updates category for multiple transactions in an atomic SQLite transaction
-  Future<int> bulkUpdateCategory(List<int> transactionIds, String newCategory) async {
+  Future<int> bulkUpdateCategory(
+    List<int> transactionIds,
+    String newCategory,
+  ) async {
     if (transactionIds.isEmpty) return 0;
     final db = await _dbProvider.database;
     return await db.transaction((txn) async {
       final placeholders = List.filled(transactionIds.length, '?').join(',');
-      return await txn.rawUpdate('''
+      return await txn.rawUpdate(
+        '''
         UPDATE ${TransactionsTable.tableName}
         SET ${TransactionsTable.colCategory} = ?
         WHERE ${TransactionsTable.colId} IN ($placeholders)
-      ''', [newCategory, ...transactionIds]);
+      ''',
+        [newCategory, ...transactionIds],
+      );
     });
+  }
+
+  /// Scans database and cleans up duplicate NACH/ACH transactions or identical raw messages
+  Future<int> cleanupDuplicateTransactions() async {
+    final db = await _dbProvider.database;
+    final all = await getAllTransactions();
+    final toDeleteIds = <int>{};
+
+    // 1. Clean up duplicate NACH vs ACH records (prefer NACH with merchant and UMRN over premature ACH-DR)
+    for (var i = 0; i < all.length; i++) {
+      for (var j = i + 1; j < all.length; j++) {
+        final a = all[i];
+        final b = all[j];
+        if (a.id == null || b.id == null) continue;
+        if (toDeleteIds.contains(a.id) || toDeleteIds.contains(b.id)) continue;
+
+        if (a.accountId == b.accountId && (a.amount - b.amount).abs() < 0.01) {
+          final aDate = a.date.length >= 10 ? a.date.substring(0, 10) : '';
+          final bDate = b.date.length >= 10 ? b.date.substring(0, 10) : '';
+          if (aDate.isNotEmpty && aDate == bDate) {
+            final aIsAch = a.rawText.contains('ACH-DR');
+            final bIsAch = b.rawText.contains('ACH-DR');
+            final aIsNach =
+                a.rawText.contains('NACH debit') || a.rawText.contains('UMRN');
+            final bIsNach =
+                b.rawText.contains('NACH debit') || b.rawText.contains('UMRN');
+
+            if (aIsAch && bIsNach) {
+              toDeleteIds.add(a.id!);
+            } else if (bIsAch && aIsNach) {
+              toDeleteIds.add(b.id!);
+            }
+          }
+        }
+      }
+    }
+
+    if (toDeleteIds.isNotEmpty) {
+      final placeholders = List.filled(toDeleteIds.length, '?').join(',');
+      await db.delete(
+        TransactionsTable.tableName,
+        where: '${TransactionsTable.colId} IN ($placeholders)',
+        whereArgs: toDeleteIds.toList(),
+      );
+    }
+    return toDeleteIds.length;
   }
 }

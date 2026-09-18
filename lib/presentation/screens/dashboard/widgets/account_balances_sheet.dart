@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/currency_formatter.dart';
@@ -50,6 +51,7 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
 
   void _showEditBalanceDialog(AccountModel acc) {
     AppHaptics.light();
+    final colors = context.colors;
     final balCtrl = TextEditingController(
       text: acc.balance == 0.0 ? '' : acc.balance.toStringAsFixed(2),
     );
@@ -57,10 +59,18 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colors.border),
+        ),
         title: Text(
           'Set Balance for ${acc.name}',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -70,16 +80,43 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
               acc.isCreditCard
                   ? 'Enter outstanding card dues (e.g. 1500)'
                   : 'Enter current available bank balance (e.g. 50000)',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             TextField(
               controller: balCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               autofocus: true,
-              decoration: const InputDecoration(
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
                 labelText: 'Balance / Amount',
+                labelStyle: TextStyle(color: colors.textMuted),
                 prefixText: '₹ ',
+                prefixStyle: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+                filled: true,
+                fillColor: colors.surfaceElevated,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.emerald, width: 2),
+                ),
               ),
             ),
           ],
@@ -87,22 +124,49 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: colors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.emerald,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: () async {
               AppHaptics.medium();
-              final newBal = double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ?? 0.0;
-              final targetBal = acc.isCreditCard && newBal > 0 ? -newBal : newBal;
+              final newBal =
+                  double.tryParse(balCtrl.text.replaceAll(',', '').trim()) ??
+                  0.0;
+              final targetBal = acc.isCreditCard && newBal > 0
+                  ? -newBal
+                  : newBal;
               await _accountRepo.updateBalance(acc.id!, targetBal);
               if (mounted) {
-                Provider.of<DashboardController>(context, listen: false).loadDashboardData();
-                Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
+                Provider.of<DashboardController>(
+                  context,
+                  listen: false,
+                ).loadDashboardData();
+                Provider.of<BalanceSheetController>(
+                  context,
+                  listen: false,
+                ).loadBalanceSheet();
                 Navigator.pop(ctx);
                 _loadAccounts();
               }
             },
-            child: const Text('Save Balance'),
+            child: const Text(
+              'Save Balance',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -110,23 +174,31 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
   }
 
   void _showMergeDialog(AccountModel sourceAcc) {
+    final colors = context.colors;
     final lower = sourceAcc.name.toLowerCase();
     final bankKeyword = lower.contains('axis')
         ? 'axis'
         : (lower.contains('sbi')
-            ? 'sbi'
-            : (lower.contains('hdfc')
-                ? 'hdfc'
-                : (lower.contains('icici') ? 'icici' : 'kotak')));
+              ? 'sbi'
+              : (lower.contains('hdfc')
+                    ? 'hdfc'
+                    : (lower.contains('icici') ? 'icici' : 'kotak')));
     final candidates = _accounts
-        .where((a) => a.id != sourceAcc.id && a.isCreditCard && a.name.toLowerCase().contains(bankKeyword))
+        .where(
+          (a) =>
+              a.id != sourceAcc.id &&
+              a.isCreditCard &&
+              a.name.toLowerCase().contains(bankKeyword),
+        )
         .toList();
 
     if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No numbered cards found for ${sourceAcc.name} to merge into.'),
-          backgroundColor: AppColors.surfaceElevated,
+          content: Text(
+            'No numbered cards found for ${sourceAcc.name} to merge into.',
+          ),
+          backgroundColor: colors.surfaceElevated,
         ),
       );
       return;
@@ -135,41 +207,74 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
+        backgroundColor: colors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: colors.border),
+        ),
         title: Text(
           'Merge "${sourceAcc.name}"',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: colors.textPrimary,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Select which card to merge this account into. All transactions will be moved, and this duplicate account will be deleted.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
             ),
             const SizedBox(height: 16),
-            ...candidates.map((c) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.credit_card, color: AppColors.emerald),
-                  title: Text(c.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () async {
-                    await _accountRepo.mergeAccounts(sourceAcc.id!, c.id!);
-                    if (mounted) {
-                      Provider.of<DashboardController>(context, listen: false).loadDashboardData();
-                      Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
-                      Navigator.pop(ctx);
-                      _loadAccounts();
-                    }
-                  },
-                )),
+            ...candidates.map(
+              (c) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.credit_card, color: colors.emerald),
+                title: Text(
+                  c.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: colors.textMuted,
+                ),
+                onTap: () async {
+                  await _accountRepo.mergeAccounts(sourceAcc.id!, c.id!);
+                  if (mounted) {
+                    Provider.of<DashboardController>(
+                      context,
+                      listen: false,
+                    ).loadDashboardData();
+                    Provider.of<BalanceSheetController>(
+                      context,
+                      listen: false,
+                    ).loadBalanceSheet();
+                    Navigator.pop(ctx);
+                    _loadAccounts();
+                  }
+                },
+              ),
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: colors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -222,17 +327,26 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.close, size: 20, color: AppColors.textMuted),
+                icon: const Icon(
+                  Icons.close,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (_isLoading)
-            const Center(child: CircularProgressIndicator(color: AppColors.emerald))
+            const Center(
+              child: CircularProgressIndicator(color: AppColors.emerald),
+            )
           else if (_accounts.isEmpty)
             const Center(
-              child: Text('No accounts found.', style: TextStyle(color: AppColors.textMuted)),
+              child: Text(
+                'No accounts found.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
             )
           else
             ListView.separated(
@@ -253,7 +367,10 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                   onTap: () => _showEditBalanceDialog(acc),
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceElevated,
                       borderRadius: BorderRadius.circular(14),
@@ -285,7 +402,9 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                               Text(
                                 isCard
                                     ? 'Credit Card'
-                                    : (isCash ? 'Cash in Hand' : 'Savings Account'),
+                                    : (isCash
+                                          ? 'Cash in Hand'
+                                          : 'Savings Account'),
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textMuted,
@@ -302,7 +421,9 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
-                                color: acc.balance < 0 ? AppColors.ruby : AppColors.textPrimary,
+                                color: acc.balance < 0
+                                    ? AppColors.ruby
+                                    : AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -317,10 +438,15 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                                   ),
                                 ),
                                 SizedBox(width: 2),
-                                Icon(Icons.edit, size: 10, color: AppColors.emerald),
+                                Icon(
+                                  Icons.edit,
+                                  size: 10,
+                                  color: AppColors.emerald,
+                                ),
                               ],
                             ),
-                            if (isCard && !RegExp(r'\d{3,4}').hasMatch(acc.name)) ...[
+                            if (isCard &&
+                                !RegExp(r'\d{3,4}').hasMatch(acc.name)) ...[
                               const SizedBox(height: 4),
                               InkWell(
                                 onTap: () => _showMergeDialog(acc),
@@ -335,7 +461,11 @@ class _AccountBalancesSheetState extends State<AccountBalancesSheet> {
                                       ),
                                     ),
                                     SizedBox(width: 2),
-                                    Icon(Icons.merge_type, size: 10, color: AppColors.amber),
+                                    Icon(
+                                      Icons.merge_type,
+                                      size: 10,
+                                      color: AppColors.amber,
+                                    ),
                                   ],
                                 ),
                               ),

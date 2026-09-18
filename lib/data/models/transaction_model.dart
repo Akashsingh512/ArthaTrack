@@ -100,8 +100,13 @@ class TransactionModel {
     String cat = map['category'] as String? ?? 'Other';
 
     // Auto-heal missing or generic payment_source from rawText
-    if ((source == null || source.isEmpty || source == 'Primary Bank Account') && raw.isNotEmpty) {
-      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(raw);
+    if ((source == null ||
+            source.isEmpty ||
+            source == 'Primary Bank Account') &&
+        raw.isNotEmpty) {
+      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(
+        raw,
+      );
       if (bankMatch != null && bankMatch.groupCount >= 1) {
         final rawBank = bankMatch.group(1);
         if (rawBank != null) {
@@ -111,12 +116,20 @@ class TransactionModel {
     }
 
     // Auto-heal generic bank name to specific Card account if card number is present in raw_text
-    final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(raw);
+    final isCard = RegExp(
+      r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b',
+      caseSensitive: false,
+    ).hasMatch(raw);
     if (isCard && raw.isNotEmpty) {
-      final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(raw);
+      final cardNumMatch = RegExp(
+        r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})',
+        caseSensitive: false,
+      ).firstMatch(raw);
       if (cardNumMatch != null && cardNumMatch.groupCount >= 1) {
         var cardSnippet = cardNumMatch.group(1)?.trim().toUpperCase();
-        if (cardSnippet != null && !cardSnippet.startsWith('XX') && !cardSnippet.startsWith('*')) {
+        if (cardSnippet != null &&
+            !cardSnippet.startsWith('XX') &&
+            !cardSnippet.startsWith('*')) {
           cardSnippet = 'XX$cardSnippet';
         }
         if (cardSnippet != null) {
@@ -134,10 +147,18 @@ class TransactionModel {
 
     // Auto-heal false 'Vi' merchant caused by 'via UPI' in earlier builds
     if (merch.toLowerCase() == 'vi' && raw.isNotEmpty) {
-      final textWithoutVia = raw.replaceAll(RegExp(r'\bvia\b', caseSensitive: false), '');
-      final hasRealVi = RegExp(r'\bvi\b', caseSensitive: false).hasMatch(textWithoutVia);
+      final textWithoutVia = raw.replaceAll(
+        RegExp(r'\bvia\b', caseSensitive: false),
+        '',
+      );
+      final hasRealVi = RegExp(
+        r'\bvi\b',
+        caseSensitive: false,
+      ).hasMatch(textWithoutVia);
       if (!hasRealVi) {
-        final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(raw);
+        final vpaMatch = IndianBankingConstants.vpaOrMerchantRegex.firstMatch(
+          raw,
+        );
         if (vpaMatch != null && vpaMatch.groupCount >= 1) {
           var cand = vpaMatch.group(1)?.trim();
           if (cand != null &&
@@ -146,11 +167,20 @@ class TransactionModel {
               !cand.toLowerCase().contains('a/c') &&
               !cand.toLowerCase().contains('account') &&
               !cand.toLowerCase().contains('bank')) {
-            cand = cand.replaceAll(RegExp(r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$', caseSensitive: false), '').trim();
+            cand = cand
+                .replaceAll(
+                  RegExp(
+                    r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$',
+                    caseSensitive: false,
+                  ),
+                  '',
+                )
+                .trim();
             cand = cand.replaceAll(RegExp(r'[\.\,\:\-]+$'), '').trim();
             if (cand.isNotEmpty && cand.length > 1) {
               merch = cand;
-              if (cat.toLowerCase() == 'bills' || cat.toLowerCase() == 'travel') {
+              if (cat.toLowerCase() == 'bills' ||
+                  cat.toLowerCase() == 'travel') {
                 cat = 'Other';
               }
             }
@@ -160,8 +190,11 @@ class TransactionModel {
     }
 
     // Auto-heal phone number / helpdesk merchant mistakenly parsed from dispute footers (e.g. 919951860002)
-    if ((RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(merch.trim()) || RegExp(r'^\d+$').hasMatch(merch.trim())) && raw.isNotEmpty) {
-      final tType = (map['type'] as String? ?? 'EXPENSE').toUpperCase() == 'INCOME'
+    if ((RegExp(r'^\+?[\d\s\-]{5,}$').hasMatch(merch.trim()) ||
+            RegExp(r'^\d+$').hasMatch(merch.trim())) &&
+        raw.isNotEmpty) {
+      final tType =
+          (map['type'] as String? ?? 'EXPENSE').toUpperCase() == 'INCOME'
           ? TransactionType.INCOME
           : TransactionType.EXPENSE;
       final healed = EngineBRegexParser.extractMerchantOnly(raw, tType);
@@ -183,8 +216,12 @@ class TransactionModel {
       rawText: raw,
       date: map['date'] as String,
       source: map['source'] as String? ?? 'MANUAL',
-      engine: map['engine'] as String? ?? 'REGEX',
-      referenceNumber: map['reference_number'] as String?,
+      referenceNumber: (map['reference_number'] as String?)?.isNotEmpty == true
+          ? (map['reference_number'] as String)
+          : IndianBankingConstants.referenceNumberRegex
+                .firstMatch(raw)
+                ?.group(1)
+                ?.trim(),
       paymentSource: source,
       status: map['status'] as String? ?? 'SUCCESS',
       failureReason: map['failure_reason'] as String?,
@@ -196,9 +233,11 @@ class TransactionModel {
   bool get isIncome => type.toUpperCase() == 'INCOME';
   bool get isRefund => type.toUpperCase() == 'REFUND';
   bool get isCredit => isIncome || isRefund;
+  bool get isTransfer => category.toLowerCase() == 'transfer';
   bool get isFailed => status.toUpperCase() == 'FAILED';
   bool get isPendingHold => status.toUpperCase() == 'PENDING_HOLD';
-  bool get isMandate => IndianBankingConstants.autoMandateRegex.hasMatch(rawText);
+  bool get isMandate =>
+      IndianBankingConstants.autoMandateRegex.hasMatch(rawText);
 
   /// Clean payment source label for UI display with automatic inference fallback
   String get displayPaymentSource {
@@ -208,17 +247,30 @@ class TransactionModel {
       return paymentSource!;
     }
     if (rawText.isNotEmpty) {
-      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(rawText);
+      final bankMatch = IndianBankingConstants.bankOrSourceRegex.firstMatch(
+        rawText,
+      );
       if (bankMatch != null && bankMatch.groupCount >= 1) {
         final rawBank = bankMatch.group(1);
         if (rawBank != null) {
           final norm = IndianBankingConstants.normalizeBankName(rawBank);
-          final isCard = RegExp(r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b', caseSensitive: false).hasMatch(rawText);
-          final cardNumMatch = RegExp(r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})', caseSensitive: false).firstMatch(rawText);
+          final isCard = RegExp(
+            r'\b(?:card\s*(?:no\.?|ending)|credit\s*card|spent\s+on.*?card|cardholder|avl\s*limit)\b',
+            caseSensitive: false,
+          ).hasMatch(rawText);
+          final cardNumMatch = RegExp(
+            r'(?:card\s*(?:no\.?)?\s*(?:ending)?\s*[:\s]*)([xX\*]*\d{3,4})',
+            caseSensitive: false,
+          ).firstMatch(rawText);
           if (isCard && cardNumMatch != null && cardNumMatch.groupCount >= 1) {
             var cnum = cardNumMatch.group(1)?.trim().toUpperCase() ?? '';
-            if (cnum.isNotEmpty && !cnum.startsWith('XX') && !cnum.startsWith('*')) cnum = 'XX$cnum';
-            return norm.toLowerCase().contains('card') ? '$norm ($cnum)' : '$norm Card ($cnum)';
+            if (cnum.isNotEmpty &&
+                !cnum.startsWith('XX') &&
+                !cnum.startsWith('*'))
+              cnum = 'XX$cnum';
+            return norm.toLowerCase().contains('card')
+                ? '$norm ($cnum)'
+                : '$norm Card ($cnum)';
           }
           return norm;
         }
@@ -233,6 +285,15 @@ class TransactionModel {
     required String source,
     DateTime? date,
   }) {
+    final ref =
+        (parsed.referenceNumber != null &&
+            parsed.referenceNumber!.trim().isNotEmpty)
+        ? parsed.referenceNumber!.trim()
+        : IndianBankingConstants.referenceNumberRegex
+              .firstMatch(parsed.rawText)
+              ?.group(1)
+              ?.trim();
+
     return TransactionModel(
       accountId: accountId,
       amount: parsed.amount,
@@ -243,7 +304,7 @@ class TransactionModel {
       date: (date ?? DateTime.now()).toIso8601String(),
       source: source,
       engine: parsed.engine.startsWith('AI') ? 'AI' : 'REGEX',
-      referenceNumber: parsed.referenceNumber,
+      referenceNumber: ref,
       paymentSource: parsed.paymentSource,
       status: parsed.status,
       failureReason: parsed.failureReason,

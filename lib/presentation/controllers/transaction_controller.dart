@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../../data/models/account_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/account_repository.dart';
@@ -16,7 +17,10 @@ class TransactionController extends ChangeNotifier {
   String? _selectedType; // 'ALL', 'EXPENSE', 'INCOME'
   String? _selectedCategory;
   String _searchQuery = '';
-  DateTime? _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime? _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
 
   bool _isMultiSelectMode = false;
   final Set<int> _selectedTransactionIds = {};
@@ -24,8 +28,8 @@ class TransactionController extends ChangeNotifier {
   TransactionController({
     TransactionRepository? transactionRepo,
     AccountRepository? accountRepo,
-  })  : _transactionRepo = transactionRepo ?? TransactionRepository(),
-        _accountRepo = accountRepo ?? AccountRepository();
+  }) : _transactionRepo = transactionRepo ?? TransactionRepository(),
+       _accountRepo = accountRepo ?? AccountRepository();
 
   bool get isLoading => _isLoading;
   List<TransactionModel> get transactions => _filteredTransactions;
@@ -43,11 +47,11 @@ class TransactionController extends ChangeNotifier {
   int get failedCount => _allTransactions.where((t) => t.isFailed).length;
 
   double get filteredIncome => _filteredTransactions
-      .where((t) => t.isCredit && !t.isFailed)
+      .where((t) => t.isCredit && !t.isFailed && !t.isTransfer)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   double get filteredExpense => _filteredTransactions
-      .where((t) => t.isExpense && !t.isFailed)
+      .where((t) => t.isExpense && !t.isFailed && !t.isTransfer)
       .fold(0.0, (sum, t) => sum + t.amount);
 
   /// Returns distinct months present in all loaded transactions, newest first
@@ -72,6 +76,7 @@ class TransactionController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await _transactionRepo.cleanupDuplicateTransactions();
       _allTransactions = await _transactionRepo.getAllTransactions();
       _accounts = await _accountRepo.getAllAccounts();
       _applyFilters();
@@ -113,7 +118,8 @@ class TransactionController extends ChangeNotifier {
       if (_selectedMonth != null) {
         final txDate = DateTime.tryParse(tx.date);
         if (txDate != null &&
-            (txDate.year != _selectedMonth!.year || txDate.month != _selectedMonth!.month)) {
+            (txDate.year != _selectedMonth!.year ||
+                txDate.month != _selectedMonth!.month)) {
           return false;
         }
       }
@@ -135,11 +141,20 @@ class TransactionController extends ChangeNotifier {
       }
       // Filter by search query
       if (_searchQuery.isNotEmpty) {
-        final matchesMerchant = tx.merchant.toLowerCase().contains(_searchQuery);
-        final matchesCategory = tx.category.toLowerCase().contains(_searchQuery);
+        final matchesMerchant = tx.merchant.toLowerCase().contains(
+          _searchQuery,
+        );
+        final matchesCategory = tx.category.toLowerCase().contains(
+          _searchQuery,
+        );
         final matchesRaw = tx.rawText.toLowerCase().contains(_searchQuery);
-        final matchesSource = (tx.paymentSource ?? '').toLowerCase().contains(_searchQuery);
-        if (!matchesMerchant && !matchesCategory && !matchesRaw && !matchesSource) {
+        final matchesSource = (tx.paymentSource ?? '').toLowerCase().contains(
+          _searchQuery,
+        );
+        if (!matchesMerchant &&
+            !matchesCategory &&
+            !matchesRaw &&
+            !matchesSource) {
           return false;
         }
       }
@@ -172,7 +187,11 @@ class TransactionController extends ChangeNotifier {
     await loadTransactions();
   }
 
-  Future<void> updateTransaction(TransactionModel updatedTx, {int? previousAccountId, String? previousType}) async {
+  Future<void> updateTransaction(
+    TransactionModel updatedTx, {
+    int? previousAccountId,
+    String? previousType,
+  }) async {
     await _transactionRepo.updateTransaction(
       updatedTx,
       previousAccountId: previousAccountId,

@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+
 import '../../core/constants/indian_banking_constants.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/account_repository.dart';
@@ -6,11 +7,7 @@ import '../../data/repositories/category_repository.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../parsing/transaction_parser_pipeline.dart';
 
-enum SmsSyncStatus {
-  success,
-  permissionDenied,
-  error,
-}
+enum SmsSyncStatus { success, permissionDenied, error }
 
 class SmsSyncResult {
   final SmsSyncStatus status;
@@ -33,7 +30,9 @@ typedef SmsSyncProgressCallback = void Function(
 );
 
 class SmsSyncService {
-  static const MethodChannel _channel = MethodChannel('com.arthatrack.app/sms_reader');
+  static const MethodChannel _channel = MethodChannel(
+    'com.arthatrack.app/sms_reader',
+  );
 
   final TransactionParserPipeline _pipeline;
   final TransactionRepository _transactionRepo;
@@ -49,15 +48,17 @@ class SmsSyncService {
     TransactionRepository? transactionRepo,
     AccountRepository? accountRepo,
     CategoryRepository? categoryRepo,
-  })  : _pipeline = pipeline ?? TransactionParserPipeline(),
-        _transactionRepo = transactionRepo ?? TransactionRepository(),
-        _accountRepo = accountRepo ?? AccountRepository(),
-        _categoryRepo = categoryRepo ?? CategoryRepository();
+  }) : _pipeline = pipeline ?? TransactionParserPipeline(),
+       _transactionRepo = transactionRepo ?? TransactionRepository(),
+       _accountRepo = accountRepo ?? AccountRepository(),
+       _categoryRepo = categoryRepo ?? CategoryRepository();
 
   /// Checks if SMS read permission is granted by the user
   Future<bool> isPermissionGranted() async {
     try {
-      final bool? granted = await _channel.invokeMethod<bool>('checkSmsPermission');
+      final bool? granted = await _channel.invokeMethod<bool>(
+        'checkSmsPermission',
+      );
       return granted ?? false;
     } catch (_) {
       return false;
@@ -67,7 +68,9 @@ class SmsSyncService {
   /// Prompts runtime permission dialog to read incoming and inbox SMS
   Future<bool> requestPermission() async {
     try {
-      final bool? granted = await _channel.invokeMethod<bool>('requestSmsPermission');
+      final bool? granted = await _channel.invokeMethod<bool>(
+        'requestSmsPermission',
+      );
       return granted ?? false;
     } catch (_) {
       return false;
@@ -166,93 +169,151 @@ class SmsSyncService {
       int processedCount = 0;
       final seenAccountsWithBalance = <int>{};
 
+      // 2.2 PRE-LOAD IN-MEMORY CHECKPOINT: Instant resume from where it stopped
+      final existingRawTexts = await _transactionRepo.getAllRawTextsSet();
+
       onProgress?.call(0, scannedCount, 0);
 
-      for (final item in rawMessages) {
-        processedCount++;
-        onProgress?.call(processedCount, scannedCount, importedCount);
-        if (item is! Map) continue;
-        final sender = item['sender']?.toString() ?? '';
-        final body = item['body']?.toString() ?? '';
-        final dateMs = item['date'];
+      // 2.3 Post ongoing background notification so Android does NOT pause/kill process when minimized
+      try {
+        _channel.invokeMethod('updateSyncNotification', {
+          'title': 'ArthaTrack SMS Sync',
+          'message': 'Scanning $scannedCount messages...',
+          'progress': 0,
+          'max': scannedCount,
+          'isOngoing': true,
+        });
+      } catch (_) {}
 
-        if (body.trim().isEmpty) continue;
+      try {
+        for (final item in rawMessages) {
+          processedCount++;
+          onProgress?.call(processedCount, scannedCount, importedCount);
+          if (item is! Map) continue;
+          final sender = item['sender']?.toString() ?? '';
+          final body = item['body']?.toString() ?? '';
+          final dateMs = item['date'];
 
-        // 3. STRICT SECURITY SHIELD: Drop any OTP or verification code messages unconditionally
-        if (IndianBankingConstants.otpBlocklistRegex.hasMatch(body)) {
-          continue;
-        }
+          final trimmedBody = body.trim();
+          if (trimmedBody.isEmpty) continue;
 
-        // 3.05 MANDATE PRE-DEBIT & REGISTRATION SHIELD: Drop informational mandate notices (0 money moved)
-        if (IndianBankingConstants.mandateNoticeBlocklistRegex.hasMatch(body)) {
-          continue;
-        }
-
-        // 3.1 PROMOTIONAL & EMI SHIELD: Drop non-transactional marketing and EMI pitches
-        if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(body)) {
-          continue;
-        }
-
-        // 3.2 TRANSACTION PRE-FILTER: Drop non-financial chat, delivery, and notice messages
-        final lower = body.toLowerCase();
-        if (!IndianBankingConstants.incomeTriggerRegex.hasMatch(lower) &&
-            !IndianBankingConstants.expenseTriggerRegex.hasMatch(lower)) {
-          continue;
-        }
-
-        // 4. Parse via Dual-Engine (AI or Local Regex Heuristics)
-        final parsed = await _pipeline.processText(body, packageName: sender);
-        if (parsed != null && parsed.amount > 0.0) {
-          DateTime? txDate;
-          if (dateMs is int && dateMs > 0) {
-            txDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
-          }
-
-          if (startDate != null && txDate != null && txDate.isBefore(startDate)) {
-            continue;
-          }
-          if (endDate != null && txDate != null && txDate.isAfter(endDate)) {
+          // FAST CHECKPOINT RESUME: Skip messages already in database in 0.001ms
+          if (existingRawTexts.contains(trimmedBody)) {
             continue;
           }
 
-          int resolvedAccountId = accountId;
-          if (parsed.paymentSource != null && parsed.paymentSource!.trim().isNotEmpty) {
-            final acc = await _accountRepo.getOrCreateAccountByName(parsed.paymentSource!.trim());
-            resolvedAccountId = acc.id ?? accountId;
+          // Update ongoing Android notification every 25 messages
+          if (processedCount % 25 == 0 || processedCount == scannedCount) {
+            try {
+              _channel.invokeMethod('updateSyncNotification', {
+                'title': 'ArthaTrack SMS Sync',
+                'message':
+                    'Scanned $processedCount of $scannedCount messages ($importedCount new)...',
+                'progress': processedCount,
+                'max': scannedCount,
+                'isOngoing': true,
+              });
+            } catch (_) {}
           }
 
-          final rememberedCat = await _categoryRepo.getRememberedCategory(parsed.merchant)
-              ?? await _transactionRepo.getCategoryForMerchant(parsed.merchant);
-          final String finalCategory = (rememberedCat != null && rememberedCat.isNotEmpty)
-              ? rememberedCat
-              : parsed.category;
+          // 3. STRICT SECURITY SHIELD: Drop any OTP or verification code messages unconditionally
+          if (IndianBankingConstants.otpBlocklistRegex.hasMatch(body)) {
+            continue;
+          }
 
-          final tx = TransactionModel.fromParsed(
-            parsed: parsed.copyWith(category: finalCategory),
-            accountId: resolvedAccountId,
-            source: 'SMS',
-            date: txDate,
-          );
+          // 3.05 MANDATE PRE-DEBIT & REGISTRATION SHIELD: Drop informational mandate notices (0 money moved)
+          if (IndianBankingConstants.mandateNoticeBlocklistRegex.hasMatch(
+            body,
+          )) {
+            continue;
+          }
 
-          // 4.1 Update Account Balance from Bank SMS if available balance is present (Savings / Bank accounts only)
-          if (parsed.updatedBalance != null && parsed.updatedBalance! > 0) {
-            final acc = await _accountRepo.getAccountById(resolvedAccountId);
-            if (acc != null && !acc.isCreditCard) {
-              if (!seenAccountsWithBalance.contains(resolvedAccountId)) {
-                seenAccountsWithBalance.add(resolvedAccountId);
-                await _accountRepo.updateBalance(resolvedAccountId, parsed.updatedBalance!);
+          // 3.1 PROMOTIONAL & EMI SHIELD: Drop non-transactional marketing and EMI pitches
+          if (IndianBankingConstants.promotionalBlocklistRegex.hasMatch(body)) {
+            continue;
+          }
+
+          // 3.2 TRANSACTION PRE-FILTER: Drop non-financial chat, delivery, and notice messages
+          final lower = body.toLowerCase();
+          if (!IndianBankingConstants.incomeTriggerRegex.hasMatch(lower) &&
+              !IndianBankingConstants.expenseTriggerRegex.hasMatch(lower)) {
+            continue;
+          }
+
+          // 4. Parse via Dual-Engine (AI or Local Regex Heuristics)
+          final parsed = await _pipeline.processText(body, packageName: sender);
+          if (parsed != null && parsed.amount > 0.0) {
+            DateTime? txDate;
+            if (dateMs is int && dateMs > 0) {
+              txDate = DateTime.fromMillisecondsSinceEpoch(dateMs);
+            }
+
+            if (startDate != null &&
+                txDate != null &&
+                txDate.isBefore(startDate)) {
+              continue;
+            }
+            if (endDate != null && txDate != null && txDate.isAfter(endDate)) {
+              continue;
+            }
+
+            int resolvedAccountId = accountId;
+            if (parsed.paymentSource != null &&
+                parsed.paymentSource!.trim().isNotEmpty) {
+              final acc = await _accountRepo.getOrCreateAccountByName(
+                parsed.paymentSource!.trim(),
+              );
+              resolvedAccountId = acc.id ?? accountId;
+            }
+
+            final rememberedCat =
+                await _categoryRepo.getRememberedCategory(parsed.merchant) ??
+                await _transactionRepo.getCategoryForMerchant(parsed.merchant);
+            final String finalCategory =
+                (rememberedCat != null && rememberedCat.isNotEmpty)
+                ? rememberedCat
+                : parsed.category;
+
+            final tx = TransactionModel.fromParsed(
+              parsed: parsed.copyWith(category: finalCategory),
+              accountId: resolvedAccountId,
+              source: 'SMS',
+              date: txDate,
+            );
+
+            // 4.1 Update Account Balance from Bank SMS if available balance is present (Savings / Bank accounts only)
+            if (parsed.updatedBalance != null && parsed.updatedBalance! > 0) {
+              final acc = await _accountRepo.getAccountById(resolvedAccountId);
+              if (acc != null && !acc.isCreditCard) {
+                if (!seenAccountsWithBalance.contains(resolvedAccountId)) {
+                  seenAccountsWithBalance.add(resolvedAccountId);
+                  await _accountRepo.updateBalance(
+                    resolvedAccountId,
+                    parsed.updatedBalance!,
+                  );
+                }
               }
             }
+
+            // 5. Smart Deduplication: Drop if exact, matching UPI ref, or within time window
+            final isDup = await _transactionRepo.isDuplicate(tx);
+            if (isDup) continue;
+
+            await _transactionRepo.insertTransaction(tx);
+            existingRawTexts.add(trimmedBody);
+            importedCount++;
+            onProgress?.call(processedCount, scannedCount, importedCount);
           }
-
-          // 5. Smart Deduplication: Drop if exact, matching UPI ref, or within time window
-          final isDup = await _transactionRepo.isDuplicate(tx);
-          if (isDup) continue;
-
-          await _transactionRepo.insertTransaction(tx);
-          importedCount++;
-          onProgress?.call(processedCount, scannedCount, importedCount);
         }
+      } finally {
+        try {
+          _channel.invokeMethod('finishSyncNotification', {
+            'title': 'ArthaTrack SMS Sync Complete',
+            'message': importedCount > 0
+                ? 'Imported $importedCount new transactions.'
+                : 'All SMS transactions are already up to date.',
+          });
+        } catch (_) {}
       }
 
       return SmsSyncResult(
