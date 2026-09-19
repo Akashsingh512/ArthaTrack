@@ -85,6 +85,9 @@ jobs:
             - **🤫 100% Silent Background Auto-Sync**:
               - Automatic SMS detection on app launch and resume now runs completely silently in the background without posting noisy status-bar notifications.
               - Dedicated low-importance notification channel for manual sync operations with instant auto-dismissal on completion.
+            - **🔒 Hardened In-App Updater Security**:
+              - Restored strict TLS certificate validation (removed `badCertificateCallback`) against Android's system CA trust store.
+              - Added official GitHub release domain whitelisting to eliminate Man-in-the-Middle (MITM) risks.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

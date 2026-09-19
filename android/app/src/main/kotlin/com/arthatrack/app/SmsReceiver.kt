@@ -29,8 +29,9 @@ class SmsReceiver : BroadcastReceiver() {
             if (containsOtp) return
 
             // 2. Financial check: Must contain banking keywords or currency
-            val hasBankingKeywords = NotificationListener.BANKING_KEYWORDS.any { lower.contains(it) }
-            if (!hasBankingKeywords) return
+            val hasAction = NotificationListener.TRANSACTION_ACTION_KEYWORDS.any { lower.contains(it) }
+            val hasCurrency = NotificationListener.CURRENCY_REGEX.containsMatchIn(lower)
+            if (!hasAction && !hasCurrency) return
 
             // 3. Dispatch to Flutter pipeline immediately via eventSink/eventBuffer
             val payload = mapOf(

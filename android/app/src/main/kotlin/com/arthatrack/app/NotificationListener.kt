@@ -99,6 +99,8 @@ class NotificationListener : NotificationListenerService() {
             "transferred", "payment received", "nach debit", "ach debit"
         )
 
+        val BANKING_KEYWORDS = TRANSACTION_ACTION_KEYWORDS
+
         val CURRENCY_REGEX = Regex("""(?:₹|inr|\brs\.?)\s*[\d,]+(?:\.\d{1,2})?""", RegexOption.IGNORE_CASE)
 
         // STRICT SECURITY GUARD: Unconditional blocklist for any OTP, 2FA, or verification messages

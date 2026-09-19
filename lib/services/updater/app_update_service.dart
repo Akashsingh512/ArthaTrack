@@ -313,9 +313,29 @@ class AppUpdateService {
       client.connectionTimeout = const Duration(seconds: 45);
       client.idleTimeout = const Duration(seconds: 45);
       client.autoUncompress = true;
-      client.badCertificateCallback = (cert, host, port) => true;
+      // Strict TLS validation is enforced by default using Android's system CA trust store.
+      // Do NOT set badCertificateCallback.
 
       final uri = Uri.parse(downloadUrl);
+
+      // STRICT SECURITY SHIELD: Enforce HTTPS and trusted GitHub release domains
+      if (uri.scheme.toLowerCase() != 'https') {
+        debugPrint('[AppUpdateService] Insecure download scheme rejected: ${uri.scheme}');
+        return null;
+      }
+
+      final host = uri.host.toLowerCase();
+      final isTrustedHost = host == 'github.com' ||
+          host == 'api.github.com' ||
+          host.endsWith('.github.com') ||
+          host == 'objects.githubusercontent.com' ||
+          host.endsWith('.githubusercontent.com');
+
+      if (!isTrustedHost) {
+        debugPrint('[AppUpdateService] Untrusted APK download host rejected: $host');
+        return null;
+      }
+
       final request = await client.getUrl(uri);
       request.followRedirects = true;
       request.maxRedirects = 10;
