@@ -90,6 +90,7 @@ class SmsSyncService {
     int limit = 0,
     DateTime? startDate,
     DateTime? endDate,
+    bool isSilent = false,
     SmsSyncProgressCallback? onProgress,
   }) async {
     if (_activeSyncFuture != null) {
@@ -108,6 +109,7 @@ class SmsSyncService {
       limit: limit,
       startDate: startDate,
       endDate: endDate,
+      isSilent: isSilent,
       onProgress: onProgress,
     );
     _activeSyncFuture = future;
@@ -119,10 +121,18 @@ class SmsSyncService {
     }
   }
 
+  /// Cancels any active or stale SMS sync notification in the Android status bar
+  Future<void> cancelSyncNotification() async {
+    try {
+      await _channel.invokeMethod('cancelSyncNotification');
+    } catch (_) {}
+  }
+
   Future<SmsSyncResult> _doSyncInbox({
     required int limit,
     DateTime? startDate,
     DateTime? endDate,
+    bool isSilent = false,
     SmsSyncProgressCallback? onProgress,
   }) async {
     try {
@@ -169,21 +179,24 @@ class SmsSyncService {
       int processedCount = 0;
       final seenAccountsWithBalance = <int>{};
 
-      // 2.2 PRE-LOAD IN-MEMORY CHECKPOINT: Instant resume from where it stopped
+      // 2.2 PRE-LOAD IN-MEMORY CHECKPOINT & DELETED BLACKLIST: Instant resume from where it stopped
       final existingRawTexts = await _transactionRepo.getAllRawTextsSet();
+      final deletedRawTexts = await _transactionRepo.getDeletedRawTextsSet();
 
       onProgress?.call(0, scannedCount, 0);
 
-      // 2.3 Post ongoing background notification so Android does NOT pause/kill process when minimized
-      try {
-        _channel.invokeMethod('updateSyncNotification', {
-          'title': 'ArthaTrack SMS Sync',
-          'message': 'Scanning $scannedCount messages...',
-          'progress': 0,
-          'max': scannedCount,
-          'isOngoing': true,
-        });
-      } catch (_) {}
+      // 2.3 Post ongoing background notification ONLY for user-initiated manual sync
+      if (!isSilent) {
+        try {
+          _channel.invokeMethod('updateSyncNotification', {
+            'title': 'ArthaTrack SMS Sync',
+            'message': 'Scanning $scannedCount messages...',
+            'progress': 0,
+            'max': scannedCount,
+            'isOngoing': true,
+          });
+        } catch (_) {}
+      }
 
       try {
         for (final item in rawMessages) {
@@ -197,13 +210,13 @@ class SmsSyncService {
           final trimmedBody = body.trim();
           if (trimmedBody.isEmpty) continue;
 
-          // FAST CHECKPOINT RESUME: Skip messages already in database in 0.001ms
-          if (existingRawTexts.contains(trimmedBody)) {
+          // FAST CHECKPOINT RESUME: Skip messages already in database or blacklisted by user in 0.001ms
+          if (existingRawTexts.contains(trimmedBody) || deletedRawTexts.contains(trimmedBody)) {
             continue;
           }
 
-          // Update ongoing Android notification every 25 messages
-          if (processedCount % 25 == 0 || processedCount == scannedCount) {
+          // Update ongoing Android notification every 25 messages (only for manual sync)
+          if (!isSilent && (processedCount % 25 == 0 || processedCount == scannedCount)) {
             try {
               _channel.invokeMethod('updateSyncNotification', {
                 'title': 'ArthaTrack SMS Sync',
@@ -306,14 +319,11 @@ class SmsSyncService {
           }
         }
       } finally {
-        try {
-          _channel.invokeMethod('finishSyncNotification', {
-            'title': 'ArthaTrack SMS Sync Complete',
-            'message': importedCount > 0
-                ? 'Imported $importedCount new transactions.'
-                : 'All SMS transactions are already up to date.',
-          });
-        } catch (_) {}
+        if (!isSilent) {
+          try {
+            await _channel.invokeMethod('cancelSyncNotification');
+          } catch (_) {}
+        }
       }
 
       return SmsSyncResult(

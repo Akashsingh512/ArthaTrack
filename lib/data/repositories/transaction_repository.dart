@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import '../database/tables/accounts_table.dart';
 import '../database/tables/transactions_table.dart';
+import '../database/tables/deleted_transactions_table.dart';
 import '../models/transaction_model.dart';
 
 class TransactionRepository {
@@ -55,11 +56,84 @@ class TransactionRepository {
         .toSet();
   }
 
+  /// Returns all deleted raw texts as an in-memory Set so bulk sync never re-imports deleted transactions
+  Future<Set<String>> getDeletedRawTextsSet() async {
+    try {
+      final db = await _dbProvider.database;
+      final maps = await db.query(
+        DeletedTransactionsTable.tableName,
+        columns: [DeletedTransactionsTable.colRawText],
+      );
+      return maps
+          .map((e) => (e[DeletedTransactionsTable.colRawText] as String? ?? '').trim())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Checks if a transaction has previously been deleted by the user
+  Future<bool> isDeleted(TransactionModel tx) async {
+    try {
+      final db = await _dbProvider.database;
+
+      // 1. Exact raw text match
+      if (tx.rawText.trim().isNotEmpty) {
+        final rawMatch = await db.query(
+          DeletedTransactionsTable.tableName,
+          where: '${DeletedTransactionsTable.colRawText} = ?',
+          whereArgs: [tx.rawText.trim()],
+          limit: 1,
+        );
+        if (rawMatch.isNotEmpty) return true;
+      }
+
+      // 2. Reference Number Match (UPI Ref, RRN, Txn ID, UMRN)
+      final ref = tx.referenceNumber?.trim();
+      if (ref != null && ref.isNotEmpty) {
+        final refMatch = await db.query(
+          DeletedTransactionsTable.tableName,
+          where: '${DeletedTransactionsTable.colReferenceNumber} = ?',
+          whereArgs: [ref],
+          limit: 1,
+        );
+        if (refMatch.isNotEmpty) return true;
+      }
+
+      // 3. Same-Day Merchant & Amount Deduplication against deleted items
+      final datePrefix = tx.date.length >= 10 ? tx.date.substring(0, 10) : '';
+      if (datePrefix.isNotEmpty &&
+          tx.amount > 0.0 &&
+          tx.merchant != 'Unknown' &&
+          tx.merchant != 'Unknown Merchant') {
+        final match = await db.query(
+          DeletedTransactionsTable.tableName,
+          where: '''
+            ${DeletedTransactionsTable.colAmount} = ?
+            AND LOWER(${DeletedTransactionsTable.colMerchant}) = ?
+            AND ${DeletedTransactionsTable.colDate} LIKE ?
+          ''',
+          whereArgs: [tx.amount, tx.merchant.trim().toLowerCase(), '$datePrefix%'],
+          limit: 1,
+        );
+        if (match.isNotEmpty) return true;
+      }
+
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Comprehensive deduplication across multiple SMS and push notifications:
   /// 1. Exact raw text match
   /// 2. Reference number match (UPI Ref / RRN / Txn ID)
   /// 3. Fuzzy time-window match (+/- 15 mins with same amount and type)
   Future<bool> isDuplicate(TransactionModel tx) async {
+    // 0. Blacklist Check: If previously deleted by user, treat as duplicate (never re-import)
+    if (await isDeleted(tx)) return true;
+
     final db = await _dbProvider.database;
 
     // 1. Exact raw text match
@@ -222,7 +296,24 @@ class TransactionRepository {
       if (maps.isEmpty) return 0;
       final tx = TransactionModel.fromMap(maps.first);
 
-      // Reverse adjustment only if it was a settled SUCCESS transaction
+      // 1. Record in deleted_transactions blacklist so it is NEVER re-imported from SMS or notification
+      try {
+        await txn.insert(
+          DeletedTransactionsTable.tableName,
+          {
+            DeletedTransactionsTable.colRawText: tx.rawText.trim(),
+            DeletedTransactionsTable.colRawTextHash: tx.rawText.trim().hashCode.toString(),
+            DeletedTransactionsTable.colReferenceNumber: tx.referenceNumber?.trim(),
+            DeletedTransactionsTable.colMerchant: tx.merchant.trim().toLowerCase(),
+            DeletedTransactionsTable.colAmount: tx.amount,
+            DeletedTransactionsTable.colDate: tx.date,
+            DeletedTransactionsTable.colDeletedAt: DateTime.now().toIso8601String(),
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      } catch (_) {}
+
+      // 2. Reverse adjustment only if it was a settled SUCCESS transaction
       if (!tx.isFailed && !tx.isPendingHold) {
         final revertDelta = tx.isExpense ? tx.amount : -tx.amount;
         await txn.rawUpdate(
@@ -236,6 +327,7 @@ class TransactionRepository {
         );
       }
 
+      // 3. Delete from Transactions table
       return await txn.delete(
         TransactionsTable.tableName,
         where: '${TransactionsTable.colId} = ?',
@@ -489,6 +581,26 @@ class TransactionRepository {
     }
 
     if (toDeleteIds.isNotEmpty) {
+      for (final id in toDeleteIds) {
+        final match = all.firstWhere((e) => e.id == id, orElse: () => all.first);
+        if (match.id == id) {
+          try {
+            await db.insert(
+              DeletedTransactionsTable.tableName,
+              {
+                DeletedTransactionsTable.colRawText: match.rawText.trim(),
+                DeletedTransactionsTable.colRawTextHash: match.rawText.trim().hashCode.toString(),
+                DeletedTransactionsTable.colReferenceNumber: match.referenceNumber?.trim(),
+                DeletedTransactionsTable.colMerchant: match.merchant.trim().toLowerCase(),
+                DeletedTransactionsTable.colAmount: match.amount,
+                DeletedTransactionsTable.colDate: match.date,
+                DeletedTransactionsTable.colDeletedAt: DateTime.now().toIso8601String(),
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          } catch (_) {}
+        }
+      }
       final placeholders = List.filled(toDeleteIds.length, '?').join(',');
       await db.delete(
         TransactionsTable.tableName,

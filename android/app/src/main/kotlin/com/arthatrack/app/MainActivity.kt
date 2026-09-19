@@ -155,6 +155,10 @@ class MainActivity : FlutterActivity() {
                     finishSyncNotification(title, message)
                     result.success(true)
                 }
+                "cancelSyncNotification" -> {
+                    cancelSyncNotification()
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -529,15 +533,30 @@ class MainActivity : FlutterActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "arthatrack_alerts"
-            val name = "Transaction Alerts"
-            val descriptionText = "Alerts to review and categorize new transactions"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(channelId, name, importance).apply {
-                description = descriptionText
-            }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+
+            // Channel 1: High/Default Priority for User Action Alerts (e.g. Categorization)
+            val alertChannel = NotificationChannel(
+                "arthatrack_alerts",
+                "Transaction Alerts",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Alerts to review and categorize new transactions"
+            }
+            notificationManager.createNotificationChannel(alertChannel)
+
+            // Channel 2: Silent Low Priority for Background Sync Progress
+            val syncChannel = NotificationChannel(
+                "arthatrack_sync",
+                "SMS Sync Progress",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "SMS inbox synchronization progress"
+                setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
+            }
+            notificationManager.createNotificationChannel(syncChannel)
         }
     }
 
@@ -603,7 +622,7 @@ class MainActivity : FlutterActivity() {
             }
             val pendingIntent = PendingIntent.getActivity(this, SYNC_NOTIFICATION_ID, intent, pendingIntentFlags)
 
-            val builder = NotificationCompat.Builder(this, "arthatrack_alerts")
+            val builder = NotificationCompat.Builder(this, "arthatrack_sync")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(message)
@@ -627,36 +646,14 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {}
     }
 
-    private fun finishSyncNotification(title: String, message: String) {
+    private fun cancelSyncNotification() {
         try {
-            createNotificationChannel()
-            val intent = Intent(this, MainActivity::class.java).apply {
-                action = Intent.ACTION_MAIN
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val pendingIntent = PendingIntent.getActivity(this, SYNC_NOTIFICATION_ID, intent, pendingIntentFlags)
-
-            val builder = NotificationCompat.Builder(this, "arthatrack_alerts")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(title)
-                .setContentText(message)
-                .setOngoing(false)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-
             val notificationManager = NotificationManagerCompat.from(this)
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationManager.notify(SYNC_NOTIFICATION_ID, builder.build())
-            }
+            notificationManager.cancel(SYNC_NOTIFICATION_ID)
         } catch (_: Exception) {}
+    }
+
+    private fun finishSyncNotification(title: String, message: String) {
+        cancelSyncNotification()
     }
 }

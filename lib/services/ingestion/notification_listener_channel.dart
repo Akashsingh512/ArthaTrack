@@ -91,6 +91,9 @@ class NotificationListenerChannel {
     final subText = event['subText'] as String? ?? '';
     final pkgName = event['packageName'] as String?;
 
+    // ABSOLUTE SECURITY & RECURSION SHIELD: Never parse notifications originating from ArthaTrack itself
+    if (pkgName == 'com.arthatrack.app') return null;
+
     // Combine text fields for full context
     final fullRaw = '$title $text $bigText $subText'.trim();
     if (fullRaw.isEmpty) return null;

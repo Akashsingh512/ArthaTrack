@@ -69,23 +69,22 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta15
-          name: "ArthaTrack Beta v1.1.0 (Build 15)"
+          tag_name: v1.1.0-beta16
+          name: "ArthaTrack Beta v1.1.0 (Build 16)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 15)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 16)
             
-            #### 🌟 Highlights & What's New in Build 15:
-            - **💰 Accurate "Received" Summary & Income Total Calculation**:
-              - Fixed the "Received" summary banner at the top of the Transactions screen to accurately reflect and sum all income & credit transactions in the filtered view.
-            - **👔 Smart Salary & Corporate Payroll Classification**:
-              - Corporate payroll and salary SMS messages (e.g. Axis Bank `IFT/CDP/.../UNIHEIG`) are now automatically recognized and categorized as **Salary** with the employer name (`UNIHEIG (Salary)`).
-              - Existing misclassified salary entries are automatically healed on launch.
-            - **🔄 Rate-Limit Proof In-App Updates**:
-              - Added dual-fallback engine using `/releases/latest` redirect and Atom RSS feed, completely bypassing GitHub's 60 req/hr API rate limits on mobile carrier networks (CGNAT).
-            - **📅 Precise SMS Date Range Filtering** (Build 14):
-              - Syncing "This Year" or specific months now only reads the selected timeframe instead of scanning your whole inbox.
-            - **🗑️ Swipe-to-Delete Confirmation Modal** (Build 14):
-              - Accidental swipes no longer delete immediately; a safety dialog confirms deletion with full details.
+            #### 🌟 Highlights & What's New in Build 16:
+            - **🛡️ Permanent Transaction Deletion Blacklist**:
+              - When you delete any transaction, its SMS fingerprint, reference number, and merchant/amount are permanently blacklisted in SQLite.
+              - Background SMS auto-sync and manual sync will **NEVER** re-import transactions you have deliberately deleted!
+            - **🔕 Notification Loop & Spam Elimination**:
+              - Completely resolved repeated buzzing / notifications ("again and again").
+              - Self-originating recursion shield: ArthaTrack now strictly ignores its own alerts in the Android notification listener.
+              - Excluded non-financial social/chat apps (WhatsApp, Telegram, etc.) from the notification listener and fixed substring keyword matching (`rs` regex boundary).
+            - **🤫 100% Silent Background Auto-Sync**:
+              - Automatic SMS detection on app launch and resume now runs completely silently in the background without posting noisy status-bar notifications.
+              - Dedicated low-importance notification channel for manual sync operations with instant auto-dismissal on completion.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

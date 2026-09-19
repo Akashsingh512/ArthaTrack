@@ -11,6 +11,7 @@ import 'tables/budgets_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/merchant_categories_table.dart';
 import 'tables/transactions_table.dart';
+import 'tables/deleted_transactions_table.dart';
 import '../repositories/category_repository.dart';
 
 class AppDatabase {
@@ -492,6 +493,21 @@ class AppDatabase {
         );
       } catch (_) {}
     }
+
+    if (oldVersion < 13) {
+      try {
+        await db.execute(DeletedTransactionsTable.createTableQuery);
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_deleted_raw_text ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colRawText});',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_deleted_ref ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colReferenceNumber});',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_deleted_merchant_amt ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colMerchant}, ${DeletedTransactionsTable.colAmount});',
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -501,6 +517,16 @@ class AppDatabase {
     await db.execute(BudgetsTable.createTableQuery);
     await db.execute(CategoriesTable.createTableQuery);
     await db.execute(MerchantCategoriesTable.createTableQuery);
+    await db.execute(DeletedTransactionsTable.createTableQuery);
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_deleted_raw_text ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colRawText});',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_deleted_ref ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colReferenceNumber});',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_deleted_merchant_amt ON ${DeletedTransactionsTable.tableName} (${DeletedTransactionsTable.colMerchant}, ${DeletedTransactionsTable.colAmount});',
+    );
 
     await _seedInitialData(db);
   }

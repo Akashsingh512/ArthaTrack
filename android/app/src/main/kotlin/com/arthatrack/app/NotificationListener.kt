@@ -42,24 +42,64 @@ class NotificationListener : NotificationListenerService() {
 
         // Targeted banking and UPI packages in India
         val TARGET_PACKAGES = setOf(
+            // UPI & Wallets
             "com.google.android.apps.nbu.paisa.user", // Google Pay (Tez)
             "com.phonepe.app",                        // PhonePe
             "net.one97.paytm",                        // Paytm
+            "in.org.npci.upiapp",                     // BHIM
+            "in.amazon.mShop.android.shopping",       // Amazon Pay
+            "com.dreamplug.androidapp",               // CRED
+            "com.fampay.in",                          // FamPay
+            "money.fi.app",                           // Fi Money
+            "com.jupiter.money",                      // Jupiter
+
+            // Major Banks
             "net.hdfcbank.android",                   // HDFC MobileBanking
             "com.sbi.lotusintouch",                   // SBI YONO
             "com.sbi.upi",                            // SBI BHIM Pay
             "com.csam.icici.bank.imobile",            // ICICI iMobile Pay
             "com.axis.mobile",                        // Axis Mobile
             "com.kotak.bank",                         // Kotak 811
+            "com.bankofbaroda.mconnect",              // bob World
+            "com.pnb.pnbone",                         // PNB One
+            "com.canarabank.mobility",                // Canara ai1
+            "com.indusind.mobile",                    // IndusMobile
+            "com.idfcfirstbank.optimus",              // IDFC FIRST Bank
+
+            // Default & OEM SMS Apps
             "com.google.android.apps.messaging",      // Google Messages
-            "com.samsung.android.messaging"           // Samsung Messages
+            "com.samsung.android.messaging",          // Samsung Messages
+            "com.android.mms",                        // AOSP Messaging
+            "com.miui.sms",                           // Xiaomi MIUI SMS
+            "com.xiaomi.misms",                       // Xiaomi Mi SMS
+            "com.oneplus.mms",                        // OnePlus SMS
+            "com.oppo.mms",                           // Oppo SMS
+            "com.vivo.mms"                            // Vivo SMS
         )
 
-        val BANKING_KEYWORDS = listOf(
-            "debited", "credited", "spent", "withdrawn", "paid",
-            "received", "₹", "inr", "rs.", "rs ", "rs", "bal:", "avl bal", "balance",
-            "sent", "transfer", "transferred", "trf", "payment", "nach", "debit"
+        // Strict blocklist for non-financial social, chat, and streaming apps
+        val CHAT_SOCIAL_PACKAGES = setOf(
+            "com.whatsapp",
+            "com.whatsapp.w4b",
+            "org.telegram.messenger",
+            "com.facebook.orca",
+            "com.facebook.katana",
+            "com.instagram.android",
+            "com.twitter.android",
+            "com.discord",
+            "com.slack",
+            "com.google.android.youtube",
+            "com.snapchat.android",
+            "com.reddit.frontpage",
+            "com.linkedin.android"
         )
+
+        val TRANSACTION_ACTION_KEYWORDS = listOf(
+            "debited", "credited", "spent", "withdrawn", "paid",
+            "transferred", "payment received", "nach debit", "ach debit"
+        )
+
+        val CURRENCY_REGEX = Regex("""(?:₹|inr|\brs\.?)\s*[\d,]+(?:\.\d{1,2})?""", RegexOption.IGNORE_CASE)
 
         // STRICT SECURITY GUARD: Unconditional blocklist for any OTP, 2FA, or verification messages
         val OTP_BLOCKLIST_KEYWORDS = listOf(
@@ -87,8 +127,23 @@ class NotificationListener : NotificationListenerService() {
         if (sbn == null) return
 
         val pkgName = sbn.packageName ?: ""
-        val extras = sbn.notification.extras ?: return
 
+        // 1. ABSOLUTE RECURSION GUARD: Never intercept ArthaTrack's own alerts or sync notifications!
+        if (pkgName == packageName || pkgName == "com.arthatrack.app") {
+            return
+        }
+
+        // 2. Ignore ongoing / persistent foreground services or grouped summary headers
+        if (sbn.isOngoing || (sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0)) {
+            return
+        }
+
+        // 3. Ignore non-financial chat and social media apps
+        if (CHAT_SOCIAL_PACKAGES.contains(pkgName)) {
+            return
+        }
+
+        val extras = sbn.notification.extras ?: return
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
@@ -96,17 +151,26 @@ class NotificationListener : NotificationListenerService() {
 
         val combinedContent = "$title $text $bigText $subText".lowercase()
 
-        // 1. STRICT SECURITY SHIELD: If notification contains ANY OTP or authentication token, DISCARD IMMEDIATELY!
+        // 4. STRICT SECURITY SHIELD: If notification contains ANY OTP or authentication token, DISCARD IMMEDIATELY!
         val containsOtp = OTP_BLOCKLIST_KEYWORDS.any { combinedContent.contains(it) }
         if (containsOtp) {
             return
         }
 
-        // 2. Check if package is in target banking/UPI apps OR contains financial transaction keywords
+        // 5. Verification of financial keywords and currency symbols
         val isTargetApp = TARGET_PACKAGES.contains(pkgName)
-        val hasBankingKeywords = BANKING_KEYWORDS.any { combinedContent.contains(it) }
+        val hasActionKeyword = TRANSACTION_ACTION_KEYWORDS.any { combinedContent.contains(it) }
+        val hasCurrencyPattern = CURRENCY_REGEX.containsMatchIn(combinedContent)
 
-        if (!isTargetApp && !hasBankingKeywords) {
+        // For target banking/UPI apps, require an action keyword OR a currency pattern.
+        // For untrusted/other apps, require BOTH an action keyword AND an explicit currency amount.
+        val isValidTransaction = if (isTargetApp) {
+            hasActionKeyword || hasCurrencyPattern
+        } else {
+            hasActionKeyword && hasCurrencyPattern
+        }
+
+        if (!isValidTransaction) {
             return
         }
 

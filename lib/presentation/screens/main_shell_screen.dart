@@ -63,6 +63,9 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
       Provider.of<SettingsController>(context, listen: false).loadSettings();
 
+      // Dismiss any stale sync notifications from previous runs
+      _smsSyncService.cancelSyncNotification();
+
       // Automatically detect and sync recent SMS without user needing to click sync
       _autoDetectAndSyncRecentSms();
 
@@ -77,7 +80,8 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Whenever user returns to the app, automatically scan for new messages
+      // Clear any stale sync notification and automatically scan for new messages silently
+      _smsSyncService.cancelSyncNotification();
       _autoDetectAndSyncRecentSms();
       _checkAutoBackup();
       _checkAppUpdate();
@@ -90,7 +94,7 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
       final hasPermission = await _smsSyncService.isPermissionGranted();
       if (!hasPermission) return;
 
-      final result = await _smsSyncService.syncInbox(limit: 50);
+      final result = await _smsSyncService.syncInbox(limit: 50, isSilent: true);
       if (result.importedCount > 0 && mounted) {
         Provider.of<DashboardController>(context, listen: false).loadDashboardData();
         Provider.of<TransactionController>(context, listen: false).loadTransactions();
