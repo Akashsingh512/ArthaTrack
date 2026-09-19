@@ -23,6 +23,8 @@ class ParsedTransaction {
   final String? supportRecourse;
   final bool isRecurringMandate;
   final bool isFastag;
+  final double? originalAmount;
+  final String? originalCurrency;
 
   ParsedTransaction({
     required this.amount,
@@ -43,6 +45,8 @@ class ParsedTransaction {
     this.supportRecourse,
     this.isRecurringMandate = false,
     this.isFastag = false,
+    this.originalAmount,
+    this.originalCurrency,
   });
 
   bool get isExpense => type == TransactionType.EXPENSE;
@@ -72,6 +76,8 @@ class ParsedTransaction {
       'support_recourse': supportRecourse,
       'is_recurring_mandate': isRecurringMandate,
       'is_fastag': isFastag,
+      'original_amount': originalAmount,
+      'original_currency': originalCurrency,
     };
   }
 
@@ -105,6 +111,8 @@ class ParsedTransaction {
       supportRecourse: map['support_recourse'] as String?,
       isRecurringMandate: map['is_recurring_mandate'] as bool? ?? false,
       isFastag: map['is_fastag'] as bool? ?? false,
+      originalAmount: (map['original_amount'] as num?)?.toDouble(),
+      originalCurrency: map['original_currency'] as String?,
     );
   }
 
@@ -127,6 +135,8 @@ class ParsedTransaction {
     String? supportRecourse,
     bool? isRecurringMandate,
     bool? isFastag,
+    double? originalAmount,
+    String? originalCurrency,
   }) {
     return ParsedTransaction(
       amount: amount ?? this.amount,
@@ -147,6 +157,8 @@ class ParsedTransaction {
       supportRecourse: supportRecourse ?? this.supportRecourse,
       isRecurringMandate: isRecurringMandate ?? this.isRecurringMandate,
       isFastag: isFastag ?? this.isFastag,
+      originalAmount: originalAmount ?? this.originalAmount,
+      originalCurrency: originalCurrency ?? this.originalCurrency,
     );
   }
 }

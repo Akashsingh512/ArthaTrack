@@ -56,23 +56,132 @@ class NotificationListenerChannel {
     }
   }
 
-  /// Starts listening to the native EventChannel
+  /// Starts listening to the native EventChannel and drains pending notifications from native disk
   void startListening({Function(TransactionModel)? onTransactionParsed}) {
     _subscription?.cancel();
 
     _subscription = _eventChannel.receiveBroadcastStream().listen(
       (dynamic event) async {
         if (event is Map) {
-          await _handleNotificationEvent(
-            Map<String, dynamic>.from(event),
-            onTransactionParsed: onTransactionParsed,
-          );
+          final map = Map<String, dynamic>.from(event);
+          final notifId = map['id'];
+          try {
+            await _handleNotificationEvent(
+              map,
+              onTransactionParsed: onTransactionParsed,
+            );
+          } finally {
+            if (notifId != null) {
+              await markNotificationProcessed(notifId);
+            }
+          }
         }
       },
       onError: (dynamic error) {
         print('NotificationListener EventChannel error: $error');
       },
     );
+
+    // Immediately drain any pending ephemeral notifications that were captured to native disk
+    // while the Flutter engine was detached, killed, or sleeping
+    unawaited(drainPendingNotifications(onTransactionParsed: onTransactionParsed));
+    unawaited(ensureConnected());
+  }
+
+  /// Drains any unhandled notifications that were persisted to native disk
+  /// while Flutter was in the background, killed, or sleeping.
+  Future<int> drainPendingNotifications({
+    Function(TransactionModel)? onTransactionParsed,
+  }) async {
+    int processedCount = 0;
+    try {
+      final List<dynamic>? pendingList =
+          await _controlChannel.invokeMethod('getPendingNotifications');
+      if (pendingList == null || pendingList.isEmpty) return 0;
+
+      for (final item in pendingList) {
+        if (item is Map) {
+          final event = Map<String, dynamic>.from(item);
+          final notifId = event['id'];
+          try {
+            final tx = await _handleNotificationEvent(
+              event,
+              onTransactionParsed: onTransactionParsed,
+            );
+            if (tx != null) {
+              processedCount++;
+            }
+          } catch (e) {
+            print('Error processing pending notification: $e');
+          } finally {
+            if (notifId != null) {
+              await markNotificationProcessed(notifId);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error draining pending notifications: $e');
+    }
+    return processedCount;
+  }
+
+  /// Acknowledges to the native SQLite journal that this notification has been processed
+  Future<void> markNotificationProcessed(dynamic id) async {
+    try {
+      await _controlChannel.invokeMethod('markNotificationProcessed', {'id': id});
+    } catch (_) {}
+  }
+
+  /// Ensures native Android NotificationListenerService is bound and active
+  Future<void> ensureConnected() async {
+    try {
+      await _controlChannel.invokeMethod('ensureNotificationListenerConnected');
+    } catch (_) {}
+  }
+
+  /// Checks whether ArthaTrack is exempt from aggressive Android battery optimizations
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    try {
+      final bool? isIgnoring =
+          await _controlChannel.invokeMethod('isIgnoringBatteryOptimizations');
+      return isIgnoring ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Requests battery optimization exemption for uninterrupted push notification capture
+  Future<bool> requestIgnoreBatteryOptimizations() async {
+    try {
+      final bool? success =
+          await _controlChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+      return success ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Checks whether runtime notification posting permission is granted (Android 13+)
+  Future<bool> checkPostNotificationPermission() async {
+    try {
+      final bool? granted =
+          await _controlChannel.invokeMethod('checkNotificationPermission');
+      return granted ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Requests runtime notification posting permission (Android 13+)
+  Future<bool> requestPostNotificationPermission() async {
+    try {
+      final bool? granted =
+          await _controlChannel.invokeMethod('requestNotificationPermission');
+      return granted ?? true;
+    } catch (_) {
+      return true;
+    }
   }
 
   /// Stops listening to the EventChannel

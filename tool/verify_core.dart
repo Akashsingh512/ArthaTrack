@@ -125,6 +125,145 @@ void main() {
     axis != null ? 'Parsed: ${axis.toMap()}' : 'Null result',
   );
 
+  // Test USD Transaction with Available Amount / Balance (Issue: User got 'spend 2.50 usd available amount is 200000')
+  final usdTxn1 = EngineBRegexParser.parse(
+    ' spend 2.50 usd available amount is 200000',
+  );
+  assertTest(
+    'USD debit converts 2.50 USD to Rupees (₹210.00) and extracts 200000 available balance',
+    usdTxn1 != null &&
+        usdTxn1.amount == 210.00 &&
+        usdTxn1.originalAmount == 2.50 &&
+        usdTxn1.originalCurrency == 'USD' &&
+        usdTxn1.type == TransactionType.EXPENSE &&
+        usdTxn1.updatedBalance == 200000.00,
+    usdTxn1 != null ? 'Parsed: ${usdTxn1.toMap()}' : 'Null result',
+  );
+
+  final usdTxn2 = EngineBRegexParser.parse(
+    'Available amount is Rs 200000. Spent 2.50 usd at Amazon',
+  );
+  assertTest(
+    'Reversed order: converts 2.50 USD to ₹210.00 and preserves Amazon merchant',
+    usdTxn2 != null &&
+        usdTxn2.amount == 210.00 &&
+        usdTxn2.originalAmount == 2.50 &&
+        usdTxn2.merchant.contains('Amazon') &&
+        usdTxn2.type == TransactionType.EXPENSE &&
+        usdTxn2.updatedBalance == 200000.00,
+    usdTxn2 != null ? 'Parsed: ${usdTxn2.toMap()}' : 'Null result',
+  );
+
+  final usdTxn3 = EngineBRegexParser.parse(
+    'Debited USD 2.50 on Card XX1234. Avail amount: 200000',
+  );
+  assertTest(
+    'Debited prefix USD 2.50 converted to ₹210.00 with Avail amount 200000',
+    usdTxn3 != null &&
+        usdTxn3.amount == 210.00 &&
+        usdTxn3.originalAmount == 2.50 &&
+        usdTxn3.type == TransactionType.EXPENSE &&
+        usdTxn3.updatedBalance == 200000.00,
+    usdTxn3 != null ? 'Parsed: ${usdTxn3.toMap()}' : 'Null result',
+  );
+
+  // Test USD Transaction with Current Balance
+  final usdTxn4 = EngineBRegexParser.parse(
+    ' spend 2.50 usd current balance is 200000',
+  );
+  assertTest(
+    'Current balance isolated: converts 2.50 USD to ₹210.00 and tracks 200000 as balance',
+    usdTxn4 != null &&
+        usdTxn4.amount == 210.00 &&
+        usdTxn4.updatedBalance == 200000.00,
+    usdTxn4 != null ? 'Parsed: ${usdTxn4.toMap()}' : 'Null result',
+  );
+
+  // Test multiple balances in single message
+  final multiBal = EngineBRegexParser.parse(
+    ' spend 2.50 usd available balance is 200000, current balance is 200000',
+  );
+  assertTest(
+    'Multiple balances masked: converts 2.50 USD to ₹210.00 and neither balance leaks into amount',
+    multiBal != null &&
+        multiBal.amount == 210.00 &&
+        multiBal.updatedBalance == 200000.00,
+    multiBal != null ? 'Parsed: ${multiBal.toMap()}' : 'Null result',
+  );
+
+  // Test INR debit with contextual balance phrases
+  final inrBal1 = EngineBRegexParser.parse(
+    'A/c 1234 debited for 100. Available balance in your account is Rs 50000',
+  );
+  assertTest(
+    'Available balance in your account: amount is ₹100 and balance is ₹50000',
+    inrBal1 != null &&
+        inrBal1.amount == 100.00 &&
+        inrBal1.updatedBalance == 50000.00,
+    inrBal1 != null ? 'Parsed: ${inrBal1.toMap()}' : 'Null result',
+  );
+
+  final inrBal2 = EngineBRegexParser.parse(
+    'debited with Rs 100. Current balance for A/c 1234 is Rs 50000',
+  );
+  assertTest(
+    'Current balance for A/c: amount is ₹100 and balance is ₹50000',
+    inrBal2 != null &&
+        inrBal2.amount == 100.00 &&
+        inrBal2.updatedBalance == 50000.00,
+    inrBal2 != null ? 'Parsed: ${inrBal2.toMap()}' : 'Null result',
+  );
+
+  final clearBalTxn = EngineBRegexParser.parse(
+    'Paid 100 to Uber. Clear balance: Rs 5000. Available balance: Rs 5000.',
+  );
+  assertTest(
+    'Clear & Available balance masked: amount is ₹100, merchant is Uber',
+    clearBalTxn != null &&
+        clearBalTxn.amount == 100.00 &&
+        clearBalTxn.merchant.contains('Uber') &&
+        clearBalTxn.updatedBalance == 5000.00,
+    clearBalTxn != null ? 'Parsed: ${clearBalTxn.toMap()}' : 'Null result',
+  );
+
+  // Test Pure Balance Inquiries / Updates (Must NEVER be recorded as transactions)
+  print('\n--- Testing Balance Restriction Guard: Pure Balance Notices Rejection ---');
+  final balEnq1 = EngineBRegexParser.parse(
+    'Dear customer, available balance in your account XX1234 is INR 25,000.00',
+  );
+  assertTest(
+    'Pure available balance notification rejected (not recorded as transaction)',
+    balEnq1 == null,
+    'Unexpectedly parsed: ${balEnq1?.toMap()}',
+  );
+
+  final balEnq2 = EngineBRegexParser.parse(
+    'Current balance for A/C XX1234 is Rs 50,000',
+  );
+  assertTest(
+    'Pure current balance notification rejected (not recorded as transaction)',
+    balEnq2 == null,
+    'Unexpectedly parsed: ${balEnq2?.toMap()}',
+  );
+
+  final balEnq3 = EngineBRegexParser.parse(
+    'Available balance: Rs 200000',
+  );
+  assertTest(
+    'Available balance only rejected (not recorded as transaction)',
+    balEnq3 == null,
+    'Unexpectedly parsed: ${balEnq3?.toMap()}',
+  );
+
+  final balEnq4 = EngineBRegexParser.parse(
+    'Balance enquiry request received for A/C 1234. Avail bal is Rs 10000',
+  );
+  assertTest(
+    'Balance enquiry request rejected (not recorded as transaction)',
+    balEnq4 == null,
+    'Unexpectedly parsed: ${balEnq4?.toMap()}',
+  );
+
   // Test Non-financial and Bank OTP rejections (CRITICAL SECURITY)
   print('\n--- Testing Security Guard: OTP & Authentication Rejection ---');
   final otp1 = EngineBRegexParser.parse('Your login OTP is 481920. Do not share it with anyone.');

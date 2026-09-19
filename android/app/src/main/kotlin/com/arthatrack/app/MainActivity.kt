@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -37,8 +38,18 @@ class MainActivity : FlutterActivity() {
     private val HAPTICS_CHANNEL = "com.arthatrack.app/haptics"
     private val UPDATER_CHANNEL = "com.arthatrack.app/updater"
     private val SMS_PERMISSION_REQ_CODE = 2002
+    private val NOTIF_PERMISSION_REQ_CODE = 2003
 
     private var pendingSmsResult: MethodChannel.Result? = null
+    private var pendingNotificationResult: MethodChannel.Result? = null
+
+    override fun onResume() {
+        super.onResume()
+        // Auto-heal notification listener if granted
+        if (isNotificationServiceEnabled()) {
+            NotificationListener.ensureRebind(this)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -56,7 +67,7 @@ class MainActivity : FlutterActivity() {
             }
         )
 
-        // MethodChannel for permission check and launching settings
+        // MethodChannel for permission check, persistent queue drain, and settings
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isNotificationListenerGranted" -> {
@@ -66,6 +77,98 @@ class MainActivity : FlutterActivity() {
                 "openNotificationListenerSettings" -> {
                     openNotificationAccessSettings()
                     result.success(true)
+                }
+                "getPendingNotifications" -> {
+                    try {
+                        val pending = NotificationDbHelper.getInstance(this).getPendingNotifications()
+                        result.success(pending)
+                    } catch (e: Exception) {
+                        result.error("DB_ERROR", e.message, null)
+                    }
+                }
+                "markNotificationProcessed" -> {
+                    val id = (call.argument<Any>("id") as? Number)?.toLong()
+                    if (id != null && id > 0) {
+                        NotificationDbHelper.getInstance(this).markProcessed(id)
+                        result.success(true)
+                    } else {
+                        result.success(false)
+                    }
+                }
+                "ensureNotificationListenerConnected" -> {
+                    NotificationListener.ensureRebind(this)
+                    result.success(true)
+                }
+                "isIgnoringBatteryOptimizations" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                        val isIgnoring = pm?.isIgnoringBatteryOptimizations(packageName) ?: true
+                        result.success(isIgnoring)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            try {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:$packageName")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    val listIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    startActivity(listIntent)
+                                } catch (_: Exception) {
+                                    val appSettings = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.parse("package:$packageName")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    startActivity(appSettings)
+                                }
+                            }
+                            result.success(true)
+                        } else {
+                            result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
+                "checkNotificationPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        result.success(granted)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "requestNotificationPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val granted = ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (granted) {
+                            result.success(true)
+                        } else {
+                            pendingNotificationResult = result
+                            ActivityCompat.requestPermissions(
+                                this,
+                                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                NOTIF_PERMISSION_REQ_CODE
+                            )
+                        }
+                    } else {
+                        result.success(true)
+                    }
                 }
                 "showCategorizationNotification" -> {
                     val title = call.argument<String>("title") ?: "Categorize Transaction"
@@ -403,6 +506,10 @@ class MainActivity : FlutterActivity() {
             val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
             pendingSmsResult?.success(granted)
             pendingSmsResult = null
+        } else if (requestCode == NOTIF_PERMISSION_REQ_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingNotificationResult?.success(granted)
+            pendingNotificationResult = null
         }
     }
 

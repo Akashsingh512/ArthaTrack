@@ -80,6 +80,56 @@ void main() {
       expect(result.updatedBalance, equals(12000.00));
     });
 
+    test('Parses USD transaction with available amount balance correctly', () {
+      const text = ' spend 2.50 usd available amount is 200000';
+      final result = EngineBRegexParser.parse(text);
+
+      expect(result, isNotNull);
+      expect(result!.amount, equals(210.00));
+      expect(result.originalAmount, equals(2.50));
+      expect(result.originalCurrency, equals('USD'));
+      expect(result.type, equals(TransactionType.EXPENSE));
+      expect(result.updatedBalance, equals(200000.00));
+    });
+
+    test('Parses USD transaction with current balance correctly', () {
+      const text = ' spend 2.50 usd current balance is 200000';
+      final result = EngineBRegexParser.parse(text);
+
+      expect(result, isNotNull);
+      expect(result!.amount, equals(210.00));
+      expect(result.updatedBalance, equals(200000.00));
+    });
+
+    test('Masks multiple balances so neither leaks into amount', () {
+      const text =
+          ' spend 2.50 usd available balance is 200000, current balance is 200000';
+      final result = EngineBRegexParser.parse(text);
+
+      expect(result, isNotNull);
+      expect(result!.amount, equals(210.00));
+      expect(result.updatedBalance, equals(200000.00));
+    });
+
+    test('Rejects pure balance enquiry notifications from being recorded as transactions', () {
+      expect(
+        EngineBRegexParser.parse('Dear customer, available balance in your account XX1234 is INR 25,000.00'),
+        isNull,
+      );
+      expect(
+        EngineBRegexParser.parse('Current balance for A/C XX1234 is Rs 50,000'),
+        isNull,
+      );
+      expect(
+        EngineBRegexParser.parse('Available balance: Rs 200000'),
+        isNull,
+      );
+      expect(
+        EngineBRegexParser.parse('Balance enquiry request received for A/C 1234. Avail bal is Rs 10000'),
+        isNull,
+      );
+    });
+
     test('Ignores non-financial texts like OTPs and login alerts', () {
       const otpText = 'Your one time password (OTP) for login is 481920. Do not share it with anyone.';
       final result = EngineBRegexParser.parse(otpText);

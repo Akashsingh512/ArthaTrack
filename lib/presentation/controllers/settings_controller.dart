@@ -28,6 +28,7 @@ class SettingsController extends ChangeNotifier {
   bool _hasActiveKey = false;
   bool _isNotificationPermissionGranted = false;
   bool _isSmsPermissionGranted = false;
+  bool _isBatteryOptimizationIgnored = false;
   bool _isSmsSyncing = false;
   bool _isGmailSyncing = false;
   bool _isExporting = false;
@@ -65,6 +66,7 @@ class SettingsController extends ChangeNotifier {
   bool get hasActiveKey => _hasActiveKey;
   bool get isNotificationPermissionGranted => _isNotificationPermissionGranted;
   bool get isSmsPermissionGranted => _isSmsPermissionGranted;
+  bool get isBatteryOptimizationIgnored => _isBatteryOptimizationIgnored;
   bool get isSmsSyncing => _isSmsSyncing;
   bool get isGmailSyncing => _isGmailSyncing;
   bool get isExporting => _isExporting;
@@ -184,6 +186,8 @@ class SettingsController extends ChangeNotifier {
       _isNotificationPermissionGranted = await _notificationChannel
           .isPermissionGranted();
       _isSmsPermissionGranted = await _smsSyncService.isPermissionGranted();
+      _isBatteryOptimizationIgnored = await _notificationChannel
+          .isIgnoringBatteryOptimizations();
     } catch (e) {
       print('Error loading settings: $e');
     } finally {
@@ -273,6 +277,21 @@ class SettingsController extends ChangeNotifier {
   Future<void> requestNotificationPermission() async {
     await _notificationChannel.openSettings();
     await refreshNotificationPermission();
+  }
+
+  Future<void> refreshBatteryOptimizationStatus() async {
+    _isBatteryOptimizationIgnored =
+        await _notificationChannel.isIgnoringBatteryOptimizations();
+    notifyListeners();
+  }
+
+  Future<bool> requestIgnoreBatteryOptimizations() async {
+    final granted =
+        await _notificationChannel.requestIgnoreBatteryOptimizations();
+    _isBatteryOptimizationIgnored =
+        await _notificationChannel.isIgnoringBatteryOptimizations();
+    notifyListeners();
+    return granted;
   }
 
   Future<void> refreshSmsPermission() async {

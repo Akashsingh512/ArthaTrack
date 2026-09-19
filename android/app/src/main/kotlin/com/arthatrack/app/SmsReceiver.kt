@@ -43,7 +43,7 @@ class SmsReceiver : BroadcastReceiver() {
                 "postTime" to postTime
             )
 
-            NotificationListener.postPayload(payload)
+            NotificationListener.postPayload(context, payload)
         } catch (e: Exception) {
             // Gracefully ignore error to avoid any app crash
         }

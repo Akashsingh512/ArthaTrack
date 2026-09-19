@@ -1,5 +1,6 @@
 import '../../core/constants/indian_banking_constants.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/forex_converter.dart';
 import '../../data/models/parsed_transaction.dart';
 import 'category_finder.dart';
 
@@ -41,6 +42,20 @@ class EngineBRegexParser {
 
     // 0.2 PAYMENT REQUEST / COLLECT REQUEST GUARD: Never parse incoming payment requests
     if (IndianBankingConstants.collectRequestBlocklistRegex.hasMatch(text)) {
+      return null;
+    }
+
+    // 0.25 BALANCE ENQUIRY & STATUS NOTICE GUARD: Drop pure balance enquiries and updates
+    // if no actual transaction action keyword exists
+    final hasActionWord = lower.contains('debited') ||
+        lower.contains('spent') ||
+        lower.contains('spend') ||
+        lower.contains('credited') ||
+        lower.contains('paid') ||
+        lower.contains('withdrawn') ||
+        lower.contains('transferred');
+    if (!hasActionWord &&
+        IndianBankingConstants.balanceNoticeBlocklistRegex.hasMatch(text)) {
       return null;
     }
 
@@ -98,8 +113,9 @@ class EngineBRegexParser {
       // Extract amount and details for user awareness banner
       double failAmount = 0.0;
       final amtMatch = IndianBankingConstants.amountRegex.firstMatch(text);
-      if (amtMatch != null && amtMatch.groupCount >= 1) {
-        final raw = amtMatch.group(1);
+      if (amtMatch != null) {
+        final raw = amtMatch.group(1) ??
+            (amtMatch.groupCount >= 2 ? amtMatch.group(2) : null);
         if (raw != null) failAmount = IndianCurrencyFormatter.parse(raw);
       }
 
@@ -207,9 +223,11 @@ class EngineBRegexParser {
       }
     }
 
-    // 4. Extract Amount
+    // 4. Extract Available Balance and Transaction Amount
     double amount = 0.0;
     double? updatedBalance;
+    double? originalAmount;
+    String? originalCurrency;
 
     // Special handling for EPFO / EPF Passbook balance vs monthly contribution:
     final isEpfo =
@@ -230,39 +248,105 @@ class EngineBRegexParser {
         updatedBalance = IndianCurrencyFormatter.parse(epfoBalMatch.group(1)!);
       }
     } else {
-      final amountMatch = IndianBankingConstants.amountRegex.firstMatch(text);
-      if (amountMatch != null && amountMatch.groupCount >= 1) {
-        final rawAmountStr = amountMatch.group(1);
+      // 4.1 Extract All Balances (Available, Current, Clear, Closing, Ledger, Limit, etc.)
+      final allBalMatches =
+          IndianBankingConstants.balanceRegex.allMatches(text).toList();
+      for (final m in allBalMatches) {
+        if (updatedBalance == null && m.groupCount >= 1) {
+          final balStr = m.group(1);
+          if (balStr != null && balStr.isNotEmpty) {
+            updatedBalance = IndianCurrencyFormatter.parse(balStr);
+          }
+        }
+      }
+
+      // 4.2 Mask ALL balance clauses so NO balance or limit (e.g. available balance, current balance, available amount) can EVER be mistaken for the spent/received amount
+      String searchScope = text;
+      for (final m in allBalMatches.reversed) {
+        searchScope = searchScope.replaceRange(
+          m.start,
+          m.end,
+          ' ' * (m.end - m.start),
+        );
+      }
+
+      // 4.3 Extract Amount and convert Foreign Currency (USD, EUR, etc.) to INR if applicable
+      final allMatches =
+          IndianBankingConstants.amountRegex.allMatches(searchScope).toList();
+      RegExpMatch? inrMatch;
+      RegExpMatch? foreignMatch;
+      for (final m in allMatches) {
+        final fullMatch = m.group(0)!;
+        final cur = ForexConverter.detectCurrency(fullMatch);
+        if (cur != null && cur != 'INR') {
+          foreignMatch ??= m;
+        } else {
+          inrMatch ??= m;
+        }
+      }
+
+      if (inrMatch != null) {
+        final rawAmountStr = inrMatch.group(1) ??
+            (inrMatch.groupCount >= 2 ? inrMatch.group(2) : null);
         if (rawAmountStr != null) {
           amount = IndianCurrencyFormatter.parse(rawAmountStr);
         }
+        if (foreignMatch != null) {
+          final rawF = foreignMatch.group(1) ??
+              (foreignMatch.groupCount >= 2 ? foreignMatch.group(2) : null);
+          if (rawF != null) {
+            originalAmount = IndianCurrencyFormatter.parse(rawF);
+          }
+          originalCurrency =
+              ForexConverter.detectCurrency(foreignMatch.group(0)!);
+        }
+      } else if (foreignMatch != null) {
+        final rawF = foreignMatch.group(1) ??
+            (foreignMatch.groupCount >= 2 ? foreignMatch.group(2) : null);
+        if (rawF != null) {
+          originalAmount = IndianCurrencyFormatter.parse(rawF);
+          originalCurrency =
+              ForexConverter.detectCurrency(foreignMatch.group(0)!) ?? 'USD';
+          amount = ForexConverter.convertToInr(
+            originalAmount,
+            originalCurrency,
+          );
+        }
+      } else {
+        final amountMatch =
+            IndianBankingConstants.amountRegex.firstMatch(searchScope);
+        if (amountMatch != null) {
+          final rawAmountStr = amountMatch.group(1) ??
+              (amountMatch.groupCount >= 2 ? amountMatch.group(2) : null);
+          if (rawAmountStr != null) {
+            amount = IndianCurrencyFormatter.parse(rawAmountStr);
+          }
+        }
       }
-    }
 
-    if (amount <= 0.0) {
-      final fallbackMatch = IndianBankingConstants.fallbackAmountRegex
-          .firstMatch(text);
-      if (fallbackMatch != null && fallbackMatch.groupCount >= 1) {
-        final rawStr = fallbackMatch.group(1);
-        if (rawStr != null) {
-          amount = IndianCurrencyFormatter.parse(rawStr);
+      if (amount <= 0.0) {
+        final fallbackMatch = IndianBankingConstants.fallbackAmountRegex
+            .firstMatch(searchScope);
+        if (fallbackMatch != null && fallbackMatch.groupCount >= 1) {
+          final rawStr = fallbackMatch.group(1);
+          if (rawStr != null) {
+            final parsedVal = IndianCurrencyFormatter.parse(rawStr);
+            final cur = ForexConverter.detectCurrency(fallbackMatch.group(0)!) ??
+                ForexConverter.detectCurrency(searchScope);
+            if (cur != null && cur != 'INR') {
+              originalAmount = parsedVal;
+              originalCurrency = cur;
+              amount = ForexConverter.convertToInr(parsedVal, cur);
+            } else {
+              amount = parsedVal;
+            }
+          }
         }
       }
     }
 
     if (amount <= 0.0) {
       return null;
-    }
-
-    // 5. Extract Available Balance / Credit Limit / Wallet Balance if present
-    if (updatedBalance == null) {
-      final balMatch = IndianBankingConstants.balanceRegex.firstMatch(text);
-      if (balMatch != null && balMatch.groupCount >= 1) {
-        final balStr = balMatch.group(1);
-        if (balStr != null) {
-          updatedBalance = IndianCurrencyFormatter.parse(balStr);
-        }
-      }
     }
 
     // 6. Extract Account Snippet using Universal Account Regex
@@ -416,6 +500,21 @@ class EngineBRegexParser {
       }
     }
 
+    // Append original foreign currency tag to merchant if transaction was converted (e.g. "Unknown Merchant ($2.50 USD)")
+    if (originalAmount != null &&
+        originalCurrency != null &&
+        originalCurrency != 'INR') {
+      final origTag = ForexConverter.formatOriginal(
+        originalAmount,
+        originalCurrency,
+      );
+      if (merchant == 'Unknown Merchant' || merchant.isEmpty) {
+        merchant = 'Unknown Merchant ($origTag)';
+      } else if (!merchant.contains(origTag)) {
+        merchant = '$merchant ($origTag)';
+      }
+    }
+
     // Status: PENDING_HOLD for pre-auth fuel/hotel holds
     final status = isPreAuthHold ? 'PENDING_HOLD' : 'SUCCESS';
 
@@ -437,6 +536,8 @@ class EngineBRegexParser {
       supportRecourse: supportRecourse,
       isRecurringMandate: isRecurringMandate,
       isFastag: isFastag,
+      originalAmount: originalAmount,
+      originalCurrency: originalCurrency,
     );
   }
 
@@ -839,6 +940,24 @@ class EngineBRegexParser {
         lowerCand == 'receipt' ||
         lowerCand == 'download' ||
         lowerCand == 'click' ||
+        lowerCand == 'balance' ||
+        lowerCand == 'bal' ||
+        lowerCand == 'available balance' ||
+        lowerCand == 'current balance' ||
+        lowerCand == 'clear balance' ||
+        lowerCand == 'closing balance' ||
+        lowerCand == 'ledger balance' ||
+        lowerCand == 'account balance' ||
+        lowerCand == 'total balance' ||
+        lowerCand == 'available amount' ||
+        lowerCand == 'current amount' ||
+        lowerCand == 'avail bal' ||
+        lowerCand == 'avl bal' ||
+        lowerCand == 'cur bal' ||
+        lowerCand == 'curr bal' ||
+        lowerCand == 'limit' ||
+        lowerCand == 'avail limit' ||
+        lowerCand == 'credit limit' ||
         lowerCand.startsWith('http://') ||
         lowerCand.startsWith('https://') ||
         lowerCand == 'billdesk') {
@@ -849,11 +968,11 @@ class EngineBRegexParser {
         RegExp(r'^\d+$').hasMatch(candidate)) {
       return null;
     }
-    // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "bal", "ending", "dispute", "trxn"
+    // Strip trailing qualifiers: "via", "on", "ref", "upi", "avl", "avail", "available", "bal", "balance", "cur", "curr", "current", "clear", "cleared", "closing", "ledger", "limit", "outstanding", "total", "ending", "dispute", "trxn"
     candidate = candidate
         .replaceAll(
           RegExp(
-            r'\s+(?:via|on|ref|upi|avl|bal|ending|dispute|trxn).*$',
+            r'\s+(?:via|on|ref|upi|avl|avail|available|bal|balance|cur|curr|current|clear|cleared|closing|ledger|limit|outstanding|total|ending|dispute|trxn).*$',
             caseSensitive: false,
           ),
           '',

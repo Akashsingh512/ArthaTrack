@@ -69,25 +69,27 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
-          tag_name: v1.1.0-beta16
-          name: "ArthaTrack Beta v1.1.0 (Build 16)"
+          tag_name: v1.1.0-beta17
+          name: "ArthaTrack Beta v1.1.0 (Build 17)"
           body: |
-            ### 🚀 ArthaTrack Beta v1.1.0 (Build 16)
+            ### 🚀 ArthaTrack Beta v1.1.0 (Build 17)
             
-            #### 🌟 Highlights & What's New in Build 16:
-            - **🛡️ Permanent Transaction Deletion Blacklist**:
-              - When you delete any transaction, its SMS fingerprint, reference number, and merchant/amount are permanently blacklisted in SQLite.
-              - Background SMS auto-sync and manual sync will **NEVER** re-import transactions you have deliberately deleted!
-            - **🔕 Notification Loop & Spam Elimination**:
-              - Completely resolved repeated buzzing / notifications ("again and again").
-              - Self-originating recursion shield: ArthaTrack now strictly ignores its own alerts in the Android notification listener.
-              - Excluded non-financial social/chat apps (WhatsApp, Telegram, etc.) from the notification listener and fixed substring keyword matching (`rs` regex boundary).
-            - **🤫 100% Silent Background Auto-Sync**:
-              - Automatic SMS detection on app launch and resume now runs completely silently in the background without posting noisy status-bar notifications.
-              - Dedicated low-importance notification channel for manual sync operations with instant auto-dismissal on completion.
-            - **🔒 Hardened In-App Updater Security**:
-              - Restored strict TLS certificate validation (removed `badCertificateCallback`) against Android's system CA trust store.
-              - Added official GitHub release domain whitelisting to eliminate Man-in-the-Middle (MITM) risks.
+            #### 🌟 Highlights & What's New in Build 17:
+            - **💱 Foreign Currency & USD Auto-Conversion**:
+              - Automatically detects transactions denominated in foreign currencies (USD, EUR, GBP) and converts them to INR (₹) at standard rates while preserving original forex metadata.
+            - **🛡️ Balance Isolation & Restriction Guards**:
+              - Strict balance isolation ensures "available balance" or "current balance" never leaks into transaction amounts (e.g. "spent 2.50 USD available amount is 200000").
+              - Pure balance inquiry notifications are automatically blocked from being recorded as transactions.
+            - **💾 Zero-Loss SQLite Notification Journal**:
+              - Native Kotlin SQLite write-ahead log (`NotificationDbHelper.kt`) guarantees At-Least-Once Delivery for ephemeral UPI push notifications (GPay, PhonePe, Paytm, CRED).
+              - Incoming transactions are safely persisted to disk even if the app UI or Flutter engine is closed or sleeping.
+            - **⚡ Permissions & Battery Saver Optimization Flow**:
+              - Startup bottom sheet modal automatically prompts for all essential tracking permissions (Bank SMS, Notification Access, Battery Saver Exemption).
+              - Dedicated guidance for OEM-specific "Special SMS Permission" (Xiaomi MIUI/HyperOS, Vivo, Oppo, Android 13+ restricted settings).
+              - First-class "Background & Battery Saver" card in Settings with live real-time status auto-refresh and direct exemption trigger (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`).
+            - **🔒 Auto-Rebind & Defensive Reliability**:
+              - Self-healing notification binder re-connection on disconnect and app resume.
+              - Multi-tier fallback intents to prevent any system crashes on customized OEM ROMs.
             
             #### 📲 Download & Install:
             Download **`ArthaTrack-Beta-v1.1.0.apk`** below to install directly on your Android phone!

@@ -199,28 +199,86 @@ class IndianBankingConstants {
     caseSensitive: false,
   );
 
-  // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "INR 5000.00", "₹1,24,500.00", "EMI of Rs 15,400", "Refund of Rs.1,500", "Hold of INR 2,500"
+  // 1. Amount Regex: Matches "Rs 450.00", "Rs. 1,240.50", "INR 500", "INR 5000.00", "₹1,24,500.00", "$2.50", "USD 2.50", "2.50 USD", "2.50 usd", "EMI of Rs 15,400", "Refund of Rs.1,500", "Hold of INR 2,500"
   static final RegExp amountRegex = RegExp(
-    r'(?:INR|Rs\.?|₹|EMI\s+of(?:\s+(?:INR|Rs\.?|₹))?|Refund\s+of(?:\s+(?:INR|Rs\.?|₹))?|Hold\s+of(?:\s+(?:INR|Rs\.?|₹))?)\s*([\d,]+(?:\.\d{1,2})?)',
+    r'(?:'
+    r'(?:INR|Rs\.?|₹|USD|US\$|\$|EUR|€|GBP|£|AED|CAD|AUD|SGD|'
+    r'EMI\s+of(?:\s+(?:INR|Rs\.?|₹|USD|US\$|\$|EUR|€|GBP|£|AED))?|'
+    r'Refund\s+of(?:\s+(?:INR|Rs\.?|₹|USD|US\$|\$|EUR|€|GBP|£|AED))?|'
+    r'Hold\s+of(?:\s+(?:INR|Rs\.?|₹|USD|US\$|\$|EUR|€|GBP|£|AED))?)\s*([\d,]+(?:\.\d{1,2})?)'
+    r'|'
+    r'([\d,]+(?:\.\d{1,2})?)\s*(?:USD|US\$|\$|EUR|€|GBP|£|AED|INR|Rs\.?|₹)\b'
+    r')',
     caseSensitive: false,
   );
 
-  // Fallback Amount Regex: Matches cases like "paid 450.00" or "for 500.00"
+  // Fallback Amount Regex: Matches cases like "paid 450.00", "for 500.00", "spent 2.50 usd", "spend 2.50"
   static final RegExp fallbackAmountRegex = RegExp(
-    r'(?:debited\s+(?:by|for)|credited\s+(?:by|with)|paid|spent|sent|transferred|transfer\s+of|deducted\s+for|levied\s+on)\s+(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:debited(?:\s+(?:by|for|with))?|credited(?:\s+(?:by|with|for))?|paid|spent|spend|spending|spends|sent|transferred|transfer\s+of|deducted\s+(?:for|from)?|levied\s+on)\s+(?:Rs\.?|INR|₹|USD|US\$|\$|EUR|€|GBP|£|AED)?\s?([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
-  // 2. Available Balance & Credit/Wallet Limit Regex (includes Avl Bal, Avail Limit, Avl Lmt, Wallet Bal, Total Balance)
+  // STRICT BALANCE ENQUIRY & STATUS NOTICE GUARD: Drop pure balance enquiries and balance updates
+  // where no money has actually moved.
+  static final RegExp balanceNoticeBlocklistRegex = RegExp(
+    r'\b('
+    r'balance\s+enquiry|balance\s+inquiry|bal\s+enquiry|bal\s+inquiry|'
+    r'balance\s+alert|bal\s+alert|'
+    r'request\s+(?:for\s+)?balance|'
+    r'missed\s+call\s+alert.*?(?:balance|bal)|'
+    r'available\s+balance\s+in\s+your\s+a\/c\s+is|'
+    r'current\s+balance\s+in\s+your\s+a\/c\s+is|'
+    r'avl\s+bal\s+in\s+your\s+a\/c\s+is|'
+    r'avail\s+bal\s+in\s+your\s+a\/c\s+is'
+    r')\b',
+    caseSensitive: false,
+  );
+
+  // 2. Comprehensive Account Balance & Credit/Wallet Limit Regex
+  // Covers Available Balance, Current Balance, Clear Balance, Closing Balance, Ledger Balance,
+  // Account Balance, Remaining Balance, Effective Balance, Total Balance, Net Balance,
+  // Outstanding Balance/Amount, Available Limit, Credit Limit, and Wallet Balance.
   static final RegExp balanceRegex = RegExp(
-    r'(?:Bal|Avl\s*Bal|Avl\s*Balance|Balance|Avail\s*Bal|Available\s*Balance|Total\s*Avail\.?\s*Bal|Total\s*Balance|Total\s*Bal|A\/c\s*Bal|Avl\s*Lmt|Avail\s*Limit|Limit|Wallet\s*Bal)[:\s]*(?:is\s+)?(?:Rs\.?|INR|₹)?\s?([\d,]+(?:\.\d{1,2})?)',
+    r'(?:'
+    r'Total\s*Avail(?:able)?\.?\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Available\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Avail(?:able)?\s*(?:Balance|Bal|Amount|Amt|Limit|Lmt)|'
+    r'Avl\.?\s*(?:Balance|Bal|Amount|Amt|Limit|Lmt)|'
+    r'Current\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Curr?\.?\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Clear(?:ed)?\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Clr\.?\s*(?:Balance|Bal)|'
+    r'Closing\s*(?:Balance|Bal)|'
+    r'Cls\.?\s*(?:Balance|Bal)|'
+    r'Ledger\s*(?:Balance|Bal)|'
+    r'(?:Account|Acct|A\/c)\s*(?:Balance|Bal)|'
+    r'Remaining\s*(?:Balance|Bal)|'
+    r'Rem\.?\s*(?:Balance|Bal)|'
+    r'Effective\s*(?:Available\s*)?(?:Balance|Bal)|'
+    r'Eff\.?\s*(?:Balance|Bal)|'
+    r'Net\s*(?:Balance|Bal)|'
+    r'(?:Total\s*)?Outstanding\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Outst\.?\s*(?:Balance|Bal|Amount|Amt)|'
+    r'Wallet\s*(?:Balance|Bal)|'
+    r'(?:Credit|Card|Total)?\s*Limit|'
+    r'Total\s*(?:Balance|Bal)|'
+    r'A\/c\s*Bal|'
+    r'Balance|Bal'
+    r')'
+    r'(?:'
+    r'[\s\-:]*(?:in|for|of)\s+(?:your\s+)?(?:a\/c|acct|account)?\s*(?:[xX\*\d]+)?|'
+    r'[\s\-:]*as\s+(?:on|of)\s+[^,\.:\n]+'
+    r')*'
+    r'[\s\-:]*(?:is\s+)?'
+    r'(?:Rs\.?|INR|₹|USD|US\$|\$|EUR|€|GBP|£|AED|CAD|AUD|SGD)?\s*'
+    r'([\d,]+(?:\.\d{1,2})?)',
     caseSensitive: false,
   );
 
   // 3. Action Triggers
   static final RegExp expenseTriggerRegex = RegExp(
     r'\b('
-    r'debited|spent|paid|withdrawn|withdrawal|cash\s+withdrawal|charged|deducted|levied|levied\s+on|payment\s+of|payment\s+to|'
+    r'debited|spent|spend|spending|spends|paid|paying|withdrawn|withdrawal|cash\s+withdrawal|charged|deducted|levied|levied\s+on|payment\s+of|payment\s+to|'
     r'nach\s+debit|via\s+nach|debit\b(?!\s+card)|'
     r'sent\b(?!\s+you\b)|'
     r'transferred\b(?!\s+from\b)|'
@@ -249,17 +307,17 @@ class IndianBankingConstants {
 
   // 5. Merchant & Sender Extraction Heuristics with strict word boundaries
   static final RegExp expenseMerchantRegex = RegExp(
-    r'\b(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
+    r'\b(?:to|at|towards|paid\s+to|transfer\s+to|vpa|info)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|avail|available|bal|balance|cur|curr|current|clear|cleared|closing|ledger|limit|outstanding|total|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp incomeMerchantRegex = RegExp(
-    r'\b(?:received\s+from|transfer\s+from|from|by)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:to|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
+    r'\b(?:received\s+from|transfer\s+from|from|by)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:to|on|ref|upi|avl|avail|available|bal|balance|cur|curr|current|clear|cleared|closing|ledger|limit|outstanding|total|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
   static final RegExp vpaOrMerchantRegex = RegExp(
-    r'\b(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|bal|for|with)\b|\.|\,|$|\n)',
+    r'\b(?:to|at|vpa|info|towards|paid\s+to|transfer\s+to|transfer\s+from|received\s+from|from)\b\s+([A-Za-z0-9\s\.\*\-\@]+?)(?:\s+(?:[\(\[])?\s*(?:from|on|ref|upi|avl|avail|available|bal|balance|cur|curr|current|clear|cleared|closing|ledger|limit|outstanding|total|for|with)\b|\.|\,|$|\n)',
     caseSensitive: false,
   );
 
@@ -272,7 +330,7 @@ class IndianBankingConstants {
 
   // Bank Card inline merchant regex (e.g. "17:34:28 IST SRI VENKATE Avl Limit: ...")
   static final RegExp cardMerchantRegex = RegExp(
-    r'(?<![\d,\.])\b(?:(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?|\d{2}\.\d{2}\.\d{2})\s*(?:IST|AM|PM)?\s+([A-Za-z0-9\s\.\*\-\@\_]+?)(?:\s+(?:Avl\s*(?:Limit|Bal|Balance|Lmt)|Avail\s*(?:Limit|Bal)|Total\s*Bal|Bal|Limit|Not\s+you|Ref|UPI|\n|$))',
+    r'(?<![\d,\.])\b(?:(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?|\d{2}\.\d{2}\.\d{2})\s*(?:IST|AM|PM)?\s+([A-Za-z0-9\s\.\*\-\@\_]+?)(?:\s+(?:Avl\s*(?:Limit|Bal|Balance|Lmt|Amount)|Avail\s*(?:Limit|Bal|Amount)|Available\s*(?:Amount|Balance)|Current\s*(?:Bal|Balance|Amount|Limit)|Total\s*Bal|Bal|Limit|Not\s+you|Ref|UPI|\n|$))',
     caseSensitive: false,
     dotAll: true,
   );

@@ -72,8 +72,12 @@ class IndianCurrencyFormatter {
     return '${buffer.toString()},$lastThree';
   }
 
-  /// Parses an Indian or standard currency string into a double, e.g., "1,24,500.50" -> 124500.50
+  /// Parses an Indian or standard currency string into a double, e.g., "1,24,500.50" -> 124500.50, "$2.50" -> 2.50, "2.50 usd" -> 2.50
   static double parse(String raw) {
+    final match = RegExp(r'[-+]?\d+(?:,\d+)*(?:\.\d+)?').firstMatch(raw);
+    if (match != null) {
+      return double.tryParse(match.group(0)!.replaceAll(',', '')) ?? 0.0;
+    }
     final cleaned = raw.replaceAll('₹', '').replaceAll('Rs', '').replaceAll('INR', '').replaceAll(',', '').trim();
     return double.tryParse(cleaned) ?? 0.0;
   }

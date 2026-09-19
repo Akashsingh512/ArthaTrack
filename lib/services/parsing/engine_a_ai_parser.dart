@@ -1,14 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/forex_converter.dart';
 import '../../data/models/parsed_transaction.dart';
 
 class EngineAAiParser {
   static const Duration _requestTimeout = Duration(seconds: 8);
 
   static const String _systemPrompt = '''
-You are an expert Indian financial transaction parser for the ArthaTrack personal finance mobile app.
-Your task is to parse raw Indian SMS, UPI push notifications (GPay, PhonePe, Paytm, CRED), and bank emails (HDFC, SBI, ICICI, Axis).
+You are an expert Indian and global financial transaction parser for the ArthaTrack personal finance mobile app.
+Your task is to parse raw Indian and international SMS, UPI push notifications (GPay, PhonePe, Paytm, CRED), and bank emails (HDFC, SBI, ICICI, Axis, etc.).
 
 You must output ONLY valid JSON matching this exact schema:
 {
@@ -27,13 +28,15 @@ Field rules:
 - is_financial_transaction: boolean. Must be FALSE if:
   1) It is an upcoming bill reminder, request to pay, due notice, or marketing offer where money has NOT yet actually been debited or credited.
   2) It is a payment receipt acknowledgement confirming payment received towards a credit card, loan, EMI, or bill (e.g. "Payment of INR ... has been received towards your Axis Bank Credit Card", "Thank you for payment of Rs ... towards HDFC Credit Card", "Payment received towards your Airtel bill"). These are receipts for debts/bills already debited from bank, NOT new transactions.
+  3) It is an account balance enquiry, balance summary, or balance notification (e.g. "Available balance in A/C ... is Rs 50,000", "Current balance is...", "Total balance is..."). These are status updates, NOT transactions! Money has not moved!
   Only set to TRUE if an actual completed debit/credit/payment transaction occurred.
-- amount: double strictly > 0.
+- amount: double strictly > 0 representing the transaction amount spent, debited, credited, or transferred (e.g. 2.50 for "spend 2.50 usd"). Supports INR as well as foreign currencies (USD, EUR, GBP, AED, etc.).
+  CRITICAL: NEVER confuse "available balance", "current balance", "available amount", "current amount", "clear balance", "closing balance", "ledger balance", "account balance", "remaining balance", "total balance", "outstanding balance", "avl bal", "cur bal", or "limit" with the transaction amount. For example, in "spend 2.50 usd available amount is 200000", amount MUST be 2.50 and updated_balance MUST be 200000. Balance figures must NEVER be recorded as the transaction amount!
 - type: strictly "EXPENSE" or "INCOME". CRITICAL: A payment received towards a credit card or bill is NEVER "INCOME".
 - category: one of ["Food", "Groceries", "Travel", "Shopping", "Bills", "Entertainment", "Health", "Investment", "Salary", "Transfer", "Other"].
 - merchant: strictly the exact name of the person, shop, merchant, or service paid to or received from.
 - payment_source: bank or card used if mentioned (e.g. "SBI Card", "Kotak Bank", "HDFC Bank", "Axis Bank", "ICICI Bank", "Cash", etc.) or null.
-- updated_balance: double or null (if not mentioned).
+- updated_balance: double or null (e.g. 200000 for "available amount is 200000", if not mentioned then null).
 - account_snippet: last digits or card ending (e.g. "XX1234") or null.
 - confidence: number between 0.0 and 1.0.
 ''';
@@ -240,14 +243,55 @@ Field rules:
       final isFinancial = map['is_financial_transaction'] as bool? ?? true;
       if (!isFinancial) return null;
 
-      final amount = (map['amount'] as num?)?.toDouble() ?? 0.0;
+      var amount = (map['amount'] as num?)?.toDouble() ?? 0.0;
       if (amount <= 0.0) return null;
+
+      double? originalAmount;
+      final originalCurrency = map['original_currency'] as String? ??
+          map['currency'] as String? ??
+          ForexConverter.detectCurrency(rawText);
+
+      // If the transaction is in foreign currency (e.g. USD) and message has no direct INR amount, convert to INR
+      if (originalCurrency != null &&
+          originalCurrency != 'INR' &&
+          !rawText.toLowerCase().contains('inr') &&
+          !rawText.toLowerCase().contains('rs.')) {
+        originalAmount = amount;
+        amount = ForexConverter.convertToInr(amount, originalCurrency);
+      }
 
       final typeStr = (map['type'] as String? ?? 'EXPENSE').toUpperCase();
       final type = typeStr == 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE;
       final category = map['category'] as String? ?? 'Other';
-      final merchant = map['merchant'] as String? ?? 'Unknown';
+      var merchant = map['merchant'] as String? ?? 'Unknown';
+      if (originalAmount != null &&
+          originalCurrency != null &&
+          originalCurrency != 'INR') {
+        final origTag = ForexConverter.formatOriginal(
+          originalAmount,
+          originalCurrency,
+        );
+        if (!merchant.contains(origTag)) {
+          merchant = '$merchant ($origTag)';
+        }
+      }
       final updatedBalance = (map['updated_balance'] as num?)?.toDouble();
+
+      // Guard: If AI mistakenly confused updated balance with the transaction amount in a balance-only notification
+      if (updatedBalance != null &&
+          (amount == updatedBalance ||
+              (originalAmount != null && originalAmount == updatedBalance))) {
+        final rawLower = rawText.toLowerCase();
+        final hasAction = rawLower.contains('debited') ||
+            rawLower.contains('spent') ||
+            rawLower.contains('spend') ||
+            rawLower.contains('credited') ||
+            rawLower.contains('paid') ||
+            rawLower.contains('withdrawn') ||
+            rawLower.contains('transferred');
+        if (!hasAction) return null;
+      }
+
       final accountSnippet = map['account_snippet'] as String?;
       final paymentSource = map['payment_source'] as String?;
       final referenceNumber = map['reference_number'] as String?;
@@ -266,6 +310,8 @@ Field rules:
         engine: engine,
         confidence: confidence,
         isFinancial: true,
+        originalAmount: originalAmount,
+        originalCurrency: originalCurrency,
       );
     } catch (e) {
       print('Failed to decode AI JSON output: $e');

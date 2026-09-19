@@ -14,6 +14,7 @@ import '../../controllers/transaction_controller.dart';
 import '../../../../services/ingestion/sms_sync_service.dart';
 import '../../widgets/sms_sync_sheet.dart';
 import '../../widgets/update_dialog_sheet.dart';
+import '../../widgets/permissions_prompt_sheet.dart';
 import '../../../../services/updater/app_update_service.dart';
 import 'widgets/backup_settings_sheet.dart';
 import 'widgets/manage_categories_sheet.dart';
@@ -25,7 +26,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   final _apiKeyController = TextEditingController();
   final _bedrockModelController = TextEditingController();
   final _bedrockRegionController = TextEditingController();
@@ -34,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final settings = Provider.of<SettingsController>(context, listen: false);
       settings.loadSettings().then((_) {
@@ -45,7 +48,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!mounted) return;
+      final settings = Provider.of<SettingsController>(context, listen: false);
+      settings.loadSettings();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _apiKeyController.dispose();
     _bedrockModelController.dispose();
     _bedrockRegionController.dispose();
@@ -93,6 +106,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // Android Notification Listener Permission Section
                 _buildNotificationPermissionSection(context, settings),
+                const SizedBox(height: 20),
+
+                // Background Persistence & Battery Saver Exemption Section
+                _buildBatteryOptimizationSection(context, settings),
                 const SizedBox(height: 20),
 
                 // Gmail Integration Section
@@ -1017,6 +1034,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => PermissionsPromptSheet.checkAndShow(context, force: true),
+                icon: const Icon(Icons.security, size: 16),
+                label: const Text(
+                  'Permissions & Battery Optimizer Setup',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatteryOptimizationSection(
+    BuildContext context,
+    SettingsController settings,
+  ) {
+    final isIgnored = settings.isBatteryOptimizationIgnored;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.battery_saver,
+                      color: AppColors.royalBlue,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Background & Battery Saver',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (isIgnored ? AppColors.emerald : AppColors.ruby)
+                        .withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isIgnored ? 'UNRESTRICTED' : 'OPTIMIZED / RESTRICTED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isIgnored ? AppColors.emerald : AppColors.ruby,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Aggressive task-killers on Xiaomi (MIUI/HyperOS), Vivo, Oppo, Realme, and Samsung kill background listeners when the screen is locked. Setting battery usage to "Unrestricted" ensures payment alerts are never missed.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isIgnored
+                      ? AppColors.surfaceElevated
+                      : AppColors.royalBlue,
+                  foregroundColor: isIgnored
+                      ? AppColors.textPrimary
+                      : Colors.white,
+                ),
+                onPressed: () async {
+                  AppHaptics.light();
+                  await settings.requestIgnoreBatteryOptimizations();
+                },
+                icon: Icon(
+                  isIgnored ? Icons.check_circle : Icons.bolt,
+                  size: 18,
+                  color: isIgnored ? AppColors.emerald : Colors.white,
+                ),
+                label: Text(
+                  isIgnored
+                      ? 'Unrestricted Background Active'
+                      : 'Allow Unrestricted Background',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            if (!isIgnored) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.saffron.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.saffron.withOpacity(0.3),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppColors.saffron,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'On Xiaomi / Vivo / Oppo: Also open App Info, enable "Autostart", and set Battery Saver to "No restrictions".',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.saffron,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

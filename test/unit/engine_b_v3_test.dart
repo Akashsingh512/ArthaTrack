@@ -363,5 +363,17 @@ void main() {
 
       expect(res, isNull, reason: 'Pending or in-process NACH messages must never be added until money is actually cut');
     });
+
+    test('29. USD / Foreign currency transaction with Available Amount (never confuse balance with amount, converts USD to Rupees)', () {
+      const text = ' spend 2.50 usd available amount is 200000';
+      final res = EngineBRegexParser.parse(text);
+
+      expect(res, isNotNull);
+      expect(res!.amount, equals(210.00));
+      expect(res.originalAmount, equals(2.50));
+      expect(res.originalCurrency, equals('USD'));
+      expect(res.type, equals(TransactionType.EXPENSE));
+      expect(res.updatedBalance, equals(200000.00));
+    });
   });
 }

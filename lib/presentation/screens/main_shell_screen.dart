@@ -16,6 +16,7 @@ import 'dashboard/dashboard_screen.dart';
 import 'settings/settings_screen.dart';
 import 'transactions/transactions_screen.dart';
 import '../widgets/update_dialog_sheet.dart';
+import '../widgets/permissions_prompt_sheet.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({super.key});
@@ -74,12 +75,47 @@ class _MainShellScreenState extends State<MainShellScreen> with WidgetsBindingOb
 
       // Silently check if an app update is available on GitHub
       _checkAppUpdate();
+
+      // Check and prompt for critical permissions (SMS, special OEM SMS settings, battery saver, notification listener)
+      _checkAndPromptPermissions();
     });
+  }
+
+  /// Checks if any essential tracking permissions are missing on app open and prompts the user
+  Future<void> _checkAndPromptPermissions() async {
+    try {
+      // Delay slightly so the main dashboard renders smoothly first
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+      await PermissionsPromptSheet.checkAndShow(context);
+    } catch (_) {}
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Re-verify notification listener connection and drain any pending push notifications captured while in background
+      _notificationChannel.ensureConnected();
+      _notificationChannel.drainPendingNotifications(
+        onTransactionParsed: (tx) {
+          if (mounted) {
+            Provider.of<DashboardController>(context, listen: false).loadDashboardData();
+            Provider.of<TransactionController>(context, listen: false).loadTransactions();
+            Provider.of<AnalyticsController>(context, listen: false).loadAnalytics();
+            Provider.of<BalanceSheetController>(context, listen: false).loadBalanceSheet();
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Auto-captured ${tx.type}: ₹${tx.amount.toStringAsFixed(2)} at ${tx.merchant}',
+                ),
+                backgroundColor: AppColors.emerald,
+              ),
+            );
+          }
+        },
+      );
+
       // Clear any stale sync notification and automatically scan for new messages silently
       _smsSyncService.cancelSyncNotification();
       _autoDetectAndSyncRecentSms();

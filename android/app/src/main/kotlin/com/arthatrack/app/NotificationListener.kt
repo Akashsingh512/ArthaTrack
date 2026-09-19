@@ -1,6 +1,10 @@
 package com.arthatrack.app
 
 import android.app.Notification
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
@@ -27,15 +31,70 @@ class NotificationListener : NotificationListenerService() {
             }
         }
 
+        fun postPayload(context: Context, payload: Map<String, Any?>) {
+            // 1. PERSIST IMMEDIATELY TO NATIVE DISK: At-Least-Once Delivery Guarantee
+            // Even if app is killed or phone restarts, ephemeral notifications are preserved in SQLite.
+            val db = NotificationDbHelper.getInstance(context)
+            val dbId = db.insertNotification(payload)
+            if (dbId == -1L) {
+                // Duplicate notification within 10-minute window
+                return
+            }
+
+            val payloadWithId = payload.toMutableMap().apply {
+                put("id", dbId)
+            }
+
+            // 2. DISPATCH TO LIVE FLUTTER STREAM
+            mainHandler.post {
+                try {
+                    val sink = eventSink
+                    if (sink != null) {
+                        sink.success(payloadWithId)
+                    } else {
+                        if (eventBuffer.size < 100) {
+                            eventBuffer.add(payloadWithId)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+
         fun postPayload(payload: Map<String, Any?>) {
             mainHandler.post {
-                val sink = eventSink
-                if (sink != null) {
-                    sink.success(payload)
-                } else {
-                    if (eventBuffer.size < 50) {
-                        eventBuffer.add(payload)
+                try {
+                    val sink = eventSink
+                    if (sink != null) {
+                        sink.success(payload)
+                    } else {
+                        if (eventBuffer.size < 100) {
+                            eventBuffer.add(payload)
+                        }
                     }
+                } catch (_: Exception) {}
+            }
+        }
+
+        fun ensureRebind(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                try {
+                    requestRebind(ComponentName(context, NotificationListener::class.java))
+                } catch (_: Exception) {
+                    // Fallback toggle trick to force system re-bind
+                    try {
+                        val pm = context.packageManager
+                        val cn = ComponentName(context, NotificationListener::class.java)
+                        pm.setComponentEnabledSetting(
+                            cn,
+                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                            PackageManager.DONT_KILL_APP
+                        )
+                        pm.setComponentEnabledSetting(
+                            cn,
+                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                            PackageManager.DONT_KILL_APP
+                        )
+                    } catch (_: Exception) {}
                 }
             }
         }
@@ -95,13 +154,13 @@ class NotificationListener : NotificationListenerService() {
         )
 
         val TRANSACTION_ACTION_KEYWORDS = listOf(
-            "debited", "credited", "spent", "withdrawn", "paid",
+            "debited", "credited", "spent", "spend", "withdrawn", "paid",
             "transferred", "payment received", "nach debit", "ach debit"
         )
 
         val BANKING_KEYWORDS = TRANSACTION_ACTION_KEYWORDS
 
-        val CURRENCY_REGEX = Regex("""(?:₹|inr|\brs\.?)\s*[\d,]+(?:\.\d{1,2})?""", RegexOption.IGNORE_CASE)
+        val CURRENCY_REGEX = Regex("""(?:₹|inr|\brs\.?|usd|\$|eur|€|gbp|£)\s*[\d,]+(?:\.\d{1,2})?|[\d,]+(?:\.\d{1,2})?\s*(?:usd|inr|\brs\.?)""", RegexOption.IGNORE_CASE)
 
         // STRICT SECURITY GUARD: Unconditional blocklist for any OTP, 2FA, or verification messages
         val OTP_BLOCKLIST_KEYWORDS = listOf(
@@ -159,9 +218,31 @@ class NotificationListener : NotificationListenerService() {
             return
         }
 
+        // 4.5 Drop pure balance inquiries and balance status notifications where no actual money movement occurred
+        val hasActionKeyword = TRANSACTION_ACTION_KEYWORDS.any { combinedContent.contains(it) }
+        val isBalanceOnlyNotice = !hasActionKeyword && (
+            combinedContent.contains("available balance") ||
+            combinedContent.contains("current balance") ||
+            combinedContent.contains("clear balance") ||
+            combinedContent.contains("closing balance") ||
+            combinedContent.contains("ledger balance") ||
+            combinedContent.contains("account balance") ||
+            combinedContent.contains("balance enquiry") ||
+            combinedContent.contains("balance inquiry") ||
+            combinedContent.contains("bal enquiry") ||
+            combinedContent.contains("bal inquiry") ||
+            combinedContent.contains("balance alert") ||
+            combinedContent.contains("available amount is") ||
+            combinedContent.contains("current amount is") ||
+            combinedContent.contains("avl bal is") ||
+            combinedContent.contains("avail bal is")
+        )
+        if (isBalanceOnlyNotice) {
+            return
+        }
+
         // 5. Verification of financial keywords and currency symbols
         val isTargetApp = TARGET_PACKAGES.contains(pkgName)
-        val hasActionKeyword = TRANSACTION_ACTION_KEYWORDS.any { combinedContent.contains(it) }
         val hasCurrencyPattern = CURRENCY_REGEX.containsMatchIn(combinedContent)
 
         // For target banking/UPI apps, require an action keyword OR a currency pattern.
@@ -185,7 +266,21 @@ class NotificationListener : NotificationListenerService() {
             "postTime" to sbn.postTime
         )
 
-        postPayload(payload)
+        postPayload(this, payload)
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        // Auto-heal Android NLS disconnection bug by requesting immediate rebind
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                requestRebind(ComponentName(this, NotificationListener::class.java))
+            } catch (_: Exception) {}
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
